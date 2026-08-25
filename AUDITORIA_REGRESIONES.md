@@ -15,65 +15,89 @@ registro activo. El detalle de por qué se consolidó está en
 
 ---
 
-## Abiertos al cierre de la v11 (parche aplicado en la sesión de fix)
+## Cerrados en la ronda de mejoras post-v11 (abiertos al cierre de la v11)
 
-### R41 — Alias sin `AS` en una consulta del propio smoke test · menor
+### R41 — Alias sin `AS` en una consulta del propio smoke test · menor · CERRADO
 **Dónde:** `tests/testthat/test-full-pipeline-smoke.R:78` —
 `SELECT COUNT(*) rows FROM documented_series_snapshot GROUP BY 1,2 HAVING COUNT(*) >
 1`. `rows` es palabra reservada en DuckDB sin `AS`, misma familia que R26 pero en el
-test, no en producción. Esa aserción específica del smoke test no puede ejecutarse
-tal como está escrita.
-**Arreglo:** `COUNT(*) AS rows`.
+test, no en producción. Esa aserción específica del smoke test no podía ejecutarse
+tal como estaba escrita.
+**Arreglo (aplicado en la sesión de mejoras post-v11):** `COUNT(*) AS rows`. Además
+se agregó `tests/testthat/test-sql-alias-hygiene.R`, un guard permanente que escanea
+`scripts/` buscando la misma familia de alias sin `AS` contra palabras reservadas de
+DuckDB, para que R26/R41/R44 no tengan un cuarto episodio.
 
 ---
 
-### R42 — El guard de fecha global no reconoce el horizonte de proyección ya revisado para `economic_annex` · menor
+### R42 — El guard de fecha global no reconoce el horizonte de proyección ya revisado para `economic_annex` · menor · CERRADO
 **Dónde:** chequeo `implausible_semantic_date_range` en `validate_database()`
 (`scripts/04_validate.R`), sobre `fact_series_events` agregado de todas las fuentes.
-Con `CUADRO 57a` resuelto (ver abajo), la corrida completa deja **una sola** quality
-flag de severidad `error`: *"Semantic observations span 1945-12-31 to
-2028-12-01"*. El contrato específico de `economic_annex`
-(`documented_validate_contract`) ya fue ampliado esta ronda para aceptar el horizonte
-de proyección revisado de `Cuadro 49` (hasta 2028-12-01) — pero el guard **global**
-de `validate_database()` sigue con un techo más angosto (`Sys.Date() + 400`, ~fines
-de 2027), así que la misma fecha que el contrato de la fuente ya acepta como
-legítima sigue marcándose como error a nivel base completa. No es un defecto de
-`CUADRO 57a` ni algo que el arreglo de esa hoja debía tocar — es una inconsistencia
-menor entre dos guards que deberían compartir el mismo techo revisado.
-**Cómo verificar que sigue cerrado:** `outputs/quality_flags_latest.csv` sin filas
-`severity=error, check_name=implausible_semantic_date_range` para fechas dentro del
-horizonte ya revisado de `economic_annex`.
-**Arreglo:** alinear el techo de `validate_database()` con el mismo horizonte
-revisado que ya usa el contrato de `economic_annex`, en vez de dos constantes
-independientes.
+Con `CUADRO 57a` resuelto, la corrida completa dejaba **una sola** quality flag de
+severidad `error`: *"Semantic observations span 1945-12-31 to 2028-12-01"*. El
+contrato específico de `economic_annex` (`config/documented_source_contracts.csv`,
+`maximum_future_days=1000`) ya aceptaba el horizonte de proyección revisado de
+`Cuadro 49` (hasta 2028-12-01) — pero el guard **global** de `validate_database()`
+seguía con un techo más angosto (`Sys.Date() + 400`, ~fines de 2027) fijo e
+independiente, así que la misma fecha que el contrato de la fuente ya aceptaba como
+legítima seguía marcándose como error a nivel base completa.
+**Arreglo (aplicado):** `validate_database()` ahora lee
+`config/documented_source_contracts.csv` y usa
+`Sys.Date() + max(400, contratos$maximum_future_days, na.rm=TRUE)` como techo, en
+vez de la constante fija — sube el techo global sólo lo necesario para no
+contradecir ningún contrato de fuente ya revisado, sin debilitar el guard para el
+resto (que se quedan con el default de 400 si no tienen fila propia en el CSV).
+**Verificado:** `run_tests.R` completo, `test-full-pipeline-smoke.R:14`
+(`result$status == "completed_with_errors"` ahora `FALSE`) en verde.
 
 ---
 
-### R43 — Incompatibilidad de API de `testthat`: `info=` ya no es un argumento válido en varios `expect_*` · menor, sólo test suite
+### R43 — Incompatibilidad de API de `testthat`: `info=` ya no es un argumento válido en varios `expect_*` · menor, sólo test suite · CERRADO
 **Dónde:** 7 usos de `info = ...` en `tests/testthat/test-v10-runtime-repairs.R` y
-`tests/testthat/test-v9-ingestion-repairs.R` (`expect_no_error()`, `expect_gt()`).
-Con `testthat` 3.3.2 instalado, ambas llamadas tiran
-`` `...` must be empty `` / `unused argument (info = ...)`. No es un defecto del
-pipeline — es una prueba escrita contra una versión de `testthat` distinta a la
-instalada.
-**Arreglo:** quitar `info=` de esas 7 llamadas, o envolver el mensaje en el propio
-`expect_*` según lo que soporte la versión fijada del paquete.
+`tests/testthat/test-v9-ingestion-repairs.R`. De los 7, sólo 2 rompían realmente con
+`testthat` 3.3.2 instalado (confirmado con `formals()`): `expect_no_error()` y
+`expect_gt()` no aceptan `info=` en esta versión; `expect_identical()` y
+`expect_equal()` sí lo aceptan — los otros 5 usos nunca fallaron.
+**Arreglo (aplicado):**
+`test-v10-runtime-repairs.R:13`: se quitó `info = sheet` de `expect_no_error()` (sin
+sustituto directo en esta expectativa; el loop es corto, el nombre del test alcanza
+para identificar el contexto). `test-v9-ingestion-repairs.R:119`: `expect_gt(nrow(finalized), 0L, info = source_id)`
+reemplazado por `expect_true(nrow(finalized) > 0L, info = source_id)`, que sí acepta
+`info=` y preserva la identificación por fuente dentro del loop de 3 specs.
+**Verificado:** `run_tests.R` completo, ambos archivos en verde.
 
 ---
 
-### R44 — `create_market_views()` falla con "window expression is not supported" en dos fixtures sintéticos de test · menor, no reproducido con datos reales
+### R44 — `create_market_views()` falla con "window expression is not supported" en dos fixtures sintéticos de test · menor, no reproducido con datos reales · CERRADO
 **Dónde:** `scripts/03_curate_expanded.R:528-547`, invocada sin condición desde
-`initialize_database()`. Dispara en `test-identity-and-archive.R:101` ("schema-v3
-currency and report storage migrate safely to v4") y `:120` ("schema-v4 documented
-sources are invalidated before v5 reingestion") — ambos tests arman una base
-sintética mínima antes de llamar `initialize_database()`. La misma consulta
-exacta, reproducida aislada contra tablas `source_files`/`bond_curve_snapshot`
-con un esquema realista, corre sin error — y la corrida real completa contra los 22
-archivos tampoco la dispara. Parece específico a alguna combinación de columnas o
-tipos del fixture sintético de esos dos tests, no una falla general de la vista.
-**Arreglo:** no determinado — revisar qué columna/tipo del fixture sintético de
-esos dos tests difiere de una base real hasta encontrar la combinación que dispara
-el error de DuckDB.
+`initialize_database()`. Disparaba en `test-identity-and-archive.R:101`/`:120` —
+ambos tests arman una base sintética mínima antes de llamar `initialize_database()`.
+**Causa raíz encontrada** (el catálogo original decía "no determinado"): los dos
+tests crean `source_files` con sólo 3 columnas
+(`vintage_id, source_id, ingestion_status`) *antes* de llamar
+`initialize_database()`. Como la tabla ya existe, el
+`CREATE TABLE IF NOT EXISTS source_files (...)` de `initialize_database()`
+(línea 352, con `publication_date DATE` incluido) es un no-op — nunca agrega esa
+columna. Ninguno de los `ensure_table_column(con, "source_files", ...)` existentes
+cubría `publication_date`. `create_market_views()` hace
+`ORDER BY publication_date DESC NULLS LAST, ...` dentro de un `row_number() OVER
+(...)` — al no existir la columna, el binder de DuckDB reporta el críptico "window
+expression is not supported here" en vez de "column not found" (reproducido en
+aislado: agregar la columna faltante hace pasar la misma vista sin tocar su SQL).
+**Arreglo (aplicado):** `ensure_table_column(con, "source_files", "publication_date", "DATE")`
+agregado junto a los demás `ensure_table_column` de esa tabla
+(`scripts/02_extract_raw.R`).
+**Hallazgo secundario, destapado por este arreglo:** con el crash resuelto, ambos
+tests avanzaron más allá y expusieron 2 aserciones obsoletas
+(`needs_v4_reingestion`/`needs_v5_reingestion`) que nunca se actualizaron cuando se
+agregaron las migraciones v6-v11. Verificado contra el código real de los 5
+`invalidate_v*_*()`: el comportamiento actual es correcto por diseño —
+`invalidate_v8_ingestion_repairs()` re-incluye `bank_reference` explícitamente
+(`OR source_id = 'bank_reference'`), y `economic_annex` está listado en cada
+migración posterior (v6, v8, v9, v10) — una base genuinamente vieja debe cascadear
+por todas las que le aplican, no detenerse en la primera. Aserciones corregidas a
+`needs_v9_reingestion`/`needs_v11_reingestion` en `tests/testthat/test-identity-and-archive.R`.
+**Verificado:** `run_tests.R` completo, `test-identity-and-archive.R` en verde.
 
 ---
 

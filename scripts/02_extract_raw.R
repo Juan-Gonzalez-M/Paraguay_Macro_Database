@@ -360,7 +360,7 @@ initialize_database <- function(con) {
     "CREATE TABLE IF NOT EXISTS documented_table_catalog (vintage_id VARCHAR, source_id VARCHAR, source_sheet VARCHAR, table_title VARCHAR, parser_mode VARCHAR, parse_status VARCHAR, hierarchy_status VARCHAR, raw_nonempty_cells BIGINT, parsed_observations BIGINT, series_count BIGINT, first_period DATE, last_period DATE, unit_summary VARCHAR, coverage_note VARCHAR, PRIMARY KEY (vintage_id, source_sheet))",
     "CREATE TABLE IF NOT EXISTS documented_sheet_drift (vintage_id VARCHAR, previous_vintage_id VARCHAR, source_id VARCHAR, source_sheet VARCHAR, previous_observations BIGINT, current_observations BIGINT, observation_change BIGINT, previous_series BIGINT, current_series BIGINT, series_change BIGINT, drift_status VARCHAR, PRIMARY KEY (vintage_id, source_sheet))",
     "CREATE TABLE IF NOT EXISTS documented_series_continuity (vintage_id VARCHAR, previous_vintage_id VARCHAR, source_id VARCHAR, series_id VARCHAR, source_sheet VARCHAR, change_type VARCHAR, previous_label VARCHAR, current_label VARCHAR, previous_unit VARCHAR, current_unit VARCHAR, previous_scale VARCHAR, current_scale VARCHAR, previous_currency VARCHAR, current_currency VARCHAR, identity_stability VARCHAR, PRIMARY KEY (vintage_id, series_id, change_type))",
-    "CREATE TABLE IF NOT EXISTS documented_series_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_id VARCHAR, source_file VARCHAR, source_sheet VARCHAR, table_title VARCHAR, parser_mode VARCHAR, series_id VARCHAR, identity_basis VARCHAR, identity_stability VARCHAR, hierarchy_status VARCHAR, period DATE, source_period_label VARCHAR, frequency VARCHAR, series_label VARCHAR, series_path VARCHAR, category VARCHAR, measure VARCHAR, question VARCHAR, response VARCHAR, entity_id VARCHAR, exchange_item_id VARCHAR, participant_id VARCHAR, unit VARCHAR, scale VARCHAR, currency VARCHAR, index_base VARCHAR, value DOUBLE, is_total BOOLEAN, source_row BIGINT, source_column BIGINT)",
+    "CREATE TABLE IF NOT EXISTS documented_series_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_id VARCHAR, source_file VARCHAR, source_sheet VARCHAR, table_title VARCHAR, parser_mode VARCHAR, series_id VARCHAR, identity_basis VARCHAR, identity_stability VARCHAR, hierarchy_status VARCHAR, period DATE, source_period_label VARCHAR, frequency VARCHAR, series_label VARCHAR, series_path VARCHAR, category VARCHAR, measure VARCHAR, question VARCHAR, response VARCHAR, entity_id VARCHAR, exchange_item_id VARCHAR, participant_id VARCHAR, unit VARCHAR, scale VARCHAR, currency VARCHAR, index_base VARCHAR, value DOUBLE, is_total BOOLEAN, source_row BIGINT, source_column BIGINT, footnote_marker VARCHAR, price_base_year VARCHAR)",
     "CREATE TABLE IF NOT EXISTS semantic_coverage (vintage_id VARCHAR, source_id VARCHAR, source_sheet VARCHAR, semantic_status VARCHAR, raw_nonempty_cells BIGINT, curated_observations BIGINT, coverage_note VARCHAR)",
     "CREATE TABLE IF NOT EXISTS dim_entity (entity_id VARCHAR PRIMARY KEY, entity_code VARCHAR, entity_type VARCHAR, entity_name VARCHAR, legal_name VARCHAR, short_name VARCHAR, ownership_type VARCHAR, mapping_status VARCHAR, first_vintage_id VARCHAR)",
     "CREATE TABLE IF NOT EXISTS dim_currency (currency_code VARCHAR PRIMARY KEY, currency_label VARCHAR, currency_of_origin VARCHAR, unit_currency VARCHAR, economic_currency VARCHAR, description VARCHAR, mapping_status VARCHAR, first_vintage_id VARCHAR)",
@@ -374,7 +374,7 @@ initialize_database <- function(con) {
     "CREATE TABLE IF NOT EXISTS dim_payment_participant (participant_id VARCHAR PRIMARY KEY, bic_code VARCHAR, legal_name VARCHAR, participant_type VARCHAR, first_vintage_id VARCHAR)",
     "CREATE TABLE IF NOT EXISTS dim_exchange_item (exchange_item_id VARCHAR PRIMARY KEY, statement_type VARCHAR, classification VARCHAR, item_label VARCHAR, item_label_normalized VARCHAR, first_vintage_id VARCHAR)",
     "CREATE TABLE IF NOT EXISTS reference_table_loads (vintage_id VARCHAR, source_sheet VARCHAR, source_table VARCHAR, semantic_role VARCHAR, row_count BIGINT, structure_signature VARCHAR, PRIMARY KEY (vintage_id, source_sheet, source_table))",
-    "CREATE TABLE IF NOT EXISTS dim_series (series_id VARCHAR PRIMARY KEY, source_id VARCHAR, label VARCHAR, unit VARCHAR, scale VARCHAR, frequency VARCHAR, currency VARCHAR, index_base VARCHAR, hierarchy_level VARCHAR, parent_series_id VARCHAR, is_total BOOLEAN, identity_basis VARCHAR, identity_stability VARCHAR, hierarchy_status VARCHAR, semantic_status VARCHAR, first_vintage_id VARCHAR)",
+    "CREATE TABLE IF NOT EXISTS dim_series (series_id VARCHAR PRIMARY KEY, source_id VARCHAR, label VARCHAR, unit VARCHAR, scale VARCHAR, frequency VARCHAR, currency VARCHAR, index_base VARCHAR, hierarchy_level VARCHAR, parent_series_id VARCHAR, is_total BOOLEAN, identity_basis VARCHAR, identity_stability VARCHAR, hierarchy_status VARCHAR, semantic_status VARCHAR, first_vintage_id VARCHAR, price_base_year VARCHAR)",
     "CREATE TABLE IF NOT EXISTS bond_curve_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_file VARCHAR, source_row BIGINT, period DATE, currency VARCHAR, risk_rating VARCHAR, maturity_years DOUBLE, zero_coupon_rate DOUBLE, discount_factor DOUBLE, par_rate DOUBLE, beta0 DOUBLE, beta1 DOUBLE, beta2 DOUBLE, beta3 DOUBLE, lambda1 DOUBLE, lambda2 DOUBLE)",
     "CREATE TABLE IF NOT EXISTS securities_transactions_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_file VARCHAR, transaction_id VARCHAR, source_row BIGINT, operation_date DATE, broker_tax_id VARCHAR, broker_name VARCHAR, isin VARCHAR, issuer_tax_id VARCHAR, issuer_name VARCHAR, instrument VARCHAR, market VARCHAR, operation_type VARCHAR, local_currency_volume DOUBLE, currency VARCHAR, trading_venue VARCHAR)",
     "CREATE TABLE IF NOT EXISTS dim_concept (concept_id VARCHAR PRIMARY KEY, concept_label VARCHAR, concept_domain VARCHAR, definition VARCHAR, unit VARCHAR, scale VARCHAR, frequency VARCHAR, mapping_status VARCHAR, first_vintage_id VARCHAR)",
@@ -386,6 +386,7 @@ initialize_database <- function(con) {
   ensure_table_column(con, "source_files", "publisher", "VARCHAR")
   ensure_table_column(con, "source_files", "source_format", "VARCHAR")
   ensure_table_column(con, "source_files", "first_ingested_at", "TIMESTAMP")
+  ensure_table_column(con, "source_files", "publication_date", "DATE")
   ensure_table_column(con, "source_sheets", "content_first_row", "BIGINT")
   ensure_table_column(con, "source_sheets", "content_first_col", "BIGINT")
   ensure_table_column(con, "source_sheets", "content_last_row", "BIGINT")
@@ -399,6 +400,7 @@ initialize_database <- function(con) {
   ensure_table_column(con, "dim_series", "frequency", "VARCHAR")
   ensure_table_column(con, "dim_series", "currency", "VARCHAR")
   ensure_table_column(con, "dim_series", "index_base", "VARCHAR")
+  ensure_table_column(con, "dim_series", "price_base_year", "VARCHAR")
   ensure_table_column(con, "dim_series", "hierarchy_level", "VARCHAR")
   ensure_table_column(con, "dim_series", "parent_series_id", "VARCHAR")
   ensure_table_column(con, "dim_series", "is_total", "BOOLEAN")
@@ -416,6 +418,8 @@ initialize_database <- function(con) {
   ensure_table_column(con, "documented_series_snapshot", "identity_basis", "VARCHAR")
   ensure_table_column(con, "documented_series_snapshot", "identity_stability", "VARCHAR")
   ensure_table_column(con, "documented_series_snapshot", "hierarchy_status", "VARCHAR")
+  ensure_table_column(con, "documented_series_snapshot", "footnote_marker", "VARCHAR")
+  ensure_table_column(con, "documented_series_snapshot", "price_base_year", "VARCHAR")
   ensure_table_column(con, "documented_table_catalog", "hierarchy_status", "VARCHAR")
   ensure_table_column(con, "dim_series", "identity_basis", "VARCHAR")
   ensure_table_column(con, "dim_series", "identity_stability", "VARCHAR")

@@ -70,6 +70,26 @@ documented_year_values <- function(text) {
   year
 }
 
+# Same year-cell pattern as documented_year_values(), but returns the trailing
+# footnote/qualifier text (e.g. the "*" in "2021*") instead of discarding it.
+# Published footnote markers usually mean "provisional, subject to revision" --
+# real editorial information this project otherwise throws away silently while
+# parsing the year (see CUADRO 57a, AUDITORIA_REGRESIONES.md R40). A blank
+# capture (no marker) is normalized to NA, matching every other "not present"
+# convention in this file.
+documented_year_footnote <- function(text) {
+  input_dim <- dim(text)
+  values <- trimws(as.character(text))
+  matched <- stringr::str_match(
+    values,
+    "^(?:19|20)[0-9]{2}((?:\\s*(?:\\(?\\*+\\)?|[0-9]{1,2}/))*)\\s*$"
+  )
+  marker <- trimws(matched[, 2])
+  marker[!nzchar(marker)] <- NA_character_
+  if (!is.null(input_dim)) dim(marker) <- input_dim
+  marker
+}
+
 documented_year_axis_counts <- function(years, margin = 1L, minimum = 3L) {
   if (is.null(dim(years)) || length(dim(years)) != 2L || any(dim(years) == 0L)) return(numeric())
   margin <- as.integer(margin)
@@ -286,7 +306,8 @@ documented_frequency <- function(periods) {
 
 documented_measure_metadata_vectorized <- function(series_label, table_title) {
   if (!length(series_label) && !length(table_title)) return(tibble::tibble(
-    unit = character(), scale = character(), currency = character(), index_base = character()
+    unit = character(), scale = character(), currency = character(), index_base = character(),
+    price_base_year = character()
   ))
   if (!length(series_label) || !length(table_title)) stop(
     "Metadata labels and titles must both be present (NA is allowed).", call. = FALSE
@@ -342,9 +363,22 @@ documented_measure_metadata_vectorized <- function(series_label, table_title) {
   scale[unit %in% c("index", "percent", "ratio", "count", "days")] <- "units"
   currency[unit == "PYG_per_USD"] <- "PYG/USD"
   base_match <- stringr::str_extract(table_title, stringr::regex("base.{0,50}?100", ignore_case = TRUE))
+  # Distinct from index_base above: a constant-price valuation year (e.g. "En
+  # millones de guaraníes constantes de 2014") is not an index=100 reference,
+  # it is the year whose prices were used to value quantities from other
+  # years -- CLAUDE.md's own documented trap ("PIB constante 2014"). Verified
+  # against the real economic_annex titles before adding this: the phrase
+  # "constante(s) de <year>" appears consistently across the GDP tables
+  # (Cuadro 1/2/6/6a/7/7a) and nowhere else; no evidence of a seasonal-
+  # adjustment marker was found anywhere in the 94 real titles, so that field
+  # was deliberately not added (see revisiones/MEJORAS_v11.md).
+  price_base_year <- stringr::str_match(
+    table_title, stringr::regex("constantes?\\s+de\\s+((?:19|20)[0-9]{2})", ignore_case = TRUE)
+  )[, 2]
   tibble::tibble(
     unit = unit, scale = scale, currency = currency,
-    index_base = dplyr::if_else(is.na(base_match), NA_character_, base_match)
+    index_base = dplyr::if_else(is.na(base_match), NA_character_, base_match),
+    price_base_year = price_base_year
   )
 }
 
@@ -367,7 +401,7 @@ documented_enrich_metadata <- function(observations, metadata_label = observatio
   if (length(metadata_label) != nrow(observations)) stop(
     "Metadata label vector must have one value per observation.", call. = FALSE
   )
-  metadata_fields <- c("unit", "scale", "currency", "index_base")
+  metadata_fields <- c("unit", "scale", "currency", "index_base", "price_base_year")
   for (field in metadata_fields) if (!field %in% names(observations)) observations[[field]] <- NA_character_
   if (!"is_total" %in% names(observations)) observations$is_total <- NA
   observations$.metadata_label <- metadata_label
@@ -383,6 +417,7 @@ documented_enrich_metadata <- function(observations, metadata_label = observatio
       scale = dplyr::coalesce(.data$scale, .data$scale_inferred),
       currency = dplyr::coalesce(.data$currency, .data$currency_inferred),
       index_base = dplyr::coalesce(.data$index_base, .data$index_base_inferred),
+      price_base_year = dplyr::coalesce(.data$price_base_year, .data$price_base_year_inferred),
       is_total = dplyr::coalesce(.data$is_total, documented_is_total(.data$series_label))
     ) %>%
     dplyr::select(-dplyr::all_of(c(".metadata_label", paste0(metadata_fields, "_inferred"))))
@@ -768,6 +803,7 @@ documented_extract_horizontal_year_month <- function(text, numbers, source_sheet
   source_rows <- source_rows[keep]; source_columns <- source_columns[keep]; values <- values[keep]
   year <- years[cbind(rep(year_row, length(source_columns)), source_columns)]
   month <- month_values[cbind(source_rows, rep(month_col, length(source_rows)))]
+  footnote_marker <- documented_year_footnote(text)[cbind(rep(year_row, length(source_columns)), source_columns)]
   period <- as.Date(vapply(seq_along(year), function(i) {
     as.character(month_end(year[[i]], month[[i]]))
   }, character(1)))
@@ -779,7 +815,7 @@ documented_extract_horizontal_year_month <- function(text, numbers, source_sheet
     entity_id = NA_character_, exchange_item_id = NA_character_, participant_id = NA_character_,
     unit = NA_character_, scale = NA_character_, currency = NA_character_, index_base = NA_character_,
     value = as.numeric(values), is_total = NA, source_row = as.integer(source_rows),
-    source_column = as.integer(source_columns)
+    source_column = as.integer(source_columns), footnote_marker = footnote_marker
   )
 }
 
@@ -995,12 +1031,21 @@ documented_finalize_observations <- function(observations, item, release_id, pub
     "Documented-series key guard: ", nrow(duplicate),
     " duplicate series-period keys remain for ", item$source_id, ".", call. = FALSE
   )
+  # Only documented_extract_horizontal_year_month() populates footnote_marker
+  # today (the one confirmed real case, CUADRO 57a); credit_survey and
+  # exchange_houses skip documented_enrich_metadata() entirely (explicit
+  # semantic contracts, see the comment at that call site) so they never see
+  # price_base_year either. Default both here instead of touching every
+  # parser, so the columns are always present without claiming knowledge
+  # nothing upstream actually captured.
+  if (!"footnote_marker" %in% names(observations)) observations$footnote_marker <- NA_character_
+  if (!"price_base_year" %in% names(observations)) observations$price_base_year <- NA_character_
   expected <- c(
     "vintage_id", "release_id", "publication_date", "source_id", "source_file", "source_sheet",
     "table_title", "parser_mode", "series_id", "identity_basis", "identity_stability", "hierarchy_status",
     "period", "source_period_label", "frequency", "series_label", "series_path", "category", "measure",
     "question", "response", "entity_id", "exchange_item_id", "participant_id", "unit", "scale", "currency",
-    "index_base", "value", "is_total", "source_row", "source_column"
+    "index_base", "value", "is_total", "source_row", "source_column", "footnote_marker", "price_base_year"
   )
   missing <- setdiff(expected, names(observations))
   if (length(missing)) stop("Documented snapshot contract missing field(s): ", paste(missing, collapse = ", "), call. = FALSE)
@@ -1505,12 +1550,12 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
   series_meta <- observations %>% dplyr::distinct(
     .data$series_id, .data$series_label, .data$unit, .data$scale, .data$frequency,
     .data$currency, .data$index_base, .data$is_total, .data$identity_basis,
-    .data$identity_stability, .data$hierarchy_status
+    .data$identity_stability, .data$hierarchy_status, .data$price_base_year
   ) %>% dplyr::transmute(
     series_id, source_id = item$source_id, label = series_label, unit, scale, frequency, currency,
     index_base, hierarchy_level = "documented_table_series", parent_series_id = NA_character_,
     is_total, identity_basis, identity_stability, hierarchy_status,
-    semantic_status = "documented_series", first_vintage_id = item$vintage_id
+    semantic_status = "documented_series", first_vintage_id = item$vintage_id, price_base_year
   )
   events <- write_sparse_series(
     con, observations %>% dplyr::transmute(series_id = .data$series_id, period = .data$period, value = .data$value),

@@ -10,7 +10,7 @@ testthat::test_that("real formula-only exchange-house sheets have consistent emp
   for (sheet in empty_views) {
     dimension <- dimensions %>% dplyr::filter(.data$sheet_name == .env$sheet)
     raw <- read_dimensioned_sheet(path, dimension)
-    testthat::expect_no_error(cells_from_matrix(raw), info = sheet)
+    testthat::expect_no_error(cells_from_matrix(raw))
     if (dimension$content_last_col[[1]] == 0L) {
       testthat::expect_identical(dim(raw), c(0L, 0L), info = sheet)
       testthat::expect_identical(dim(documented_text_matrix(raw)), c(0L, 0L), info = sheet)

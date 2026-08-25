@@ -37,16 +37,22 @@ testthat::test_that("vectorized metadata is identical to scalar compatibility re
     if (unit %in% c("index", "percent", "ratio", "count", "days")) scale <- "units"
     if (identical(unit, "PYG_per_USD")) currency <- "PYG/USD"
     base_match <- stringr::str_extract(table_title, stringr::regex("base.{0,50}?100", ignore_case = TRUE))
+    price_base_match <- stringr::str_match(
+      table_title, stringr::regex("constantes?\\s+de\\s+((?:19|20)[0-9]{2})", ignore_case = TRUE)
+    )[, 2]
     tibble::tibble(unit = unit, scale = scale, currency = currency,
-                   index_base = ifelse(is.na(base_match), NA_character_, base_match))
+                   index_base = ifelse(is.na(base_match), NA_character_, base_match),
+                   price_base_year = price_base_match)
   }
   labels <- c(
     "Cantidad de operaciones", "Tasa activa ME (%)", "Índice general",
-    "Tipo de cambio Gs./USD", "Soja USD/ton.", "Saldo en millones de guaraníes"
+    "Tipo de cambio Gs./USD", "Soja USD/ton.", "Saldo en millones de guaraníes",
+    "PIB por sectores económicos"
   )
   titles <- c(
     "Operaciones", "Promedio mensual", "Base 2014 = 100",
-    "Mercado cambiario", "Precios internacionales", "En millones de guaraníes"
+    "Mercado cambiario", "Precios internacionales", "En millones de guaraníes",
+    "Producto interno bruto -- En millones de guaraníes constantes de 2014"
   )
   vectorized <- documented_measure_metadata_vectorized(labels, titles)
   scalar <- dplyr::bind_rows(Map(legacy_metadata, labels, titles))

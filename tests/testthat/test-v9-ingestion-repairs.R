@@ -116,7 +116,7 @@ testthat::test_that("row-event parsers retain legitimate same-day operations", {
       tibble::tibble(source_id = source_id, vintage_id = paste0(source_id, ":test"), source_file = basename(path)),
       "release:test", max(result$observations$period)
     )
-    testthat::expect_gt(nrow(finalized), 0L, info = source_id)
+    testthat::expect_true(nrow(finalized) > 0L, info = source_id)
     testthat::expect_equal(
       nrow(finalized), dplyr::n_distinct(paste(finalized$series_id, finalized$period)),
       info = source_id
@@ -155,6 +155,16 @@ testthat::test_that("a discovery failure is persisted without losing the next so
   root <- tempfile("v9_isolation_")
   dir.create(root); ensure_dirs(root)
   file.copy(file.path(project_test_root, "config"), root, recursive = TRUE)
+  # This test's manifest is deliberately narrowed to two sources to isolate
+  # discovery-failure behavior -- unrelated to concept governance. Reset the
+  # copied concept_mappings.csv to empty so a real reviewed mapping that
+  # references a series from a source outside this narrow manifest (e.g.
+  # interbank_market) doesn't fail apply_reviewed_concept_mappings()'s
+  # unknown-series-id guard, which is correctly strict for production.
+  writeLines(
+    "concept_id,concept_label,concept_domain,definition,series_id,relationship,evidence,reviewed_by,reviewed_at",
+    file.path(root, "config", "concept_mappings.csv")
+  )
   bad <- file.path(root, "broken.xlsx")
   writeLines("not an xlsx archive", bad)
   good <- fs::dir_ls(

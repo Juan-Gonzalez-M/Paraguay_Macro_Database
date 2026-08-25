@@ -469,7 +469,14 @@ validate_database <- function(con, manifest, release_id, root) {
     if (nrow(date_range) && !is.na(date_range$minimum[[1]])) {
       minimum <- as.Date(date_range$minimum[[1]])
       maximum <- as.Date(date_range$maximum[[1]])
-      if (minimum < as.Date("1900-01-01") || maximum > Sys.Date() + 400L) insert_quality_flag(
+      contracts_path <- file.path(root, "config", "documented_source_contracts.csv")
+      contract_horizons <- if (file.exists(contracts_path)) {
+        readr::read_csv(contracts_path, show_col_types = FALSE)$maximum_future_days
+      } else {
+        integer()
+      }
+      future_days_ceiling <- max(c(400L, contract_horizons), na.rm = TRUE)
+      if (minimum < as.Date("1900-01-01") || maximum > Sys.Date() + future_days_ceiling) insert_quality_flag(
         con, release_id, "error", "implausible_semantic_date_range", NA_character_,
         paste("Semantic observations span", minimum, "to", maximum)
       )

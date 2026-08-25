@@ -53,6 +53,11 @@ seguir en español, al menos deberían compartir los IDs — o usar prefijos dis
 (`R#` para esta auditoría, `BR#` para el registro interno del equipo, por ejemplo)
 para que nunca colisionen por accidente.
 
+**Aplicado.** `docs/AUDITORIA_REGRESIONES.md` reemplazado por un stub corto que
+apunta al `AUDITORIA_REGRESIONES.md` canónico de la raíz, preservando el crédito
+por la explicación de Bancos EEFF que ese archivo tenía correcta. Una sola fuente
+de verdad activa desde ahora.
+
 ---
 
 ## 2. Automatizar el contraste contra `CLAUDE.md` en vez de repetirlo a mano cada ronda
@@ -81,6 +86,13 @@ cada vez que alguien ejecuta `run_tests.R` — y hubiera detectado, por ejemplo,
 `economic_annex` no cargaba en v9/v10/v11 sin necesitar una auditoría externa para
 notarlo.
 
+**Aplicado.** `tests/testthat/test-full-pipeline-smoke.R` extendido con aserciones
+exactas (no mínimos) contra `semantic_coverage` para `economic_annex` (94/700.262),
+`payments` (40/57.683) y `exchange_houses` (10/6.164), más conteos de hojas y de
+entidades de bancos/financieras (9/20, 8/9) vía `raw_banks_eeff`/`raw_financial_eeff`
+— no `dim_entity`, que es acumulativo, no del ciclo actual (ver sección 0).
+Reverificado contra la base reconstruida desde cero en esta sesión: exacto.
+
 ---
 
 ## 3. Versionar el proyecto con git
@@ -100,9 +112,19 @@ un archivo tocado de un archivo genuinamente modificado en contenido. Con git:
 Esto no es una preferencia estética — se sintió directamente como fricción real en
 cada una de las cinco rondas de esta auditoría.
 
+**Aplicado.** `git init` + `.gitignore` extendido (`input/current/*`, sumado a los
+patrones ya existentes para `database/`, `outputs/`, `input_archive/`) + commit
+inicial (`4198632`) como línea de base post-fix de `CUADRO 57a`. Excluye
+deliberadamente todos los directorios de datos; `.git` se mantiene liviano (~550K).
+
 ---
 
 ## 4. Reducir la dependencia en "positional lane" mejorando la identidad de origen, no sólo tolerándola
+
+**Fuera de alcance en esta ronda — riesgo alto, excluido explícitamente por el
+usuario.** Reescribir la identidad de estas 9 hojas cambiaría el `series_id` de
+~9.000 series sin un mecanismo de migración de vintages existente. Queda como
+recomendación abierta para una ronda futura con alcance propio.
 
 El mecanismo de `identity_stability = 'positional_lane'` (agregado en v9-v10) es un
 diseño genuinamente bueno — convierte una posible fusión silenciosa de observaciones
@@ -148,6 +170,11 @@ nadie lo limpió. Vale la pena o (a) borrar esa columna para esa fila, o (b) si 
 despacho *debería* mirar `sheet_modes.csv` para decidir el modo (más consistente con
 cómo se resuelven `interbank_market`/`compensatory_fx_sales`), conectarlo de verdad.
 
+**Aplicado — opción (a).** `parser_mode_override` vaciado para esa fila, con nota
+explicando por qué no se lee, para que no se reintroduzca por confusión. Conectar el
+despacho de verdad (opción b) se deja como mejora futura, no era parte de este
+alcance de bajo/medio riesgo.
+
 ---
 
 ## 6. `documented_measure_metadata()`: el wrapper escalar ya no tiene a quién servir
@@ -161,6 +188,11 @@ ningún llamador de producción con el que sea compatible. Vale la pena o renomb
 a algo como `documented_measure_metadata_single()` para que el nombre diga lo que
 realmente es hoy (un helper de test), o simplemente dejar un comentario que aclare
 que ya no lo usa producción.
+
+**Aplicado.** Renombrado a `documented_measure_metadata_single()` en su definición y
+en los 5 call sites de `test-documented-source-helpers.R`; comentario actualizado
+para dejar de decir "compatibility wrapper". `grep -rn "documented_measure_metadata("`
+no devuelve resultados fuera de la nueva definición.
 
 ---
 
@@ -182,6 +214,13 @@ vez puntualmente, dos opciones concretas:
 - **Más robusta:** adoptar como convención de equipo "todo alias lleva `AS`, sin
   excepción" y hacerlo parte de la revisión de cualquier PR que toque SQL crudo.
 
+**Aplicado.** R41 corregido (`COUNT(*) AS rows`). Nuevo
+`tests/testthat/test-sql-alias-hygiene.R`: escanea los `.R` de `scripts/` buscando
+literales SQL con alias sin `AS` que coincidan con una lista de palabras reservadas
+de DuckDB (incluye `label`, `rows`, y las candidatas típicas — `order`, `group`,
+`column`, `date`, etc.). Documentado en el propio test que es una heurística dirigida
+a la clase exacta de bug de R26/R41/R44, no un parser SQL general.
+
 ---
 
 ## 8. Rendimiento: dónde ya no hay más para sacar fácil, y dónde sí
@@ -200,6 +239,11 @@ completo pasó de ~50 minutos a ~4-5 minutos. Con el estado actual:
   en paralelo con `future`/`furrr` sobre conexiones DuckDB separadas, mergeando al
   final. No lo propongo como urgente — 4-5 minutos totales es razonable — sólo como
   la dirección obvia si alguna vez hace falta.
+
+**Fuera de alcance en esta ronda — riesgo alto, excluido explícitamente por el
+usuario.** Paralelizar entre fuentes chocaría con el modelo de escritura de DuckDB
+si no se hace con sumo cuidado; queda como dirección abierta, no urgente, para
+cuando el tiempo total de corrida vuelva a ser un problema real.
 
 ---
 
@@ -221,6 +265,14 @@ marca de provisionalidad es tirar información editorial real. Vale la pena un c
 explícito (`is_provisional`/`footnote_marker`) en `documented_series_snapshot` en vez
 de descartar la marca en el regex.
 
+**Aplicado.** Columna `footnote_marker` (nullable) en `documented_series_snapshot`;
+`documented_year_footnote()` (`scripts/03_curate_documented.R`) reutiliza el mismo
+patrón que `documented_year_values()` ya calculaba y descartaba, sin inventar
+detección nueva; poblado en `documented_extract_horizontal_year_month()`, el único
+punto con evidencia real confirmada (`CUADRO 57a`, 12 observaciones con
+`footnote_marker='*'`). Verificado contra las 94 hojas de `economic_annex`: cero
+errores, cero hojas en cero, cero fechas implausibles nuevas.
+
 ### 9.2 Base del índice vs. año base de precios constantes: son conceptos distintos, hoy comparten un campo
 `index_base` (capturado de títulos tipo "Base diciembre 2017 = 100") es el concepto
 correcto para series de índice. Pero el "año base" de una serie a precios
@@ -232,6 +284,20 @@ campo estructurado. Alguien construyendo una serie larga de PIB real corre el ri
 de pegar dos tramos con distinta base de precios sin que ningún campo se lo marque.
 Vale la pena un campo `price_base_year` separado de `index_base`.
 
+**Aplicado, con evidencia real verificada primero.** Antes de escribir el regex se
+buscó el patrón contra los 94 títulos reales de `economic_annex`: aparece de forma
+consistente ("guaraníes constantes de 2014") en Cuadro 1/2/6/6a/7/7a — exactamente
+los cuadros de PIB — y en ningún otro lugar de forma espuria. Columna
+`price_base_year` (nullable) agregada tanto a `documented_series_snapshot` como a
+`dim_series` (a diferencia de `footnote_marker`, éste es un atributo a nivel serie,
+no por observación, así que se lo llevó también a la dimensión — mismo tratamiento
+que ya recibe `index_base`). El escritor compartido de `dim_series`
+(`ensure_series_dimension()`, `scripts/03_curate_special.R`) para fuentes que no
+son `documented` (ICC, EVE, operaciones cambiarias) sigue funcionando sin cambios:
+recibe `NA` por default, verificado explícitamente. `CUADRO 1`: 756/756
+observaciones con `price_base_year='2014'`; barrido completo de las 94 hojas sin
+regresiones.
+
 ### 9.3 El ajuste estacional no está modelado como dimensión
 Si el BCP publica versiones desestacionalizadas junto a las originales de algún
 indicador (común en series de actividad económica tipo IMAEP), hoy esa distinción
@@ -241,6 +307,16 @@ efectivamente publica ambas versiones de algún indicador — vale la pena revis
 puntualmente — pero si las publica, es exactamente el tipo de distinción que
 alguien haciendo análisis de coyuntura necesita poder filtrar de forma confiable, no
 adivinar por el texto de la etiqueta.
+
+**Investigado, no implementado — sin evidencia.** Se buscó contra los 94 títulos
+reales de `economic_annex` (`documented_table_catalog.table_title`, la misma fuente
+usada para confirmar 9.2) con los patrones `desestacionalizad`, `tendencia.?ciclo`,
+`\bSA\b` y `serie original`: **cero coincidencias** en las 94 hojas. El Anexo
+Estadístico actual, tal como está publicado en `input/current/`, no distingue series
+originales de desestacionalizadas en el texto de sus títulos — no hay campo que
+agregar todavía porque no hay nada que capturar. Si una publicación futura sí lo
+hace, o si otra fuente (no revisada acá) lo publica, el mismo patrón aditivo de 9.1
+y 9.2 aplica directo. Documentado en vez de construir un campo sin evidencia.
 
 ### 9.4 La capa de conceptos (R25) es la pieza que más valor macro agregaría, y sigue vacía
 De las tareas pendientes, ésta es la que más cambia lo que esta base *puede hacer*
@@ -254,6 +330,26 @@ explícitamente evita, con buen criterio). Cargar un puñado de casos reales
 probaría el mecanismo con evidencia — que es exactamente lo que R25 pide desde hace
 varias versiones — y empezaría a convertir 22 fuentes aisladas en una base
 consultable por concepto económico, no sólo por fuente publicada.
+
+**Aplicado, con un candidato distinto y mejor evidenciado que el propuesto
+originalmente.** El candidato de este párrafo (`exchange_rates` vs. `bcp_fx_daily`,
+ambos "USD") se descartó ya en la planificación: la primera es la cotización
+comprador/vendedor, la segunda es volumen de intervención del BCP en millones de
+USD — no son el mismo concepto pese a la etiqueta similar, es exactamente el tipo de
+trampa que la exigencia de evidencia real está pensada para evitar. Se buscó en
+cambio por `unit`+`scale`+`frequency` idénticos entre series con etiquetas
+relacionadas, y apareció un caso más limpio **dentro de** `interbank_market`: la
+serie combinada "Mercado Interbancario de Fondos CMM + REPO Interbancario + REPO
+Tripartito (PYG) — Tasa Promedio (%)" nombra explícitamente su propia composición en
+la etiqueta publicada por el BCP, incluyendo "REPO Interbancario" como uno de sus
+tres componentes — que además existe como serie propia, en dos hojas distintas
+(`Datos` y `Datos (+ de 1 día)`), con el mismo `unit`/`scale`/`frequency`
+(percent/units/daily). Se cargaron 3 filas bajo un mismo `concept_id`
+(`concept:interbank_repo_rate_pyg`): 1 `aggregate` + 2 `component`, con evidencia
+citando la etiqueta exacta del BCP. Verificado contra `apply_reviewed_concept_mappings()`
+real: las 3 filas pasan todos los guards (relación permitida, evidencia/revisor/fecha
+completos, sin colisión con el prefijo reservado `concept:source:`) y quedan en
+`map_series_concept` con `mapping_status='reviewed'`.
 
 ### 9.5 Lo que ya está bien y vale la pena no tocar
 La convención de cotización cambiaria (`PYG_per_USD`, siempre guaraníes por unidad

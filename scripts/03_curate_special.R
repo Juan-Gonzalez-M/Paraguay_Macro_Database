@@ -11,13 +11,18 @@ ensure_series_dimension <- function(con, series_meta) {
   defaults <- list(
     identity_basis = series_meta$series_id,
     identity_stability = rep("semantic", nrow(series_meta)),
-    hierarchy_status = rep("not_applicable", nrow(series_meta))
+    hierarchy_status = rep("not_applicable", nrow(series_meta)),
+    # Only documented_source_parser() computes a real constant-price base year
+    # today; every other series-dimension writer (icc, eve, fx_operations,
+    # exchange-rate panels) gets NA here rather than being required to know
+    # about a field that doesn't apply to them.
+    price_base_year = rep(NA_character_, nrow(series_meta))
   )
   for (field in names(defaults)) if (!field %in% names(series_meta)) series_meta[[field]] <- defaults[[field]]
   expected <- c(
     "series_id", "source_id", "label", "unit", "scale", "frequency", "currency", "index_base",
     "hierarchy_level", "parent_series_id", "is_total", "identity_basis", "identity_stability",
-    "hierarchy_status", "semantic_status", "first_vintage_id"
+    "hierarchy_status", "semantic_status", "first_vintage_id", "price_base_year"
   )
   missing <- setdiff(expected, names(series_meta))
   if (length(missing)) stop("Series-dimension contract missing field(s): ", paste(missing, collapse = ", "), call. = FALSE)
