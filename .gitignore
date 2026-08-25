@@ -1,0 +1,16 @@
+.Rhistory
+.RData
+.Rproj.user/
+**/.Rproj.user/
+.DS_Store
+**/.DS_Store
+**/.Rhistory
+database/*.duckdb
+database/*.wal
+database/*.v1_retired
+database/backups/*
+outputs/*
+!outputs/.gitkeep
+input_archive/*
+!input_archive/.gitkeep
+input/current/*

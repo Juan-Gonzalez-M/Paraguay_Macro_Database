@@ -1,0 +1,43 @@
+source_id: fx_operations
+sheet: "Datos"
+anchor: "Año"
+anchor_search_rows: 12
+anchor_search_cols: 3
+subheader_row_offset: 1
+data_row_offset: 3
+expected_sector_headers:
+  - "Año"
+  - "Sector financiero"
+  - "Sector público"
+  - "Otras operaciones 1/"
+  - "Operaciones netas totales"
+expected_operations:
+  - purchase
+  - sale
+  - net
+expected_subheaders:
+  - "Compra"
+  - "Venta"
+  - "Total neto"
+  - "Compra"
+  - "Venta"
+  - "Total neto"
+  - "Compra"
+  - "Venta"
+  - "Total neto"
+unit: usd_millions
+month_labels:
+  Ene: 1
+  Feb: 2
+  Mar: 3
+  Abr: 4
+  May: 5
+  Jun: 6
+  Jul: 7
+  Ago: 8
+  Sep: 9
+  Set: 9
+  Sept: 9
+  Oct: 10
+  Nov: 11
+  Dic: 12

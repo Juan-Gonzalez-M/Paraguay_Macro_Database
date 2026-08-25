@@ -1,0 +1,23 @@
+source_id: icc
+sheet: "Índices"
+anchor: "Periodo"
+anchor_search_rows: 12
+anchor_search_cols: 4
+metric_row_offset: 1
+data_row_offset: 2
+period_column_offset: 0
+expected_metrics:
+  - "ISE Personal"
+  - "ISE Hogar"
+  - "ISE País"
+  - "ISE"
+  - "IEE Personal"
+  - "IEE Hogar"
+  - "IEE País"
+  - "IEE"
+  - "ICC Personal"
+  - "ICC Hogar"
+  - "ICC País"
+  - "ICC"
+unit: index_points
+frequency: monthly

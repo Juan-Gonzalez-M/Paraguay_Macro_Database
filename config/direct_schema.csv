@@ -1,0 +1,18 @@
+source_id,sheet_name,expected_columns
+banks,EEFF,Fecha|Codigo Entidad|Sub_Rubro|Codigo Moneda|Importe|Reporte
+banks,Ratios,Fecha|Codigo Entidad|Sub_Rubro|Total
+banks,Carteras,Fecha|Codigo Entidad|Codigo Cuenta|Codigo Moneda|Importe
+banks,Credito Sector,Fecha|Codigo Entidad|Codigo Moneda|Actividad_Destino_vs2|CARTERA VENCIDA|CARTERA VIGENTE
+banks,Credito Actividad,Fecha|Codigo Entidad|Descripcion Actividad|Codigo Moneda|CARTERA VENCIDA|CARTERA VIGENTE
+banks,Categoría Creditos,Fecha|Codigo Entidad|Codigo Tipo Riesgo|Total
+banks,TC,Fecha|Codigo Entidad|Clasificación|Total
+banks,Canales & Person,Fecha|Codigo Entidad|Clasificación|Descripción|Total
+banks,Inhab,Año|Mes|Codigo Entidad|Causal|INHAB|REHAB
+financial,EEFF,Fecha|Codigo Entidad|Sub_Rubro|Codigo Moneda|Importe|Reporte
+financial,Ratios,Fecha|Codigo Entidad|Sub_Rubro|Total
+financial,Carteras,Fecha|Codigo Entidad|Codigo Cuenta|Codigo Moneda|Importe
+financial,Credito Sector,Fecha|Codigo Entidad|Codigo Moneda|Actividad_Destino_vs2|CARTERA VENCIDA|CARTERA VIGENTE
+financial,Credito Actividad,Fecha|Codigo Entidad|Descripcion Actividad|Codigo Moneda|CARTERA VENCIDA|CARTERA VIGENTE
+financial,Categoria Creditos,Fecha|Codigo Entidad|Codigo Tipo Riesgo|Total
+financial,TC,Fecha|Codigo Entidad|Clasificación|Total
+financial,Canales&Person,Fecha|Codigo Entidad|Clasificación|Descripción|Total

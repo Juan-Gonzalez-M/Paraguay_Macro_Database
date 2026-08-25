@@ -1,0 +1,62 @@
+table_name,layer,grain,description,vintage_policy
+schema_version,metadata,schema version,Database schema migration history,append once
+ingestion_runs,metadata,deterministic release bundle,Operational status of each reproducible input bundle,one row per release_id
+ingestion_stage_timings,metadata,release-source-stage,Elapsed runtime by source and pipeline stage for performance diagnosis,replaced for each deterministic release run
+release_sources,metadata,release-vintage link,Maps a release bundle to source vintages,idempotent append
+source_files,metadata,source content hash,Publisher format path hash publication date and ingestion status,one row per source hash
+source_sheets,metadata,source vintage-sheet,Declared worksheet dimensions plus meaningful content bounds and layout inventory,append by vintage
+reference_table_loads,metadata,reference vintage-sheet-table,Named semantic-reference table counts and signatures,append by vintage
+structure_checks,quality,vintage-sheet-component,Expected versus observed structure fingerprints,append by vintage
+quality_flags,quality,deterministic check,Errors warnings and explicit limitations,deduplicated by check hash
+discarded_rows,quality,vintage-sheet-row,Every row deliberately omitted by a semantic parser,append by vintage
+semantic_coverage,quality,vintage-sheet,Curated documented-panel reference and raw-coordinate coverage,replace per vintage during guarded reingestion
+documented_table_catalog,quality,vintage-sheet,Parser mode coverage counts periods and unit-review status for complex report workbooks,replace per vintage during guarded reingestion
+documented_sheet_drift,quality,current vintage-sheet versus prior vintage,Sheet-level observation and series-count drift for complex workbooks,replace per validated vintage
+documented_series_continuity,quality,current versus prior documented series,New disappeared and metadata-changing series with labels and identity-stability diagnostics,replace per validated vintage
+report_sheet_versions,raw,distinct source-sheet content,Content hashes and metadata for unique report-sheet versions,append only for new content
+report_sheet_vintages,raw,vintage-sheet,Links every report worksheet vintage to a physical content version,one lightweight link per vintage-sheet
+report_cell_values,raw,sheet version-cell,Physical non-empty cell values stored once per distinct sheet content,append only for new content
+report_cells,view,vintage-sheet-cell,Compatibility expansion of sparse and legacy report-cell storage,dynamic view
+report_cells_legacy,raw,vintage-sheet-cell,Pre-v4 full-copy report history retained during migration,read-only legacy
+raw_banks_*,structured_raw,vintage-source row,Original named banking tables,full snapshot by vintage
+raw_financial_*,structured_raw,vintage-source row,Original named finance-company tables,full snapshot by vintage
+consumer_confidence_snapshot,curated,vintage-date-metric,Full ICC snapshot after guarded parsing,full snapshot by vintage
+eve_expectations_snapshot,curated,vintage-survey date-block-variable,Full EVE snapshot after guarded parsing,full snapshot by vintage
+fx_operations_snapshot,curated,vintage-period-frequency-sector-operation,Annual quarterly and monthly BCP FX operations,full snapshot by vintage
+documented_series_snapshot,curated,vintage-series-period,Normalized observations from all semantic-table Excel sources with identity and hierarchy diagnostics,full logical snapshot by vintage
+bond_curve_snapshot,curated,vintage-date-currency-rating-maturity,Typed corporate zero-coupon discount-factor and par curve points,full snapshot by content vintage
+securities_transactions_snapshot,curated,vintage-transaction,Typed securities-market operations with deterministic row identities,full snapshot by content vintage
+reference_*_snapshot,reference,vintage-semantic key,Parsed version of each semantic-reference role,full snapshot by vintage
+dim_entity,semantic,entity type-code,Verified entity names short names and ownership plus explicit fallbacks,current attributes plus first vintage
+dim_currency,semantic,currency code,Bulletin label transaction origin measurement unit and description,current attributes plus first vintage
+dim_statement_item,semantic,entity type-report item,Published statement hierarchy and report code,current attributes plus first vintage
+map_statement_account,semantic,entity type-report-account,Underlying statement accounts with raw text canonical digits and sign multiplier,current mapping plus first vintage
+dim_ratio,semantic,entity type-ratio,Published ratio hierarchy,current attributes plus first vintage
+dim_portfolio_item,semantic,entity type-portfolio item,Published portfolio hierarchy,current attributes plus first vintage
+map_portfolio_account,semantic,entity type-portfolio-account,Underlying account composition with raw text and canonical digits,current mapping plus first vintage
+dim_credit_activity,semantic,detailed activity,Activity code description and bulletin-sector concordance,current attributes plus first vintage
+dim_credit_sector,semantic,bulletin credit sector,Shared sector dimension derived from the verified activity concordance,current attributes plus first vintage
+dim_payment_participant,semantic,BIC participant,Payment-system BIC code institution name and participant type,current attributes plus first vintage
+dim_exchange_item,semantic,exchange statement item,Exchange-house balance-sheet ratio and operating item,current attributes plus first vintage
+dim_series,semantic,series,Definitions units scales frequencies hierarchy and totals,slow-growing dimension
+dim_concept,semantic,reviewable economic concept,Source-specific concepts and explicitly reviewed cross-source concepts,slow-growing reviewed dimension
+map_series_concept,semantic,series-concept relationship,No equivalence is asserted unless supplied with evidence and reviewer metadata,current reviewed mapping plus source identities
+fact_series_events,semantic,series-period-change vintage,Sparse observation events written when values appear change or are removed,sparse append
+series_revisions,semantic,series-period-revision,Old and new values for changes and explicit removals,sparse append
+v_series_latest,view,series-period,Latest resolved observation for everyday analysis,dynamic view
+v_series_catalogue,view,series,Series metadata plus current coverage,dynamic view
+v_series_concept_catalogue,view,series-concept relationship,Series metadata with source-specific or reviewed concept mapping,dynamic view
+v_concept_latest,view,concept-series-period,Latest series observations exposed through explicit concept relationships,dynamic view
+v_fx_operations_annual,view,vintage-year-sector-operation,Compatibility view for annual FX data,dynamic view
+v_documented_series_latest_snapshot,view,latest source-series-period,Latest full documented-source snapshot with source coordinates,dynamic view
+v_documented_series_catalogue,view,documented series,Labels units frequencies and current period coverage,dynamic view
+v_economic_annex_latest,view,annex series-period,Latest normalized observations from all 93 statistical Annex sheets,dynamic view
+v_payments_latest,view,payment series-period,Latest normalized payment-system observations enriched with BIC participants,dynamic view
+v_exchange_houses_latest,view,exchange entity-item-period,Latest exchange-house statements ratios and operating counts enriched with entities,dynamic view
+v_credit_survey_latest,view,credit question-response-period or index-period,Latest survey response shares and credit indices,dynamic view
+v_bond_curves_latest,view,latest curve point,Latest completed corporate-bond curve source snapshot,dynamic view
+v_securities_transactions_latest,view,latest securities transaction,Latest completed securities-trade source snapshot,dynamic view
+v_securities_daily_activity,view,date-currency-instrument-market-operation-venue,Daily transaction counts and local-currency volume aggregated from the latest securities snapshot,dynamic view
+v_latest_raw_*,view,current source row,Latest valid raw vintage within each source,dynamic view
+v_banks_*_documented,view,current bank panel row,Raw bank fields enriched with verified semantic dimensions,dynamic view
+v_financial_*_documented,view,current finance-company panel row,Raw finance-company fields enriched with verified semantic dimensions,dynamic view

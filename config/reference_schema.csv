@@ -1,0 +1,16 @@
+source_sheet,source_table_hint,semantic_role,entity_type,expected_columns
+Bancos,Index_EEFF,statement_item,bank,Clasificación|Rubro|Sub-rubro|Sub_Rubro|Reporte
+Bancos,Index_Ratios,ratio,bank,Clasificación|Rubro|Sub_Rubro
+Bancos,Index_Entidad,entity,bank,Codigo Entidad|Razón Social|Entidad|Tipo Entidad
+Bancos,Index_Monedas,currency,bank,Codigo Moneda|Moneda|Obs
+Bancos,Cuentas_EEFF,statement_account,bank,Reporte|Clasificación|Rubro|Sub-Rubro|N° de cuenta
+Bancos,Cuentas_Cartera,portfolio_account,bank,Reporte|Clasificación|Rubro|Sub-Rubro|Sub_rubro|N° de cuenta
+Bancos,Composicion_CreditoSector,credit_activity,bank,Codigo Actividad Destino|Descripcion Actividad Destino|Clasificación Crédito por Sectores Boletín
+Bancos,Table3,portfolio_item,bank,Clasificación|Rubro|Sub-rubro|Codigo Cuenta
+Financieras,Index_EEFF10,statement_item,finance_company,Clasificación|Rubro|Sub-rubro|Sub_Rubro|Reporte
+Financieras,Index_Ratios11,ratio,finance_company,Clasificación|Rubro|Sub_Rubro
+Financieras,Index_Entidad15,entity,finance_company,Codigo Entidad|Razón Social|Entidad
+Financieras,Index_Monedas12,currency,finance_company,Codigo Moneda|Moneda|Obs
+Financieras,Cuentas_EEFF13,statement_account,finance_company,Reporte|Clasificación|Rubro|Sub-Rubro|N° de cuenta
+Financieras,Composicion_CreditoSector14,credit_activity,finance_company,Codigo Actividad Destino|Descripcion Actividad Destino|Clasificación Crédito por Sectores Boletín
+Financieras,Table316,portfolio_item,finance_company,Clasificación|Rubro|Sub-rubro|Codigo Cuenta

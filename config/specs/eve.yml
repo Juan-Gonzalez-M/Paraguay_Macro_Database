@@ -1,0 +1,37 @@
+source_id: eve
+sheet: "Exp. Variables Económicas (EVE)"
+anchor: "Variables"
+anchor_search_rows: 15
+anchor_search_cols: 5
+date_row_offset: 1
+data_row_offset: 2
+label_column_offset: 0
+value_column_offset: 1
+expected_blocks:
+  - "Bloque de Inflación"
+  - "Tipo de Cambio Nominal ₲/USD"
+  - "PIB (Variación Porcentual del PIB)"
+  - "Tasa de Política Monetaria (TPM)"
+expected_variable_count: 16
+expected_layout:
+  - "B:Bloque de Inflación"
+  - "V:Expectativa del mes"
+  - "V:Expectativa del próximo mes"
+  - "V:Expectativa año t"
+  - "V:Expectativa año t+1"
+  - "V:Próximos 12 meses"
+  - "V:Horizonte de Política Monetaria (próximos 24 meses)"
+  - "B:Tipo de Cambio Nominal ₲/USD"
+  - "V:Expectativa del mes"
+  - "V:Expectativa del próximo mes"
+  - "V:Expectativa año t"
+  - "V:Expectativa año t+1"
+  - "B:PIB (Variación Porcentual del PIB)"
+  - "V:Expectativa año t"
+  - "V:Expectativa año t+1"
+  - "B:Tasa de Política Monetaria (TPM)"
+  - "V:Expectativa del mes"
+  - "V:Expectativa del próximo mes"
+  - "V:Expectativa año t"
+  - "V:Expectativa año t+1"
+frequency: monthly_survey

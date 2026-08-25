@@ -1,0 +1,2 @@
+source_id,check_name,period,reason
+fx_operations,fx_quarters_do_not_sum_to_year,2004,Published 2004 annual totals differ from the sum of the four published quarters in nine operation columns; values are retained as published and flagged.

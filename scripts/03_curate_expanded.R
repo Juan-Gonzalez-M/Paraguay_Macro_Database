@@ -1,0 +1,563 @@
+documented_parse_insurance_sheet <- function(raw, source_sheet, hierarchy_status = "unresolved") {
+  text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
+  normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
+  anchors <- which(normalized == "ejercicio", arr.ind = TRUE)
+  fiscal_pattern <- "^((?:19|20)[0-9]{2})[-/]((?:19|20)[0-9]{2})$"
+  if (nrow(anchors) > 1L) stop("Insurance-annex guard: multiple Ejercicio headers in ", source_sheet, ".", call. = FALSE)
+  if (nrow(anchors) == 1L) {
+    header_row <- anchors[[1, "row"]]; period_col <- anchors[[1, "col"]]
+  } else {
+    fiscal_mask <- matrix(stringr::str_detect(trimws(text), fiscal_pattern), nrow = nrow(text), ncol = ncol(text))
+    scores <- colSums(fiscal_mask, na.rm = TRUE); candidates <- which(scores == max(scores) & scores >= 3L)
+    if (length(candidates) != 1L) stop(
+      "Insurance-annex guard: Ejercicio is absent and no unique fiscal-year column exists in ", source_sheet, ".",
+      call. = FALSE
+    )
+    period_col <- candidates[[1]]; header_row <- min(which(fiscal_mask[, period_col])) - 1L
+  }
+  group_row <- max(1L, header_row - 2L)
+  group_headers <- text[group_row, ]
+  for (j in seq_len(ncol(text))) if (j > 1L && documented_blank(group_headers[[j]])) group_headers[[j]] <- group_headers[[j - 1L]]
+  period_match <- stringr::str_match(trimws(text[, period_col]), fiscal_pattern)
+  data_rows <- which(!is.na(period_match[, 1]) & seq_len(nrow(text)) > header_row)
+  if (!length(data_rows)) stop("Insurance-annex guard: no fiscal-year rows in ", source_sheet, ".", call. = FALSE)
+  title <- documented_compact_path(unique(group_headers[!documented_blank(group_headers)]))
+  records <- list(); k <- 0L
+  for (r in data_rows) {
+    end_year <- as.integer(period_match[r, 3]); period <- as.Date(sprintf("%04d-06-30", end_year))
+    for (j in seq.int(period_col + 1L, ncol(text))) {
+      value <- numbers[r, j]; section <- text[header_row, j]
+      if (is.na(value) || documented_blank(section)) next
+      group <- group_headers[[j]]
+      label <- documented_compact_path(c(group, section))
+      k <- k + 1L
+      records[[k]] <- documented_record(
+        source_sheet, title, "insurance_fiscal_year", period,
+        text[r, period_col], "annual", label, group, section, value, r, j
+      )
+    }
+  }
+  observations <- documented_bind_records(records)
+  observations <- observations %>% dplyr::mutate(unit = "PYG", scale = "units", currency = "PYG")
+  list(observations = observations, mode = "insurance_fiscal_year", hierarchy_status = hierarchy_status,
+       raw_nonempty_cells = sum(!documented_blank(text)), title = title)
+}
+
+documented_local_block_title <- function(text, header_row, lookback = 12L) {
+  if (header_row <= 1L) return(NA_character_)
+  rows <- rev(seq.int(max(1L, header_row - as.integer(lookback)), header_row - 1L))
+  fallback <- NA_character_
+  for (r in rows) {
+    candidates <- stringr::str_squish(text[r, ])
+    candidates <- candidates[!documented_blank(candidates) & nchar(candidates) >= 6L]
+    candidates <- candidates[!stringr::str_detect(
+      normalize_semantic_label(candidates),
+      "^(?:fecha|ano|plazo|monto|tasa|cantidad|compra|venta)(?: |$)"
+    )]
+    if (!length(candidates)) next
+    candidate <- documented_compact_path(candidates)
+    if (is.na(fallback)) fallback <- candidate
+    # A single descriptive cell is much more likely to be the block title
+    # than a multi-column group-header row immediately above the table.
+    if (length(candidates) == 1L) return(candidate)
+  }
+  fallback
+}
+
+documented_parse_row_events <- function(raw, source_sheet, date_header,
+                                        dimension_headers, category,
+                                        block_patterns = NULL) {
+  text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
+  dates <- documented_date_matrix(raw, text)
+  normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
+  anchors <- which(matrix_equal(normalized, normalize_semantic_label(date_header)), arr.ind = TRUE)
+  if (!nrow(anchors)) stop(
+    "Row-event guard: no '", date_header, "' header in ", source_sheet, ".", call. = FALSE
+  )
+  anchors <- anchors[order(anchors[, "row"], anchors[, "col"]), , drop = FALSE]
+  records <- list(); k <- 0L; titles <- character()
+  for (b in seq_len(nrow(anchors))) {
+    header_row <- anchors[b, "row"]; date_col <- anchors[b, "col"]
+    block_end <- if (b < nrow(anchors)) anchors[b + 1L, "row"] - 1L else nrow(text)
+    rows <- seq.int(header_row + 1L, block_end)
+    if (!length(rows)) next
+    title <- documented_local_block_title(text, header_row)
+    block_key <- NA_character_
+    if (!is.null(block_patterns)) {
+      if (is.null(names(block_patterns)) || any(!nzchar(names(block_patterns)))) stop(
+        "Row-event guard: block_patterns must use stable semantic names.", call. = FALSE
+      )
+      normalized_title <- normalize_semantic_label(title)
+      matches <- names(block_patterns)[vapply(block_patterns, function(pattern) {
+        !is.na(normalized_title) && stringr::str_detect(normalized_title, pattern)
+      }, logical(1))]
+      if (length(matches) != 1L) stop(
+        "Row-event guard: expected one block type in ", source_sheet, " near row ",
+        header_row, "; found ", length(matches), ".", call. = FALSE
+      )
+      block_key <- matches[[1]]
+    }
+    header_labels <- text[header_row, ]
+    normalized_headers <- normalize_semantic_label(header_labels)
+    dimension_cols <- unique(unlist(lapply(dimension_headers, function(pattern) {
+      which(stringr::str_detect(normalized_headers, pattern))
+    })))
+    if (!length(dimension_cols)) stop(
+      "Row-event guard: semantic dimension headers were not found in ", source_sheet, ".",
+      call. = FALSE
+    )
+    numeric_density <- colSums(!is.na(numbers[rows, , drop = FALSE]))
+    date_density <- colSums(!is.na(dates[rows, , drop = FALSE]))
+    measure_cols <- setdiff(
+      which(numeric_density > 0L & date_density == 0L & seq_len(ncol(text)) != date_col),
+      dimension_cols
+    )
+    if (!length(measure_cols)) next
+    active_rows <- rows[rowSums(!is.na(numbers[rows, measure_cols, drop = FALSE])) > 0L]
+    if (!length(active_rows)) next
+    periods <- as.Date(as.numeric(dates[, date_col]), origin = "1970-01-01")
+    for (r in seq.int(min(active_rows), max(active_rows))) {
+      if (r > min(active_rows) && is.na(periods[r])) periods[r] <- periods[r - 1L]
+    }
+    active_rows <- active_rows[!is.na(periods[active_rows])]
+    if (!length(active_rows)) next
+    dimension_state <- rep(NA_character_, length(dimension_cols))
+    dimension_paths <- character(length(active_rows))
+    for (rr in seq_along(active_rows)) {
+      r <- active_rows[[rr]]
+      current <- text[r, dimension_cols]
+      update <- !documented_blank(current)
+      dimension_state[update] <- current[update]
+      pieces <- paste0(header_labels[dimension_cols], ": ", dimension_state)
+      dimension_paths[[rr]] <- documented_compact_path(c(
+        if (!is.na(block_key)) paste0("operation_type: ", block_key) else character(),
+        pieces[!documented_blank(dimension_state)]
+      ))
+    }
+    base_keys <- paste(periods[active_rows], dimension_paths, sep = "|")
+    duplicated_event <- duplicated(base_keys) | duplicated(base_keys, fromLast = TRUE)
+    # Some published event tables legitimately contain multiple rows with the
+    # same date and semantic dimensions. Values must never enter identity: a
+    # revision to an amount or rate must remain a revision of the same event,
+    # not create a new series. Use a deterministic within-key occurrence lane
+    # and expose its positional nature through identity_stability.
+    event_occurrence <- ave(seq_along(base_keys), base_keys, FUN = seq_along)
+    titles <- c(titles, title)
+    for (rr in seq_along(active_rows)) {
+      r <- active_rows[[rr]]
+      event_path <- dimension_paths[[rr]]
+      parser_mode <- "row_event_semantic"
+      if (duplicated_event[[rr]]) {
+        event_path <- documented_compact_path(c(
+          event_path, paste0("event_instance:", event_occurrence[[rr]])
+        ))
+        parser_mode <- "row_event_positional_lane"
+      }
+      for (j in measure_cols) {
+        value <- numbers[r, j]
+        if (is.na(value)) next
+        measure <- documented_compact_path(header_labels[[j]])
+        if (!nzchar(measure)) measure <- paste0("column_", j)
+        label <- documented_compact_path(c(event_path, measure))
+        k <- k + 1L
+        records[[k]] <- documented_record(
+          source_sheet, title, parser_mode, periods[r], as.character(periods[r]),
+          "irregular_daily", label, category, measure, value, r, j
+        )
+      }
+    }
+  }
+  observations <- documented_bind_records(records)
+  list(
+    observations = observations, mode = "row_event_table", hierarchy_status = "flat",
+    raw_nonempty_cells = sum(!documented_blank(text)), title = documented_compact_path(unique(titles))
+  )
+}
+
+documented_parse_date_header_blocks <- function(raw, source_sheet, header_label = "fecha de liquidacion") {
+  text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
+  dates <- documented_date_matrix(raw, text)
+  normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
+  anchors <- which(normalized == normalize_semantic_label(header_label), arr.ind = TRUE)
+  if (!nrow(anchors)) stop("Date-block guard: no '", header_label, "' header in ", source_sheet, ".", call. = FALSE)
+  anchors <- anchors[order(anchors[, "row"], anchors[, "col"]), , drop = FALSE]
+  records <- list(); k <- 0L; titles <- character()
+  for (b in seq_len(nrow(anchors))) {
+    header_row <- anchors[b, "row"]; date_col <- anchors[b, "col"]
+    block_end <- if (b < nrow(anchors)) anchors[b + 1L, "row"] - 1L else nrow(text)
+    candidate_rows <- which(!is.na(dates[, date_col]) & seq_len(nrow(text)) > header_row & seq_len(nrow(text)) <= block_end)
+    if (!length(candidate_rows)) next
+    title <- NA_character_
+    for (title_row in rev(seq.int(max(1L, header_row - 8L), header_row - 1L))) {
+      candidates <- stringr::str_squish(text[title_row, ])
+      candidates <- candidates[!documented_blank(candidates) & nchar(candidates) >= 6L]
+      candidates <- candidates[!stringr::str_detect(
+        normalize_semantic_label(candidates), "^(?:[0-9]{4}[-/][0-9]{2}[-/][0-9]{2}|volver|fecha)"
+      )]
+      if (length(candidates)) { title <- documented_compact_path(candidates); break }
+    }
+    if (is.na(title) || !nzchar(title)) title <- paste0(source_sheet, " block ", b)
+    titles <- c(titles, title)
+    possible_cols <- setdiff(seq_len(ncol(text)), date_col)
+    numeric_density <- colSums(!is.na(numbers[candidate_rows, possible_cols, drop = FALSE]))
+    date_density <- colSums(!is.na(dates[candidate_rows, possible_cols, drop = FALSE]))
+    data_cols <- possible_cols[numeric_density >= 1L & date_density == 0L]
+    for (j in data_cols) {
+      label <- documented_compact_path(text[header_row, j])
+      if (!nzchar(label)) label <- paste0("column_", j)
+      for (r in candidate_rows) {
+        value <- numbers[r, j]; if (is.na(value)) next
+        k <- k + 1L
+        records[[k]] <- documented_record(
+          source_sheet, title, "date_header_blocks", dates[r, date_col],
+          text[r, date_col], "irregular_daily", documented_compact_path(c(title, label)),
+          title, label, value, r, j
+        )
+      }
+    }
+  }
+  observations <- documented_bind_records(records)
+  list(
+    observations = observations, mode = "date_header_blocks", hierarchy_status = "flat",
+    raw_nonempty_cells = sum(!documented_blank(text)), title = documented_compact_path(unique(titles))
+  )
+}
+
+documented_parse_daily_exchange_rates <- function(raw, source_sheet, item) {
+  text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
+  normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
+  month_pattern <- "(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)[/ -](20[0-9]{2})"
+  month_anchors <- which(matrix_detect(normalized, month_pattern), arr.ind = TRUE)
+  if (!nrow(month_anchors)) stop("Exchange-rate guard: no month/year block title.", call. = FALSE)
+  month_anchors <- month_anchors[order(month_anchors[, "row"], month_anchors[, "col"]), , drop = FALSE]
+  currency_codes <- c(
+    dolar = "USD", real = "BRL", `peso argentino` = "ARS", euro = "EUR", yen = "JPY",
+    `peso uruguayo` = "UYU", `peso chileno` = "CLP", `peso boliviano` = "BOB",
+    `franco suizo` = "CHF", `libra esterlina` = "GBP", `corona sueca` = "SEK",
+    `corona danesa` = "DKK", `dolar canadiense` = "CAD", `dolar australiano` = "AUD"
+  )
+  records <- list(); k <- 0L
+  for (b in seq_len(nrow(month_anchors))) {
+    title_row <- month_anchors[b, "row"]; title_col <- month_anchors[b, "col"]
+    block_end <- if (b < nrow(month_anchors)) month_anchors[b + 1L, "row"] - 1L else nrow(text)
+    month_cell <- text[title_row, title_col]
+    parts <- stringr::str_match(normalize_semantic_label(month_cell), month_pattern)
+    month <- documented_month_number(parts[[2]]); year <- as.integer(parts[[3]])
+    currency_row <- title_row + 2L; header_row <- title_row + 3L
+    if (header_row > nrow(text)) stop("Exchange-rate guard: incomplete daily block.", call. = FALSE)
+    currency_headers <- text[currency_row, ]
+    for (j in seq_len(ncol(text))) if (j > 1L && documented_blank(currency_headers[[j]])) currency_headers[[j]] <- currency_headers[[j - 1L]]
+    measure_cols <- which(normalized[header_row, ] %in% c("compra", "venta"))
+    if (length(measure_cols) < 2L) stop("Exchange-rate guard: buy/sell headers not found in block ", b, ".", call. = FALSE)
+    possible_rows <- seq.int(header_row + 1L, block_end)
+    day_scores <- colSums(numbers[possible_rows, , drop = FALSE] >= 1 & numbers[possible_rows, , drop = FALSE] <= 31, na.rm = TRUE)
+    day_col <- which.max(day_scores)
+    day_values <- numbers[possible_rows, day_col]
+    data_rows <- possible_rows[!is.na(day_values) & day_values >= 1 & day_values <= 31]
+    for (r in data_rows) {
+      day <- as.integer(numbers[r, day_col]); period <- suppressWarnings(as.Date(sprintf("%04d-%02d-%02d", year, month, day)))
+      if (is.na(period)) next
+      for (j in measure_cols) {
+        measure <- normalize_semantic_label(text[header_row, j]); value <- numbers[r, j]
+        if (is.na(value)) next
+        currency_label <- currency_headers[[j]]; code <- unname(currency_codes[normalize_semantic_label(currency_label)])
+        if (is.na(code)) next
+        label <- documented_compact_path(c(currency_label, measure))
+        k <- k + 1L
+        records[[k]] <- documented_record(
+          source_sheet, month_cell, "daily_exchange_rates", period,
+          as.character(day), "daily", label, currency_label, measure, value, r, j
+        )
+        records[[k]]$unit <- paste0("PYG_per_", code); records[[k]]$scale <- "units"
+        records[[k]]$currency <- paste0("PYG/", code)
+      }
+    }
+  }
+  observations <- documented_bind_records(records)
+  list(observations = observations, mode = "daily_exchange_rates", hierarchy_status = "flat",
+       raw_nonempty_cells = sum(!documented_blank(text)), title = documented_compact_path(unique(text[month_anchors])))
+}
+
+documented_parse_exchange_rate_history <- function(raw, source_sheet) {
+  text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
+  normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
+  currency_code <- dplyr::case_when(
+    stringr::str_starts(normalize_semantic_label(source_sheet), "usd") ~ "USD",
+    stringr::str_starts(normalize_semantic_label(source_sheet), "euro") ~ "EUR",
+    stringr::str_starts(normalize_semantic_label(source_sheet), "real") ~ "BRL",
+    stringr::str_starts(normalize_semantic_label(source_sheet), "peso") ~ "ARS",
+    TRUE ~ NA_character_
+  )
+  if (is.na(currency_code)) stop("Exchange-rate history guard: unsupported currency sheet ", source_sheet, ".", call. = FALSE)
+  records <- list(); k <- 0L
+  years <- documented_year_values(text)
+  title <- documented_table_title(text, seq_len(min(10L, nrow(text))))
+  if (source_sheet == "USD Fin Mes") {
+    year_col <- documented_year_axis_index(text, margin = 2L)
+    if (is.na(year_col)) stop(
+      "Exchange-rate annual guard: no coherent year column found in ", source_sheet, ".",
+      call. = FALSE
+    )
+    data_rows <- which(!is.na(years[, year_col]))
+    if (length(data_rows) < 3L) stop("Exchange-rate annual guard: insufficient year rows.", call. = FALSE)
+    header_row <- min(data_rows) - 1L
+    measure_cols <- which(normalized[header_row, ] %in% c("compra", "venta"))
+    if (length(measure_cols) != 2L) stop("Exchange-rate annual guard: expected Compra and Venta.", call. = FALSE)
+    for (r in data_rows) for (j in measure_cols) {
+      value <- numbers[r, j]; if (is.na(value)) next
+      measure <- text[header_row, j]
+      k <- k + 1L
+      records[[k]] <- documented_record(
+        source_sheet, title, "exchange_rate_annual", as.Date(paste0(years[r, year_col], "-12-31")),
+        text[r, year_col], "annual", documented_compact_path(c(currency_code, measure)), currency_code,
+        measure, value, r, j
+      )
+    }
+  } else {
+    candidate_year_rows <- documented_consecutive_year_rows(text, minimum = 2L)
+    valid_year_rows <- candidate_year_rows[vapply(candidate_year_rows, function(year_row) {
+      measure_row <- year_row + 1L
+      if (measure_row > nrow(text)) return(FALSE)
+      year_cols <- which(!is.na(years[year_row, ]))
+      if (length(year_cols) < 2L) return(FALSE)
+      all(vapply(seq_along(year_cols), function(jj) {
+        start_col <- year_cols[[jj]]
+        end_col <- if (jj < length(year_cols)) year_cols[[jj + 1L]] - 1L else ncol(text)
+        sum(normalized[measure_row, seq.int(start_col, end_col)] %in% c("compra", "venta")) == 2L
+      }, logical(1)))
+    }, logical(1))]
+    if (!length(valid_year_rows)) stop(
+      "Exchange-rate monthly guard: no consecutive year blocks with Compra/Venta headers.",
+      call. = FALSE
+    )
+    month_values <- documented_month_number(text)
+    for (bb in seq_along(valid_year_rows)) {
+      year_row <- valid_year_rows[[bb]]
+      measure_row <- year_row + 1L
+      block_end <- if (bb < length(valid_year_rows)) valid_year_rows[[bb + 1L]] - 1L else nrow(text)
+      block_rows <- seq.int(measure_row + 1L, block_end)
+      month_scores <- colSums(!is.na(month_values[block_rows, , drop = FALSE]))
+      month_col <- which.max(month_scores)
+      month_rows <- block_rows[!is.na(month_values[block_rows, month_col])]
+      if (!length(month_rows)) stop(
+        "Exchange-rate monthly guard: no month rows under year block at row ", year_row, ".",
+        call. = FALSE
+      )
+      year_cols <- which(!is.na(years[year_row, ]))
+      for (jj in seq_along(year_cols)) {
+        start_col <- year_cols[[jj]]
+        end_col <- if (jj < length(year_cols)) year_cols[[jj + 1L]] - 1L else ncol(text)
+        measure_cols <- seq.int(start_col, end_col)
+        measure_cols <- measure_cols[normalized[measure_row, measure_cols] %in% c("compra", "venta")]
+        for (r in month_rows) for (j in measure_cols) {
+          value <- numbers[r, j]; if (is.na(value)) next
+          month <- month_values[r, month_col]; measure <- text[measure_row, j]
+          year <- years[year_row, start_col]
+          k <- k + 1L
+          records[[k]] <- documented_record(
+            source_sheet, title, "exchange_rate_monthly",
+            month_end(year, month), paste(year, text[r, month_col]),
+            "monthly", documented_compact_path(c(currency_code, measure)), currency_code, measure, value, r, j
+          )
+        }
+      }
+    }
+  }
+  observations <- documented_bind_records(records)
+  observations <- observations %>% dplyr::mutate(
+    unit = paste0("PYG_per_", currency_code), scale = "units", currency = paste0("PYG/", currency_code)
+  )
+  mode <- if (nrow(observations)) unique(observations$parser_mode)[[1]] else "unparsed_exchange_rate_history"
+  list(observations = observations, mode = mode, hierarchy_status = "flat",
+       raw_nonempty_cells = sum(!documented_blank(text)), title = title)
+}
+
+documented_parse_compensatory_sales <- function(raw, source_sheet) {
+  text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
+  normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
+  year_hits <- which(matrix_detect(normalized, "^ano 20[0-9]{2}$"), arr.ind = TRUE)
+  month_hits <- which(matrix_equal(normalized, "meses"), arr.ind = TRUE)
+  if (!nrow(year_hits) || !nrow(month_hits)) stop("Compensatory-sales guard: year blocks or Meses headers not found.", call. = FALSE)
+  records <- list(); k <- 0L
+  for (b in seq_len(nrow(month_hits))) {
+    month_row <- month_hits[b, "row"]; month_col <- month_hits[b, "col"]
+    candidates <- year_hits[year_hits[, "col"] == month_col & year_hits[, "row"] < month_row, , drop = FALSE]
+    if (!nrow(candidates)) next
+    year_label <- text[max(candidates[, "row"]), month_col]
+    year <- as.integer(stringr::str_extract(year_label, "20[0-9]{2}"))
+    component_cols <- seq.int(month_col + 1L, min(ncol(text), month_col + 2L))
+    possible_rows <- seq.int(month_row + 1L, nrow(text))
+    active_rows <- possible_rows[rowSums(!is.na(numbers[possible_rows, component_cols, drop = FALSE])) > 0L]
+    if (!length(active_rows)) next
+    last_active_row <- max(active_rows)
+    for (r in seq.int(month_row + 1L, last_active_row)) {
+      month <- documented_month_number(text[r, month_col]); if (is.na(month)) next
+      components <- numbers[r, seq.int(month_col + 1L, min(ncol(text), month_col + 3L))]
+      if (length(components) == 3L && all(!is.na(components)) &&
+          abs(components[[1]] + components[[2]] - components[[3]]) > 1e-8) stop(
+        "Compensatory-sales subtotal guard failed for ", year, "-", month, ".", call. = FALSE
+      )
+      for (j in seq.int(month_col + 1L, min(ncol(text), month_col + 3L))) {
+        measure <- text[month_row, j]; value <- numbers[r, j]
+        if (documented_blank(measure) || is.na(value)) next
+        k <- k + 1L
+        records[[k]] <- documented_record(
+          source_sheet, text[10, 1], "year_month_blocks",
+          month_end(year, month), text[r, month_col], "monthly", measure,
+          "BCP FX sales", measure, value, r, j
+        )
+        records[[k]]$unit <- "USD"; records[[k]]$scale <- "millions"; records[[k]]$currency <- "USD"
+      }
+    }
+  }
+  observations <- documented_bind_records(records)
+  list(observations = observations, mode = "year_month_blocks", hierarchy_status = "unresolved",
+       raw_nonempty_cells = sum(!documented_blank(text)), title = documented_table_title(text, seq_len(min(12L, nrow(text)))))
+}
+
+read_guarded_delimited <- function(con, item, release_id, expected_headers) {
+  data <- readr::read_delim(
+    item$path, delim = ";", col_types = readr::cols(.default = readr::col_character()),
+    locale = readr::locale(encoding = "UTF-8"), trim_ws = TRUE, show_col_types = FALSE,
+    name_repair = "minimal", progress = FALSE
+  )
+  names(data)[[1]] <- sub("^\\ufeff", "", names(data)[[1]])
+  check <- assert_same_structure(expected_headers, names(data), item$source_id, "data", "headers")
+  record_structure_check(con, check, item$vintage_id, release_id)
+  data
+}
+
+parse_decimal_comma <- function(x) readr::parse_number(
+  x, locale = readr::locale(decimal_mark = ",", grouping_mark = "."), na = c("", "NA", "N/A")
+)
+
+curate_bond_curves_csv <- function(con, item, release_id, root, publication_date) {
+  headers <- c("Periodo", "Moneda", "Calificación de Riesgo", "Plazo (años)", "Tasa cupon cero",
+               "Factor de descuento", "Tasa Par", "beta0", "beta1", "beta2", "beta3", "lambda1", "lambda2")
+  raw <- read_guarded_delimited(con, item, release_id, headers) %>% dplyr::mutate(source_row = dplyr::row_number() + 1L)
+  snapshot <- raw %>% dplyr::transmute(
+    vintage_id = item$vintage_id, release_id = release_id, publication_date = as.Date(publication_date),
+    source_file = item$source_file, source_row, period = lubridate::dmy(substr(.data$Periodo, 1L, 10L), quiet = TRUE),
+    currency = .data$Moneda, risk_rating = .data$`Calificación de Riesgo`,
+    maturity_years = parse_decimal_comma(.data$`Plazo (años)`),
+    zero_coupon_rate = parse_decimal_comma(.data$`Tasa cupon cero`),
+    discount_factor = parse_decimal_comma(.data$`Factor de descuento`),
+    par_rate = parse_decimal_comma(.data$`Tasa Par`), beta0 = parse_decimal_comma(.data$beta0),
+    beta1 = parse_decimal_comma(.data$beta1), beta2 = parse_decimal_comma(.data$beta2),
+    beta3 = parse_decimal_comma(.data$beta3), lambda1 = parse_decimal_comma(.data$lambda1),
+    lambda2 = parse_decimal_comma(.data$lambda2)
+  ) %>% dplyr::filter(!is.na(.data$period), !is.na(.data$maturity_years))
+  if (!nrow(snapshot)) stop("Bond-curve guard: no valid observations.", call. = FALSE)
+  assert_plausible_dates(snapshot$period, item$source_id, "data", minimum = as.Date("2000-01-01"))
+  if (any(snapshot$maturity_years <= 0, na.rm = TRUE) ||
+      any(snapshot$discount_factor <= 0 | snapshot$discount_factor > 2, na.rm = TRUE) ||
+      any(snapshot$zero_coupon_rate < -0.5 | snapshot$zero_coupon_rate > 2, na.rm = TRUE) ||
+      any(snapshot$par_rate < -0.5 | snapshot$par_rate > 2, na.rm = TRUE)) stop(
+    "Bond-curve range guard failed for maturity, discount factor or rates.", call. = FALSE
+  )
+  publication_date <- max(snapshot$period); snapshot$publication_date <- publication_date
+  set_source_publication_date(con, item$vintage_id, publication_date)
+  update_archive_manifest_date(root, item$source_id, item$sha256, publication_date)
+  DBI::dbExecute(con, paste0("DELETE FROM bond_curve_snapshot WHERE vintage_id = ", sql_string(item$vintage_id)))
+  DBI::dbWriteTable(con, "bond_curve_snapshot", snapshot, append = TRUE)
+  measures <- c(zero_coupon_rate = "proportion", discount_factor = "ratio", par_rate = "proportion")
+  observations <- snapshot %>% tidyr::pivot_longer(dplyr::all_of(names(measures)), names_to = "measure", values_to = "value") %>%
+    dplyr::filter(!is.na(.data$value)) %>% dplyr::mutate(
+      series_key = paste(.data$currency, .data$risk_rating, format(.data$maturity_years, trim = TRUE), .data$measure, sep = "|"),
+      series_id = paste0(item$source_id, ":", substr(vapply(.data$series_key, digest::digest, character(1),
+        algo = "sha256", serialize = FALSE), 1L, 24L))
+    )
+  meta <- observations %>% dplyr::distinct(.data$series_id, .data$series_key, .data$currency, .data$measure) %>%
+    dplyr::transmute(
+      series_id, source_id = item$source_id, label = series_key, unit = unname(measures[measure]), scale = "units",
+      frequency = "irregular_daily", currency, index_base = NA_character_, hierarchy_level = "yield_curve_point",
+      parent_series_id = NA_character_, is_total = FALSE, identity_basis = series_key,
+      identity_stability = "semantic", hierarchy_status = "flat", semantic_status = "curated",
+      first_vintage_id = item$vintage_id
+    )
+  events <- write_sparse_series(con, observations %>% dplyr::select(.data$series_id, .data$period, .data$value), meta, item, publication_date)
+  create_market_views(con)
+  list(curated_rows = nrow(snapshot), event_rows = events, publication_date = publication_date, source_sheet = "data")
+}
+
+curate_securities_trades_csv <- function(con, item, release_id, root, publication_date) {
+  headers <- c("Fecha Operacion", "Ruc Casa Bolsa", "Casa Bolsa", "Isin Identificador", "Ruc Emisor", "Emisor",
+               "Instrumento", "Mercado", "Tipo Operacion", "Volumen Moneda Local", "Moneda", "Mercado Negociacion")
+  raw <- read_guarded_delimited(con, item, release_id, headers) %>% dplyr::mutate(source_row = dplyr::row_number() + 1L)
+  snapshot <- raw %>% dplyr::transmute(
+    vintage_id = item$vintage_id, release_id = release_id, publication_date = as.Date(publication_date),
+    source_file = item$source_file,
+    transaction_basis = paste(.data$`Fecha Operacion`, .data$`Ruc Casa Bolsa`, .data$`Isin Identificador`,
+                              .data$`Ruc Emisor`, .data$Instrumento, .data$Mercado, .data$`Tipo Operacion`,
+                              .data$`Volumen Moneda Local`, .data$Moneda, .data$`Mercado Negociacion`, sep = "|"),
+    source_row, operation_date = lubridate::dmy(.data$`Fecha Operacion`, quiet = TRUE),
+    broker_tax_id = .data$`Ruc Casa Bolsa`, broker_name = .data$`Casa Bolsa`, isin = .data$`Isin Identificador`,
+    issuer_tax_id = .data$`Ruc Emisor`, issuer_name = .data$Emisor, instrument = .data$Instrumento,
+    market = .data$Mercado, operation_type = .data$`Tipo Operacion`,
+    local_currency_volume = parse_decimal_comma(.data$`Volumen Moneda Local`), currency = .data$Moneda,
+    trading_venue = .data$`Mercado Negociacion`
+  ) %>% dplyr::filter(!is.na(.data$operation_date), !is.na(.data$local_currency_volume)) %>%
+    dplyr::group_by(.data$transaction_basis) %>% dplyr::mutate(duplicate_ordinal = dplyr::row_number()) %>% dplyr::ungroup() %>%
+    dplyr::mutate(transaction_id = paste0("trade:", substr(vapply(paste(.data$transaction_basis, .data$duplicate_ordinal, sep = "|"),
+      digest::digest, character(1), algo = "sha256", serialize = FALSE), 1L, 24L))) %>%
+    dplyr::select(-dplyr::all_of(c("transaction_basis", "duplicate_ordinal"))) %>%
+    dplyr::select(
+      .data$vintage_id, .data$release_id, .data$publication_date, .data$source_file,
+      .data$transaction_id, .data$source_row, .data$operation_date, .data$broker_tax_id, .data$broker_name,
+      .data$isin, .data$issuer_tax_id, .data$issuer_name, .data$instrument, .data$market,
+      .data$operation_type, .data$local_currency_volume, .data$currency, .data$trading_venue
+    )
+  if (!nrow(snapshot)) stop("Securities-trades guard: no valid transactions.", call. = FALSE)
+  assert_plausible_dates(snapshot$operation_date, item$source_id, "data", minimum = as.Date("2000-01-01"))
+  if (any(snapshot$local_currency_volume < 0, na.rm = TRUE)) stop(
+    "Securities-trades range guard: negative local-currency volume.", call. = FALSE
+  )
+  if (any(is.na(snapshot$currency) | !nzchar(trimws(snapshot$currency)) |
+          is.na(snapshot$instrument) | !nzchar(trimws(snapshot$instrument)))) stop(
+    "Securities-trades semantic guard: currency or instrument is missing.", call. = FALSE
+  )
+  publication_date <- max(snapshot$operation_date); snapshot$publication_date <- publication_date
+  set_source_publication_date(con, item$vintage_id, publication_date)
+  update_archive_manifest_date(root, item$source_id, item$sha256, publication_date)
+  DBI::dbExecute(con, paste0("DELETE FROM securities_transactions_snapshot WHERE vintage_id = ", sql_string(item$vintage_id)))
+  DBI::dbWriteTable(con, "securities_transactions_snapshot", snapshot, append = TRUE)
+  create_market_views(con)
+  list(curated_rows = nrow(snapshot), event_rows = 0L, publication_date = publication_date, source_sheet = "data")
+}
+
+create_market_views <- function(con) {
+  DBI::dbExecute(con, paste(
+    "CREATE OR REPLACE VIEW v_bond_curves_latest AS SELECT b.* FROM bond_curve_snapshot b JOIN",
+    "(SELECT source_id, vintage_id FROM (SELECT source_id, vintage_id, row_number() OVER",
+    "(PARTITION BY source_id ORDER BY publication_date DESC NULLS LAST, first_ingested_at DESC) rn FROM source_files",
+    "WHERE source_id = 'corporate_bond_curves' AND ingestion_status = 'completed') WHERE rn = 1) f USING (vintage_id)"
+  ))
+  DBI::dbExecute(con, paste(
+    "CREATE OR REPLACE VIEW v_securities_transactions_latest AS SELECT t.* FROM securities_transactions_snapshot t JOIN",
+    "(SELECT source_id, vintage_id FROM (SELECT source_id, vintage_id, row_number() OVER",
+    "(PARTITION BY source_id ORDER BY publication_date DESC NULLS LAST, first_ingested_at DESC) rn FROM source_files",
+    "WHERE source_id = 'securities_trades' AND ingestion_status = 'completed') WHERE rn = 1) f USING (vintage_id)"
+  ))
+  DBI::dbExecute(con, paste(
+    "CREATE OR REPLACE VIEW v_securities_daily_activity AS SELECT operation_date, currency, instrument, market,",
+    "operation_type, trading_venue, count(*) AS transactions, sum(local_currency_volume) AS local_currency_volume",
+    "FROM v_securities_transactions_latest GROUP BY 1,2,3,4,5,6"
+  ))
+  invisible(TRUE)
+}
+
+long_csv_parser <- function(con, item, dimensions, release_id, root, publication_date) {
+  result <- switch(item$source_id,
+    corporate_bond_curves = curate_bond_curves_csv(con, item, release_id, root, publication_date),
+    securities_trades = curate_securities_trades_csv(con, item, release_id, root, publication_date),
+    stop("No long-CSV parser registered for ", item$source_id, ".", call. = FALSE)
+  )
+  DBI::dbExecute(con, paste0("DELETE FROM semantic_coverage WHERE vintage_id = ", sql_string(item$vintage_id)))
+  DBI::dbWriteTable(con, "semantic_coverage", tibble::tibble(
+    vintage_id = item$vintage_id, source_id = item$source_id, source_sheet = "data",
+    semantic_status = "curated_long_format", raw_nonempty_cells = as.integer(dimensions$used_rows[[1]] * dimensions$used_cols[[1]]),
+    curated_observations = as.integer(result$curated_rows),
+    coverage_note = "Guarded typed long-format ingestion; original source file retained by content hash."
+  ), append = TRUE)
+  result
+}
