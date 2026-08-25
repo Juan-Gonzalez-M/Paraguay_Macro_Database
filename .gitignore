@@ -6,6 +6,7 @@
 **/.DS_Store
 **/.Rhistory
 database/*.duckdb
+!database/paraguay_macro_pilot.duckdb
 database/*.wal
 database/*.v1_retired
 database/backups/*
@@ -13,4 +14,3 @@ outputs/*
 !outputs/.gitkeep
 input_archive/*
 !input_archive/.gitkeep
-input/current/*
