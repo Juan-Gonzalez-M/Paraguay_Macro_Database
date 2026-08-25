@@ -1,6 +1,19 @@
 # Paraguay macroeconomic database — governed pilot v11
 
-An R-only, local pipeline that turns the 22 supplied BCP, Superintendencia de Seguros and Bolsa de Valores sources into a versioned DuckDB database. Python is not required on the user’s computer.
+## About this project
+
+Paraguay's central bank (BCP), insurance regulator (Superintendencia de Seguros) and stock exchange (Bolsa de Valores de Asunción) each publish their statistical bulletins as standalone Excel/CSV workbooks — bank and finance-company financial statements, exchange-house balance sheets, payment-system activity, the economic annex, credit surveys, FX operations, bond curves, securities trades and more. Each publication has its own layout, is revised monthly or quarterly, and none of them are designed to be queried together.
+
+This project turns those 22 official sources into a single governed, versioned DuckDB database that can be queried with plain SQL. It is an R-only, local pipeline — no Python, no external services, no manual spreadsheet wrangling. Every value keeps a traceable path back to its source file, worksheet, row and column, and every database build is content-addressed and deterministic: re-running the pipeline against unchanged inputs reproduces the exact same release.
+
+What this buys a researcher or analyst working with Paraguayan macro/financial data:
+
+- **One queryable history instead of dozens of spreadsheets.** All 22 sources share a common provenance, vintage and quality-flag model, so a single SQL query can span sources that would otherwise require manually reconciling incompatible Excel layouts every month.
+- **Point-in-time correctness.** Because every observation is tied to the publication vintage that produced it, you can ask "what did this series look like as of a past release," not just "what does it look like now" — essential for reproducing prior analysis or auditing a revision.
+- **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `completed_with_errors` should not be trusted until reviewed.
+- **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
+
+The sections below cover the quick start, the monthly replacement workflow, the full changelog of correctness fixes by version, the data model, and example queries.
 
 Version 11 makes schema initialization and migration distinct operations and fixes the remaining Annex year-axis ambiguity. A fresh database now installs the current schema without executing historical invalidations; legacy databases still migrate through guarded, version-specific steps. Annotated publisher years such as `2012 1/` are recognized, while a year axis must form a coherent ordered sequence before it can outrank ordinary numeric cells.
 
