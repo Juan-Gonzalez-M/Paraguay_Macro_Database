@@ -2,7 +2,7 @@
 
 ## About this project
 
-Paraguay's central bank (BCP), insurance regulator (Superintendencia de Seguros) and stock exchange (Bolsa de Valores de Asunción) each publish their statistical bulletins as standalone Excel/CSV workbooks — bank and finance-company financial statements, exchange-house balance sheets, payment-system activity, the economic annex, credit surveys, FX operations, bond curves, securities trades and more. Each publication has its own layout, is revised monthly or quarterly, and none of them are designed to be queried together.
+Paraguay's central bank (BCP), insurance regulator (Superintendencia de Seguros), financial system regulator (Superintendencia de Bancos) and stock exchange (Bolsa de Valores de Asunción) each publish their statistical bulletins as standalone Excel/CSV workbooks — bank and finance-company financial statements, exchange-house balance sheets, payment-system activity, the economic annex, credit surveys, FX operations, bond curves, securities trades and more. Each publication has its own layout, is revised monthly or quarterly, and none of them are designed to be queried together.
 
 This project turns those 22 official sources into a single governed, versioned DuckDB database that can be queried with plain SQL. It is an R-only, local pipeline — no Python, no external services, no manual spreadsheet wrangling. Every value keeps a traceable path back to its source file, worksheet, row and column, and every database build is content-addressed and deterministic: re-running the pipeline against unchanged inputs reproduces the exact same release.
 
