@@ -15,6 +15,84 @@ registro activo. El detalle de por qué se consolidó está en
 
 ---
 
+## Abierto — hallazgo nuevo (auditoría del inventario de series, 2026-08-26)
+
+### R45 — Bloque final de comparación interanual mal interpretado como columnas de período, en 8 hojas del Anexo · silencioso
+**Dónde:** `Cuadro 46a`, `Cuadro 46b`, `Cuadro 51a`, `Cuadro 51b`, `Cuadro 52a`,
+`Cuadro 52b`, `Cuadro 53a`, `Cuadro 53b` de `economic_annex` (todas hojas de comercio
+exterior por producto, mismo template de publicación). No reproducido en `CUADRO 61`
+(hoja también con alta concentración `positional_lane`, pero por una causa distinta:
+un encabezado repetido de entidad — `Bancos comerciales | Casas de cambio |
+Financieras | ...` — que el parser genérico no captura como parte de la etiqueta;
+ver `revisiones/MEJORAS_v11.md` sección 4, ítem de riesgo alto ya identificado).
+
+**Síntoma:** cada una de estas 8 hojas tiene un eje mensual continuo normal (p. ej.
+`Cuadro 53a`, columnas 2–392, enero 1994 a julio 2026) seguido de **7 columnas
+adicionales** con un encabezado de comparación interanual, no de período:
+`A Julio 2024 | A Julio 2025* | A Julio 2026* | Var. Nominal A Julio 2026/2025 |
+Var. % A Julio 2026/2025 | Incidencia | Var. % Interanual Julio 2026/2025`
+(fila 12 de `Cuadro 53a`, columnas 393–399; confirmado idéntico, con variaciones
+menores de espaciado, en `Cuadro 46a` fila 12, `Cuadro 51a` fila 10, `Cuadro 52a`
+fila 10). Ninguno de esos 7 encabezados es una fecha ni un año anotado reconocible
+por `documented_year_values()`/`documented_date_axis_token()`, así que el parser no
+los excluye del eje — pero tampoco logra asignarles un período propio, y las 7
+observaciones de cada fila terminan **todas asignadas al mismo período**, el último
+real de la hoja (`2026-07-01` en `Cuadro 53a`). El guard de identidad posicional
+(correcto, funcionando como debe) detecta la colisión de 7 valores en la misma
+`(fila, período)` y evita fusionarlos creando 7 `series_id` distintos en modo
+`positional_lane` — pero el resultado visible es exactamente lo que se reportó:
+"la misma fila de datos con 7 IDs distintos, sólo con años distintos en la
+etiqueta visible del encabezado".
+
+**Alcance medido** (vía `dim_series`/`fact_series_events`, base real):
+
+| Hoja | Series positional_lane | Observaciones en el período final |
+|---|---:|---:|
+| Cuadro 53a / 53b | 1.160 cada una | 1.160 (100% de sus lane) |
+| Cuadro 46a | 1.142 | 1.142 (100%) |
+| Cuadro 46b | 1.140 | 1.140 (100%) |
+| Cuadro 52a / 52b | 1.104/1.095 cada una | 1.104/1.095 (100%) |
+| Cuadro 51a / 51b | 513/510 cada una | 513/510 (100%) |
+
+En las 8 hojas, el 100% de las observaciones `positional_lane` caen exactamente en
+el último período real de la hoja — ninguna excepción — lo que confirma que es un
+único mecanismo, no ruido disperso. Suma aproximada: **7.812 series espurias** (de
+las 8.214 `positional_lane` totales en `economic_annex`; las ~400 restantes están en
+`CUADRO 61` y otras hojas menores, con causas distintas, ya catalogadas).
+
+**No es lo mismo que R27/CUADRO 57a.** R27 y R40 trataban con años sueltos que
+podían confundirse con datos numéricos dentro del eje real. Acá el eje mensual está
+bien resuelto de punta a punta (367+24 columnas correctas) — el problema es
+exclusivamente el bloque de comparación *después* del eje, que no es parte de la
+serie temporal en absoluto (son estadísticas derivadas: acumulado a julio de cada
+año, variación nominal, variación %, incidencia, variación interanual — todo
+calculable a partir de la propia serie mensual, no observaciones nuevas).
+
+**Precedente ya resuelto en el propio proyecto:** `Cuadro 49` tuvo exactamente esta
+familia de problema en el **eje de filas** (resumen porcentual y nota al pie después
+de las filas reales) y ya se resolvió truncando la extracción antes de esas filas
+(`docs/REVISION_V10_RUNTIME_REPAIRS.md`, "excludes the following percentage-summary
+and footnote rows from the time axis"). R45 es el mismo patrón en el **eje de
+columnas** de estas 8 hojas — la solución natural es análoga: reconocer el
+encabezado de comparación interanual (`^A `+mes+año, `Var\\.`, `Incidencia`) y
+truncar el eje de columnas antes de esas 7, en vez de dejar que cada una intente
+convertirse en una observación.
+
+**Impacto en analítica:** no afecta los valores mensuales reales (están completos y
+correctos); infla el conteo de `series_id` de estas 8 hojas en 7× lo necesario y
+oculta 7 estadísticas derivadas legítimas (que el usuario final debería poder
+recalcular de la propia serie mensual, no consultarlas como observaciones sueltas
+con `series_id` opacos). Ver `revisiones/INVENTARIO_SERIES.md` para el detalle
+completo con evidencia de coordenadas reales.
+
+**Arreglo:** no aplicado en esta ronda — es un cambio de parser compartido
+(`documented_extract_horizontal_time()` o el detector de eje de columnas genérico),
+mismo nivel de riesgo que el ítem #4 de `revisiones/MEJORAS_v11.md` (ya excluido
+explícitamente por el usuario de la ronda de mejoras de riesgo bajo/medio). Requiere
+sesión propia con regresión completa sobre las 94 hojas antes de aplicar.
+
+---
+
 ## Cerrados en la ronda de mejoras post-v11 (abiertos al cierre de la v11)
 
 ### R41 — Alias sin `AS` en una consulta del propio smoke test · menor · CERRADO
