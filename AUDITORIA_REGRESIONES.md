@@ -93,6 +93,76 @@ sesión propia con regresión completa sobre las 94 hojas antes de aplicar.
 
 ---
 
+### R46 — `eve_parser()`: `slug(block)` recibe la columna ya materializada de `tibble()`, no el escalar del loop — 2.760 "series" son en realidad 16 · silencioso, causa raíz encontrada, arreglo trivial no aplicado
+**Dónde:** `scripts/03_curate_special.R`, dentro de `eve_parser()` (función completa
+~línea 142-206), específicamente la construcción de:
+```r
+records[[k]] <- tibble(
+  ..., date = dates[keep], block = block, variable = label, value = vals[keep],
+  ...,
+  series_id = paste("eve", slug(block), slug(label), sep = ":")
+)
+```
+**Mecanismo exacto** (confirmado con `trace(slug, ...)` contra una llamada real a
+`eve_parser()`, no especulado): dentro de un mismo `tibble(...)`, las columnas se
+evalúan en orden y una expresión posterior puede referirse a una columna ya
+creada por el propio `tibble()` en lugar de a la variable externa del mismo
+nombre. Como el argumento `block = block` ya crea una columna llamada `block`
+(reciclada a la longitud de `date`, p. ej. 245 fechas), la expresión siguiente
+`slug(block)` **ya no ve el escalar del loop** — ve la columna recién creada,
+un vector de 245 elementos idénticos ("Bloque de Inflación" repetido 245 veces).
+`slug()` (`janitor::make_clean_names()`) genera nombres *únicos* por posición
+para desambiguar un vector, así que convierte esos 245 valores idénticos en
+`bloque_de_inflacion`, `bloque_de_inflacion_2`, ..., `bloque_de_inflacion_245` —
+y cada uno pasa a formar parte de un `series_id` distinto. `slug(label)` no sufre
+esto porque la tibble sólo define una columna `variable = label`, nunca una
+columna llamada literalmente `label`, así que no hay colisión de nombre.
+**Por qué queda oculto:** el resultado se clasifica `identity_stability =
+'semantic'` (no `positional_lane`) porque desde el punto de vista del guard de
+identidad cada `series_id` es, en efecto, estable y único — el guard no tiene
+forma de saber que 245 IDs "estables" deberían haber sido uno solo. No aparece
+en ningún filtro de revisión existente.
+**Alcance medido:** las 2.760 series de `eve` (100% de la fuente) son en realidad
+**16 indicadores reales** (`SELECT COUNT(DISTINCT label) FROM v_series_catalogue
+WHERE source_id='eve'` → 16), cada uno con entre 108 y 245 observaciones mensuales
+genuinas fragmentadas en igual cantidad de `series_id` de una sola observación.
+Confirmado también en `bcp_fx_daily` que el guard clasifica sus 168 series como
+100% `semantic` pese a ser 12 indicadores × 14 años (ver R47) — la clasificación
+`semantic` no es garantía de "una fila = una serie útil".
+**Arreglo (no aplicado):** trivial y de bajo riesgo — computar
+`block_slug <- slug(block); label_slug <- slug(label)` **antes** del `tibble()`
+(o simplemente reordenar para que `series_id` no comparta nombre de columna con
+ninguna variable local), y usar esos escalares dentro. No toca ningún otro
+llamador de `slug()` (el único otro uso, en `icc_parser()`, no tiene esta
+colisión de nombres). Requiere reprocesar `eve` una vez (invalidación dirigida a
+esa fuente) y verificar que las 16 series resultantes tengan la cobertura
+temporal completa 2006-2026 antes de aceptar el cambio.
+
+---
+
+### R47 — `bcp_fx_daily`: el publicador divide una serie diaria continua en una hoja por año; el pipeline no la vuelve a unir · menor, diseño de identidad, no un bug de parseo
+**Dónde:** `input/current/bcp_fx_daily/*.xlsx` tiene 14 hojas, una por año
+(`OpDivisas2013(DatosDiarios)` … `OpDivisas2026(DatosDiarios)`), cada una con las
+mismas 12 etiquetas ("Compra del BCP — Sector Financiero", "Venta del BCP — Total",
+etc.). Como `series_id` incluye la hoja de origen como parte de su identidad
+(mismo patrón que toda `documented_series_snapshot`), cada etiqueta se convierte en
+14 `series_id` distintos — 12 × 14 = 168, confirmado exacto contra la base real.
+**Diferencia con R45/R46:** acá no hay ningún error de parseo ni de identidad —
+las 14 hojas son, en los datos fuente, genuinamente hojas separadas; el pipeline
+está describiendo la estructura real del archivo con precisión. El "defecto", si
+se lo quiere corregir, es de diseño: no existe hoy un mecanismo para decirle al
+pipeline "estas N hojas son continuaciones cronológicas de la misma serie, uní los
+`series_id` a través de ellas" — lo mismo que ya identificó
+`revisiones/MEJORAS_v11.md` ítem #4 para las 9 hojas "a/b" de `economic_annex`,
+pero acá con años en vez de cortes a/b.
+**Arreglo:** no aplicado — mismo nivel de riesgo que el ítem #4 (cambiaría
+`series_id` de series existentes sin mecanismo de migración de vintages). Antes de
+tocarlo, valdría la pena revisar si `lrm_auctions` (14 hojas también año por año,
+pero con ratio series/label de sólo 4.4, no 14.0) esconde el mismo patrón para
+alguna de sus columnas agregadas — no investigado en esta ronda.
+
+---
+
 ## Cerrados en la ronda de mejoras post-v11 (abiertos al cierre de la v11)
 
 ### R41 — Alias sin `AS` en una consulta del propio smoke test · menor · CERRADO

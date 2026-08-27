@@ -2,13 +2,18 @@
 
 **Generado:** 2026-08-26, contra `release:748d41036c3a73638a1c2086` (última corrida
 completa, `completed_with_warnings`, 22/22 fuentes).
-**Archivos de datos completos** (todos texto plano, sin Git LFS — ver sección 1):
-- [`series_inventory.csv`](series_inventory.csv) — una fila por serie (28.417
-  filas): fuente, **hoja**, período, periodicidad, unidad y flags de revisión.
+**Archivos de datos completos** (texto plano, sin Git LFS):
+- [`series_inventory.csv`](series_inventory.csv) — 28.417 filas: fuente, hoja,
+  período, periodicidad, unidad, flags de revisión.
 - [`series_observations/`](series_observations/) — un CSV por fuente con las
-  observaciones reales (`series_id, period, value`), 1.216.910 filas en total.
+  observaciones reales (`series_id, period, value`).
 
-Este documento es el resumen navegable; los CSV son la fuente exacta y completa.
+Este documento explica **qué contiene cada hoja** de las fuentes principales, en
+qué unidad, con qué periodicidad y para qué rango de fechas — organizado como el
+propio Anexo Estadístico del BCP agrupa sus cuadros. Toda descripción de contenido
+citada acá viene del `table_title` real que el pipeline extrae de cada hoja
+(`documented_table_catalog`), no es una interpretación mía — cuando el título no
+alcanza para saber qué es una hoja, lo digo explícitamente en vez de adivinar.
 
 ---
 
@@ -16,382 +21,292 @@ Este documento es el resumen navegable; los CSV son la fuente exacta y completa.
 
 El problema original: una herramienta externa (base de conocimiento) leyó el
 repositorio de GitHub y sólo obtuvo el **puntero de Git LFS** de
-`database/paraguay_macro_pilot.duckdb` — un archivo de texto con el hash SHA-256 y
-el tamaño, no los datos reales. Eso es el comportamiento esperado de Git LFS cuando
-el cliente que lee el repo no resuelve objetos LFS explícitamente; no es un defecto
-de la base.
+`database/paraguay_macro_pilot.duckdb`, no los datos reales — comportamiento
+esperado de LFS cuando el cliente no resuelve objetos LFS, no un defecto de la
+base.
 
-**Solución: dos CSV en texto plano, versionados sin LFS**, que entre los dos
-reconstruyen exactamente lo que la base ofrece para consultas de series:
-
-1. `series_inventory.csv` — el catálogo (qué series existen, con qué etiqueta, en
-   qué hoja, con qué periodicidad y rango de fechas).
-2. `series_observations/<fuente>.csv` — los valores reales, uno por fuente
-   (`source_id`), formato largo: `series_id, period, value`.
-
-Se unen por `series_id`. Ningún archivo individual supera 51MB (el más grande,
-`economic_annex.csv`, pesa 50MB), muy por debajo del límite de 100MB de GitHub por
-archivo — se leen con cualquier lector de CSV, sin DuckDB, sin R, sin resolver LFS.
-
-**Ejemplo (Python/pandas), reconstruir una serie completa desde los dos archivos:**
+**Solución:** dos CSV en texto plano, sin LFS, que reconstruyen cualquier serie:
+1. `series_inventory.csv` — el catálogo (qué series existen, en qué hoja, con qué
+   periodicidad y rango).
+2. `series_observations/<fuente>.csv` — los valores reales, formato largo
+   (`series_id, period, value`). Ningún archivo supera 51MB.
 
 ```python
 import pandas as pd
 inv = pd.read_csv("revisiones/series_inventory.csv")
 obs = pd.read_csv("revisiones/series_observations/economic_annex.csv")
-
 serie = inv[(inv.source_sheet == "CUADRO 1") & (inv.series_label.str.contains("PIB"))]
-valores = obs[obs.series_id.isin(serie.series_id)].merge(
-    serie[["series_id", "series_label"]], on="series_id"
-)
+valores = obs[obs.series_id.isin(serie.series_id)].merge(serie[["series_id","series_label"]], on="series_id")
 ```
 
-**Ejemplo (R), lo mismo sin abrir la base:**
-
-```r
-inv <- readr::read_csv("revisiones/series_inventory.csv")
-obs <- readr::read_csv("revisiones/series_observations/economic_annex.csv")
-serie <- dplyr::filter(inv, source_sheet == "CUADRO 1", grepl("PIB", series_label))
-valores <- dplyr::inner_join(obs, serie, by = "series_id")
-```
-
-**Qué falta en este esquema (alcance explícito, no un descuido):** 4 de las 22
-fuentes (`banks`, `financial`, `bank_reference`, `securities_trades`) no viven en
-`dim_series`/`fact_series_events` — usan un modelo de tabla distinto (estados
-financieros por entidad y fecha, referencia semántica pura, o transacciones
-individuales) que no encaja en "serie con período y valor" de la misma forma. Se
-consultan directamente vía SQL contra la base (`raw_banks_eeff`,
-`raw_financial_eeff`, `securities_transactions_snapshot`, `reference_table_loads`),
-no están en este export. Si hace falta un CSV de éstas también, es un pedido
-aparte — la forma de la tabla es distinta y merece su propio formato de export.
-
-**Cómo regenerar ambos:**
-
-```r
-library(DBI); library(duckdb)
-con <- DBI::dbConnect(duckdb::duckdb(), "database/paraguay_macro_pilot.duckdb", read_only = TRUE)
-
-DBI::dbExecute(con, "CREATE OR REPLACE TEMP VIEW sheet_of AS
-  SELECT DISTINCT series_id, source_sheet FROM documented_series_snapshot")
-DBI::dbExecute(con, "COPY (
-  SELECT c.source_id, sh.source_sheet, c.series_id, c.label AS series_label, c.frequency,
-         c.first_period, c.last_period, c.observations, c.unit, c.scale, c.currency,
-         c.identity_stability, c.hierarchy_status
-  FROM v_series_catalogue c LEFT JOIN sheet_of sh USING(series_id)
-  ORDER BY c.source_id, sh.source_sheet, c.series_id
-) TO 'revisiones/series_inventory.csv' (HEADER, DELIMITER ',')")
-
-for (src in DBI::dbGetQuery(con, "SELECT DISTINCT source_id FROM dim_series")$source_id) {
-  DBI::dbExecute(con, sprintf("COPY (
-    SELECT f.series_id, f.period, f.value FROM fact_series_events f
-    JOIN dim_series d USING(series_id) WHERE d.source_id = %s
-    ORDER BY f.series_id, f.period
-  ) TO %s (HEADER, DELIMITER ',')",
-    DBI::dbQuoteString(con, src),
-    DBI::dbQuoteString(con, file.path("revisiones/series_observations", paste0(src, ".csv")))))
-}
-```
-
-Regenerar ambos después de cada `run_update.R` real — quedan desactualizados en
-cuanto cambia una fuente.
+**Qué falta:** `banks`, `financial`, `bank_reference`, `securities_trades` usan un
+modelo de tabla distinto (estados financieros por entidad, referencia semántica,
+transacciones individuales) — se consultan directo por SQL, no están en este
+export (alcance explícito, no un descuido).
 
 ---
 
-## 2. Por qué el mismo "tipo de dato" aparece con `series_id` distintos que sólo difieren en el año
+## 2. Por qué el mismo indicador aparece con varios `series_id` — tres causas distintas, ya diagnosticadas
 
-Esto **no** es un diseño general del pipeline ("una serie por año") — de hecho la
-gran mayoría de `economic_annex` hace exactamente lo contrario: una sola serie
-continua con cientos de observaciones mensuales (ver `CUADRO 1`, `n=21` series,
-cada una con ~35 años de datos anuales en **una** fila del CSV). Lo que encontraste
-es un **defecto real, puntual y ya diagnosticado**, catalogado ahora como
-**R45** en `AUDITORIA_REGRESIONES.md`.
+Encontraste el síntoma en dos lugares distintos y **son dos defectos diferentes**,
+más un tercer caso que ya estaba documentado. Ninguno es "diseño general" del
+pipeline — la mayoría de las fuentes sí producen una serie continua por indicador
+(`CUADRO 1`: 21 series, cada una con ~35 años en una sola fila del CSV).
 
-**En una frase:** 8 hojas de comercio exterior (`Cuadro 46a/b, 51a/b, 52a/b,
-53a/b`) tienen, después de su eje mensual normal, un bloque de 7 columnas de
-comparación interanual —no observaciones nuevas, sino estadísticas derivadas:
-"A Julio 2024", "A Julio 2025\*", "A Julio 2026\*", variación nominal, variación %,
-incidencia, variación interanual—. Como esos encabezados no son fechas
-reconocibles, el parser no logra darles un período propio y las 7 terminan cayendo
-en el mismo período final de la hoja; el guard de identidad (que está funcionando
-correctamente) evita fusionarlas creando 7 `series_id` distintos.
+**a) `economic_annex`, 8 hojas de comercio exterior (R45).** `Cuadro 46a/b, 51a/b,
+52a/b, 53a/b` tienen, después de su eje mensual normal, un bloque de 7 columnas de
+comparación interanual ("A Julio 2024", "A Julio 2025\*", variación %, incidencia)
+que no son observaciones nuevas — son estadísticas derivadas. Como esos
+encabezados no son fechas reconocibles, las 7 caen en el mismo período final de la
+hoja y se vuelven 7 `series_id` de sobra por fila. Detalle completo con evidencia
+de coordenadas reales: `AUDITORIA_REGRESIONES.md`, R45.
 
-**Evidencia concreta** (`Cuadro 53a`, fila 67 = "Aceite de girasol"):
+**b) `eve`, las 2.760 series son en realidad 16 (R46, el caso más severo).**
+Encontrado al investigar tu ejemplo de `bcp_fx_daily`: dentro de `eve_parser()`,
+`slug(block)` termina leyendo una columna de `tibble()` ya materializada (245
+copias idénticas de "Bloque de Inflación") en vez del valor escalar del loop —
+`janitor::make_clean_names()` desambigua esas 245 copias idénticas con sufijos
+`_2` a `_245`, y cada una se vuelve una serie de una sola observación. Confirmado
+con `trace()` contra una llamada real, no especulado. Es un bug de código con
+arreglo simple identificado (no aplicado). Detalle: `AUDITORIA_REGRESIONES.md`, R46.
 
-| Columnas | Encabezado real (fila 12) | Qué contienen |
+**c) `bcp_fx_daily`, 168 filas son 12 series × 14 años (R47 — tu ejemplo exacto).**
+El archivo fuente tiene una hoja por año (`OpDivisas2013(DatosDiarios)` …
+`OpDivisas2026(DatosDiarios)`), cada una con las mismas 12 etiquetas ("Compra del
+BCP — Sector Financiero", etc.). Como `series_id` incluye la hoja de origen, cada
+etiqueta se vuelve 14 `series_id` (12×14=168, exacto). A diferencia de (a) y (b),
+esto **no es un bug de parseo** — el pipeline describe con precisión que son 14
+hojas reales; es una limitación de diseño (no existe hoy un mecanismo para decirle
+"estas hojas son continuaciones cronológicas de la misma serie"). Mismo tipo de
+limitación que `CUADRO 61` de `economic_annex` (dimensión de entidad no capturada,
+`MEJORAS_v11.md` ítem #4). Detalle: `AUDITORIA_REGRESIONES.md`, R47.
+
+**Ninguno de los tres se corrigió en esta ronda** — (a) y (c) tocan el parser
+compartido o el modelo de identidad (mismo riesgo que el ítem #4, ya excluido
+explícitamente); (b) tiene arreglo trivial identificado pero requiere reprocesar
+la fuente antes de aceptar el resultado, y no se pidió aplicarlo.
+
+**Cómo filtrar esto en el CSV mientras tanto:** para un panel de indicadores
+tradicionales, quedate con `observations > 12`. Eso excluye limpiamente los tres
+casos sin necesitar saber a cuál pertenece cada fila.
+
+---
+
+## 3. `economic_annex`, hoja por hoja, agrupado por bloque económico (como lo organiza el propio Anexo)
+
+93 hojas con series reales (la 94ª es el índice de contenidos, sin datos).
+`hierarchy_status='unresolved'` es prácticamente universal acá (10.607 de 10.607
+series) — no se repite por hoja, no es una señal útil a este nivel.
+
+### Bloque A — Sector real: cuentas nacionales y actividad económica
+
+| Hoja | Contenido | Periodicidad | Rango | Series |
+|---|---|---|---|---:|
+| CUADRO 1 | PIB a precios de comprador, por sectores económicos, **precios constantes de 2014** | annual | 1991→2026 | 21 |
+| CUADRO 2 | PIB a precios de comprador, por sectores económicos, **precios corrientes** | annual | 1991→2026 | 21 |
+| CUADRO 3 | Evolución del PIB por rama de actividad económica, variación % | annual | 1992→2026 | 21 |
+| CUADRO 4a | PIB por sectores — estructura económica, % sobre valor corriente | annual | 1991→2026 | 21 |
+| CUADRO 4b | PIB por sectores — estructura económica, % sobre valor constante | annual | 1991→2026 | 21 |
+| CUADRO 5 | PIB por tipo de gasto, precios corrientes | annual | 1991→2026 | 19 |
+| CUADRO 6 | PIB trimestral (incluye binacionales Itaipú/Yacyretá) por sectores, **precios constantes 2014** | quarterly | 1994→2026 | 9 |
+| CUADRO 6 (Cont.) | ídem — variación interanual, constantes | quarterly | 1995→2026 | 9 |
+| CUADRO 6a | PIB trimestral por sectores, **precios corrientes** | quarterly | 1994→2026 | 9 |
+| CUADRO 6a (Cont.) | ídem — variación interanual, corrientes | quarterly | 1995→2026 | 9 |
+| CUADRO 7 | PIB trimestral por tipo de gasto, **precios constantes 2014** | quarterly | 1994→2026 | 7 |
+| CUADRO 7 (Cont.) | ídem — variación interanual, constantes | quarterly | 1995→2026 | 7 |
+| CUADRO 7a | PIB trimestral por tipo de gasto, **precios corrientes** | quarterly | 1994→2026 | 7 |
+| CUADRO 7a (Cont.) | ídem — variación interanual, corrientes | quarterly | 1995→2026 | 7 |
+| CUADRO 8 | Sin título propio en el archivo fuente — serie más larga de la base (PYG\|USD, 8 series); por rango y unidad, compatible con PIB nominal histórico — **no confirmado por título, no afirmado como tal** | annual | 1950→2026 | 8 |
+| CUADRO 9 | IMAEP — Indicador Mensual de Actividad Económica del Paraguay, base 2014=100 | monthly | 1994→2026 | 2 |
+| CUADRO 9 a | IMAEP, desagregado | monthly | 2014→2026 | 18 |
+| CUADRO 10 | ECN — Estimador de Cifras de Negocios, índice base 2014=100 | monthly | 2013→2026 | 3 |
+| CUADRO 10 a | ECN — índice real, subramas comerciales y servicios de telefonía móvil, base 2014=100 | monthly | 2001→2026 | 8 |
+
+### Bloque B — Precios y mercado laboral
+
+| Hoja | Contenido | Periodicidad | Rango | Series |
+|---|---|---|---|---:|
+| CUADRO 11 | Evolución del salario mínimo legal, base 1980=100 | annual/monthly | 1980→2026 | 7 |
+| CUADRO 12 | Índice de Sueldos y Salarios, base junio 2001=100 | annual/semiannual | 2001→2025 | 22 |
+| CUADRO 13 | Índice nominal de tarifas y precios, base dic-2017=100 (serie empalmada) | monthly | 1988→2026 | 5 |
+| CUADRO 13 a | IPC, base dic-2017=100 (serie empalmada) | monthly | 1988→2026 | 4 |
+| CUADRO 14 | IPC, Área Metropolitana de Asunción, base dic-2017=100 | monthly | 1994→2026 | 16 |
+| CUADRO 14 a | IPC AMA — inflación total, bienes transables/no transables, nacional/importados s/fyv | monthly | 1995→2026 | 20 |
+| CUADRO 14 b | IPC AMA — inflación total/alimentos/bienes/servicios/renta, desagregación fina | monthly | 1995→2026 | 44 |
+| CUADRO 14 c | IPC AMA — bienes y servicios administrados (serie empalmada) | monthly | 2003→2026 | 4 |
+| CUADRO 15 | IPC AMA — inflación total, subyacente y subyacente X1 | monthly | 1992→2026 | 24 |
+| CUADRO 16 | IPC AMA por principales grupos dentro de cada agrupación | monthly | 1994→2026 | 11 |
+| CUADRO 16 (Cont.) | ídem, continuación | monthly | 1994→2026 | 14 |
+| CUADRO 16 a | IPC AMA — Carne Vacuna, por cortes | monthly | 1994→2026 | 20 |
+| CUADRO 17 | Índice de precios del productor, base marzo 2025=100 | monthly | 1995→2026 | 18 |
+
+### Bloque C — Sector monetario y financiero
+
+| Hoja | Contenido | Periodicidad | Rango | Series |
+|---|---|---|---|---:|
+| CUADRO 18 | Balance monetario del BCP — activos internacionales/internos netos, billetes y monedas en circulación (M0) | annual/monthly | 1990→2024 | 29 |
+| CUADRO 19 | Instrumentos de regulación monetaria | annual/monthly | 1993→2026 | 19 |
+| CUADRO 20 | Operaciones cambiarias del BCP, millones de USD | annual/quarterly/monthly | 1990→2026 | 30 |
+| CUADRO 21 | Agregados monetarios | monthly | 1995→2024 | 10 |
+| Cuadro 21 a | Agregados Monetarios — Serie Histórica | monthly | 1960→2024 | 5 |
+| CUADRO 22 | Agregados monetarios, tasas de variación % | monthly | 1996→2024 | 10 |
+| CUADRO 23 | Depósitos del sector privado y público en bancos y financieras | monthly | 1995→2024 | 17 |
+| CUADRO 23a | Depósitos del sector privado en bancos y financieras | monthly | 1995→2024 | 15 |
+| CUADRO 23b | Depósitos en Cooperativas de Ahorro y Crédito Tipo A | monthly | 2017→2025 | 7 |
+| CUADRO 24 | Créditos de bancos y financieras al sector privado y público | monthly | 1995→2024 | 7 |
+| CUADRO 24a | Créditos de bancos y financieras al sector privado | monthly | 1995→2024 | 7 |
+| CUADRO 24b | Créditos otorgados por Cooperativas de Ahorro y Crédito Tipo A | monthly | 2017→2025 | 7 |
+| CUADRO 25 | Créditos y depósitos del sector privado/público, tasas de variación % | monthly | 1997→2024 | 12 |
+| CUADRO 26 | Gastos de la Política Monetaria del BCP | monthly/annual | 2002→2026 | 12 |
+| CUADRO 27 | Posición del BCP ante el sistema financiero | annual/monthly | 1990→2024 | 20 |
+| CUADRO 28 | Panorama Monetario — Activos | monthly | 1995→2024 | 7 |
+| CUADRO 29 | Panorama Monetario — Pasivos | monthly | 1995→2024 | 7 |
+| CUADRO 29 (Cont.) | ídem, continuación | monthly | 1995→2024 | 8 |
+| CUADRO 30 | Créditos y depósitos del sector privado/público, moneda extranjera (dólares), tasas de variación % | monthly | 1997→2024 | 4 |
+| CUADRO 31 | Tasas efectivas de interés, sistema bancario, **moneda nacional** | monthly/annual | 1990→2026 | 10 |
+| CUADRO 31 (Cont.) | ídem, **moneda extranjera** | monthly/annual | 1990→2026 | 5 |
+| CUADRO 32 | Operaciones de la Bolsa de Valores de Asunción | monthly/annual | 1994→2026 | 38 |
+| CUADRO 32 A | Instrumentos Bursátiles — Documentos en Custodia, Total Guaraníes (MN+ME) | monthly | 2013→2026 | 56 |
+| CUADRO 33 | Principales indicadores del sistema bancario nacional — morosidad, solvencia, rentabilidad | monthly | 1999→2026 | 6 |
+| CUADRO 34 | Principales indicadores de las empresas financieras | monthly | 2002→2026 | 7 |
+| CUADRO 35 | Depósitos del sector público no financiero en el BCP | annual/monthly | 1990→2026 | 18 |
+| CUADRO 60a | Tipo de cambio nominal del guaraní | monthly | 1997→2026 | 4 |
+| CUADRO 60b | Tipo de cambio real Multilateral — índice de precios externos (ene-1995=100) | monthly | 1995→2026 | 6 |
+| CUADRO 60c | Tipo de cambio real bilateral (ene-1995=100) | monthly | 1995→2026 | 5 |
+
+### Bloque D — Finanzas públicas
+
+| Hoja | Contenido | Periodicidad | Rango | Series |
+|---|---|---|---|---:|
+| CUADRO 36 | Ejecución Presupuestaria de la Administración Central, miles de millones de guaraníes | monthly/annual | 2003→2026 | 38 |
+
+### Bloque E — Sector externo: balanza de pagos y comercio exterior
+
+| Hoja | Contenido | Periodicidad | Rango | Series | Notas |
+|---|---|---|---|---:|---|
+| CUADRO 37 | Balanza de pagos — presentación normalizada (MBP6), millones USD | quarterly/annual | 2008→2026 | 76 | — |
+| CUADRO 38 | Cuenta corriente por componentes normalizados (MBP6), millones USD | quarterly/annual | 2008→2026 | 120 | — |
+| CUADRO 39 | Cuenta Financiera por componentes normalizados (MBP6), millones USD | quarterly/annual | 2008→2026 | 76 | — |
+| CUADRO 40 | Balanza de pagos — presentación analítica (MBP6), millones USD | quarterly/annual | 2008→2026 | 88 | — |
+| CUADRO 41 | Posición de inversión internacional, saldos a fin de período (MBP6), millones USD | quarterly/annual | 2008→2026 | 84 | — |
+| CUADRO 42 | Inversión directa — conciliación entre principio activo/pasivo y direccional, millones USD | annual | 2008→2024 | 30 | — |
+| Cuadro 43 | Balanza de Bienes, miles USD FOB | monthly | 1994→2026 | 8 | — |
+| Cuadro 44a | Exportaciones por principales productos, miles USD FOB | monthly | 1994→2026 | 17 | — |
+| Cuadro 44b | Exportaciones por principales productos, **en cantidades** (kWh y toneladas) | monthly | 1994→2026 | 17 | — |
+| Cuadro 45 | Exportaciones registradas, miles USD FOB | monthly | 1994→2026 | 13 | — |
+| Cuadro 46a | Exportaciones por niveles de procesamiento, miles USD FOB | monthly | 1994→2026 | 1.290 | **R45** — 1.142 series espurias |
+| Cuadro 46b | ídem, **en toneladas y 1.000 kWh** | monthly | 1994→2026 | 1.288 | **R45** — 1.140 espurias |
+| Cuadro 47 | Exportaciones por principales productos, miles USD FOB | monthly | 2003→2026 | 18 | — |
+| Cuadro 48 | Exportaciones por regímenes aduaneros, miles USD FOB | monthly | 2003→2026 | 6 | — |
+| Cuadro 49 | Precios internacionales (petróleo USD/barril, soja USD/tonelada, etc.) | monthly | 1994→**2028** | 13 | proyección oficial revisada (R40) |
+| Cuadro 50 | Importaciones registradas, miles USD FOB | monthly | 1994→2026 | 13 | — |
+| Cuadro 51a | Importaciones por tipo de bienes, miles USD FOB | monthly | 1994→2026 | 574 | **R45** — 513 espurias |
+| Cuadro 51b | ídem, **en toneladas** | monthly | 1994→2026 | 574 | **R45** — 513 espurias |
+| Cuadro 52a | Importaciones para uso interno y bajo Régimen de Turismo, miles USD FOB | monthly | 2006→2026 | 1.287 | **R45** — 1.104 espurias |
+| Cuadro 52b | ídem, **en toneladas** | monthly | 2006→2026 | 1.287 | **R45** — 1.104 espurias |
+| Cuadro 53a | Importaciones por niveles de procesamiento, miles USD FOB | monthly | 1994→2026 | 1.309 | **R45** — 1.160 espurias |
+| Cuadro 53b | ídem, **en toneladas** | monthly | 1994→2026 | 1.309 | **R45** — 1.160 espurias |
+| Cuadro 54 | Importaciones por regímenes aduaneros, miles USD FOB | monthly | 2003→2026 | 10 | — |
+| CUADRO 55 | Ingreso de divisas — entidades binacionales, miles USD | monthly/annual | 1994→2026 | 6 | — |
+| CUADRO 56a | Reservas Internacionales Netas, millones USD | annual/monthly | 1990→2026 | 18 | — |
+| CUADRO 56b | Reservas Internacionales Netas | monthly | 2009→2026 | 5 | — |
+| CUADRO 57a | Retornos interanuales de Reservas Internacionales | monthly | 2021 (un año) | 1 | arreglada esta sesión, R40 |
+| CUADRO 57b | Intereses cobrados por colocaciones de las reservas internacionales netas, miles USD | monthly | 1991→2020 | 1 | — |
+| CUADRO 58 | Remesas Familiares — ingreso de divisas, miles USD/EUR | monthly | 1994→2026 | 30 | — |
+| CUADRO 59 | Deuda pública externa, miles USD | annual/monthly | 1980→2026 | 7 | — |
+| CUADRO 61 | Compra/Venta de divisas en el mercado cambiario local — Bancos comerciales, Casas de cambio, miles USD | monthly | 2004→2026 | 170 | Dimensión de entidad no capturada por el parser genérico (distinto de R45; ver `MEJORAS_v11.md` ítem #4) |
+
+---
+
+## 4. Resumen general (todas las fuentes)
+
+- **28.417 series**, **1.216.910 observaciones**, **18 fuentes** con modelo de
+  series (de 22 totales — sección 1 explica las 4 restantes).
+- **58% de las series (16.411 de 28.417) tienen ≤2 observaciones.** De ese total:
+  ~7.812 son R45 (economic_annex), 2.760 son R46 (eve — antes de la corrección
+  serían 16), 168 son R47 (bcp_fx_daily — antes de la corrección serían 12), y el
+  resto son series "row-event" genuinamente diseñadas así (cada subasta de LRM,
+  transacción interbancaria o punto de curva de bonos es su propia serie por
+  diseño). **Filtrar por `observations > 12` cubre los tres defectos y las
+  legítimas por igual, sin necesitar identificar a cuál pertenece cada fila.**
+
+| Fuente | Series | Periodicidad(es) | Rango temporal | Nota de identidad |
+|---|---:|---|---|---|
+| `economic_annex` | 10.607 | monthly, annual, quarterly, semiannual | 1950-12 → 2028-12 | R45 en 8 hojas (7.812 series); ver sección 3 |
+| `lrm_auctions` | 3.083 | irregular_daily | 2013-01 → 2026-07 | row-event, diseño correcto |
+| `credit_survey` | 2.805 | quarterly | 2013-03 → 2026-06 | subpreguntas de encuesta, ver README |
+| `eve` | 2.760 | monthly_survey | 2006-04 → 2026-08 | **R46 — en realidad 16 series** |
+| `insurance_annex` | 2.050 | annual | 2009-06 → 2025-06 | no auditado en detalle esta ronda |
+| `financial_indicators` | 1.868 | monthly | 2011-01 → 2026-06 | no auditado en detalle esta ronda |
+| `interbank_market` | 1.814 | irregular_daily, daily | 2010-01 → 2026-08 | row-event, diseño correcto |
+| `corporate_bond_curves` | 1.287 | irregular_daily | 2010-11 → 2026-07 | row-event, diseño correcto |
+| `exchange_houses` | 770 | annual, monthly | 2016-07 → 2026-07 | ver sección 5 |
+| `payments` | 573 | monthly | 2013-11 → 2026-07 | ver sección 6 |
+| `direct_investment` | 407 | annual, quarterly | 1995-12 → 2024-12 | no auditado en detalle esta ronda |
+| `bcp_fx_daily` | 168 | daily | 2013-01 → 2026-08 | **R47 — en realidad 12 series** |
+| `liquidity_facility` | 56 | irregular_daily | 2016-01 → 2021-09 | row-event, diseño correcto |
+| `exchange_rates` | 52 | daily, monthly, annual | 1945-12 → 2026-07 | no auditado en detalle esta ronda |
+| `banking_indicators` | 39 | monthly | 2016-01 → 2026-06 | no auditado en detalle esta ronda |
+| `compensatory_fx_sales` | 36 | monthly | 2015-01 → 2026-07 | patrón atípico (rangos superpuestos, no año-limpio) — no diagnosticado, ver nota abajo |
+| `fx_operations` | 30 | annual, monthly, quarterly | 1990-12 → 2026-12 | limpio |
+| `icc` | 12 | monthly | 2018-01 → 2026-07 | limpio |
+
+**Nota sobre `compensatory_fx_sales`:** tiene ratio series/etiqueta de 12.0 (36
+series, 3 etiquetas), parecido a R47, pero al inspeccionar las 36 series sus rangos
+de fecha se superponen de forma irregular (ej. una serie 2015-2017, otra
+2015-2023, otra 2015-2021 para la misma etiqueta) — no encaja con el patrón limpio
+"una hoja por año" de R47 ni con el de R45/R46. Puede ser un tercer mecanismo
+distinto (posibles columnas de vintage/corte de publicación superpuestas) — no
+investigado a fondo en esta ronda por acotar alcance; queda como candidato para la
+próxima revisión, señalado explícitamente en vez de adivinar una causa.
+
+---
+
+## 5. `exchange_houses`, hoja por hoja
+
+De 10 hojas totales, sólo 3 tienen series; 4 son formularios sin contenido
+(`1.1 BG`, `1.2 EERR`, `2.1 Ratios`, `3.1 Dep y P.` — confirmado vacías en
+`test-v10-runtime-repairs.R`) y el resto son portada/notas/tablas de referencia.
+
+| Hoja | Contenido | Periodicidad | Rango | Series |
+|---|---|---|---|---:|
+| 1. EEFF | Estados financieros de casas de cambio — Reporte, importe en guaraníes | annual | 2016→2026 | 434 |
+| 2. Ratios | Ratios financieros del sistema de casas de cambio | monthly | 2026-06 (corte único) | 240 |
+| 3. Dep y Person | Dependencias y personal de casas de cambio | monthly | 2026-06 (corte único) | 96 |
+
+`2. Ratios` y `3. Dep y Person` publican sólo el corte vigente, no una serie
+histórica — no es un error, es lo que el boletín ofrece.
+
+---
+
+## 6. `payments`, hoja por hoja
+
+Boletín Estadístico de Sistemas de Pago del BCP. 38 de 40 hojas tienen series
+(las 2 restantes son índice/portada). Todas mensuales.
+
+| Grupo | Hojas | Contenido |
 |---|---|---|
-| 2–392 (391 cols) | fechas mensuales, ene-1994 a jul-2026 | la serie mensual real — **una sola serie**, 367+24 observaciones |
-| 393 | "A Julio 2024" | acumulado enero-julio 2024 |
-| 394 | "A Julio 2025\*" | acumulado enero-julio 2025 (provisorio) |
-| 395 | "A Julio 2026\*" | acumulado enero-julio 2026 (provisorio) |
-| 396 | "Var. Nominal A Julio 2026/2025" | diferencia entre las dos columnas anteriores |
-| 397 | "Var. % A Julio 2026/2025" | igual, en porcentaje |
-| 398 | "Incidencia" | contribución al cambio total |
-| 399 | "Var. % Interanual Julio 2026/2025" | variación interanual del propio mes de julio |
+| SIPAP (Sistema de Pagos de Alto Valor, LBTR) | SIPAP_01 a SIPAP_15 | Transferencias entre entidades/clientes financieros vía LBTR y SPI: por entidad, por rango de monto, por día, por franja horaria, por funcionalidad, alias registrados/operativos |
+| CCC (Cámara Compensadora de Cheques — BANCARD) | CCC 01-04 | Cheques compensados, pagados por entidad, por rango de monto, rechazados por causal |
+| OMP (Operadoras de Medios de Pago) | OMP 01-04, 01_02-03_02 | Tarjetas de crédito/débito/prepagas — cantidad, compras por tecnología, infraestructura |
+| MIHA (Ministerio de Hacienda) | MIHA 01-05 | Pagos/transferencias de y hacia el Ministerio de Hacienda vía LBTR/ACH, PYG y USD |
+| AFD (Agencia Financiera de Desarrollo) | AFD 01-05 | Pagos/transferencias de y hacia la AFD vía LBTR/ACH, PYG y USD |
+| Otros | CCCoop, CCE, BIC E. Bancarias | Cámara compensadora de cooperativas (CABAL), transferencias EMPE, catálogo de códigos BIC |
 
-Las columnas 393–399 **no están en el CSV como una sola serie con 7 observaciones
-en fechas distintas** — cada una se volvió una serie de 1 sola observación, todas
-fechadas 2026-07-01 (el último período real de la hoja), porque ésa fue la única
-fecha disponible cuando el parser no pudo leer "A Julio 2024" como una fecha.
-
-**Cómo detectarlas en el CSV:** `identity_stability = 'positional_lane'` y
-`observations` muy bajo (1 o 2) dentro de una de las 8 hojas listadas. La sección 4
-de este informe da el conteo exacto por hoja. **Cómo evitarlas al analizar:**
-filtrar `identity_stability = 'semantic'`, o `observations > 12`, antes de tratar
-una fila del CSV como una serie temporal utilizable — la serie mensual real
-(`identity_stability = 'semantic'`) para cada producto sigue completa y correcta;
-las derivadas están fragmentadas pero técnicamentente son redundantes (se
-recalculan de la serie mensual).
-
-**No se corrigió en esta ronda.** El arreglo toca el parser compartido del eje de
-columnas — mismo nivel de riesgo que el ítem #4 de `revisiones/MEJORAS_v11.md`
-(reescribir identidad de estas mismas 9 hojas), que el usuario ya excluyó
-explícitamente de la ronda de mejoras de riesgo bajo/medio. Detalle completo,
-alcance medido hoja por hoja y precedente ya resuelto en el proyecto (`Cuadro 49`
-tuvo el mismo problema en su eje de filas) en `AUDITORIA_REGRESIONES.md`, entrada
-R45.
+`SIPAP_08` (transferencias SPI por entidad financiera) es la única con
+concentración notable de `positional_lane` (52 de 55 series) — no investigada en
+esta ronda, patrón a confirmar antes de asumir que es la misma familia que R45.
 
 ---
 
-## 3. Resumen general
-
-- **28.417 series** en `dim_series`, **1.216.910 observaciones** en total, **18
-  fuentes** con modelo de series (de las 22 totales — ver sección 1 para las 4
-  restantes).
-- **Rango temporal global:** 1945-12-31 a 2028-12-01 (el extremo superior son
-  proyecciones oficiales de `Cuadro 49`, no un error — `docs/VERIFICATION.md`).
-- **Periodicidades:** `daily`, `irregular_daily`, `monthly`, `monthly_survey`,
-  `quarterly`, `semiannual`, `annual`.
-- **58% de las series (16.411 de 28.417) tienen 2 observaciones o menos.** La mitad
-  de este total (7.812) es exactamente el defecto R45 de la sección 2. El resto son
-  series "row-event" genuinamente diseñadas así — cada operación individual
-  (subasta de LRM, transacción interbancaria, punto de curva de bonos en una fecha)
-  es su propia serie por diseño (`lrm_auctions`: 3.083 series así; buena parte de
-  `interbank_market`; toda `corporate_bond_curves`). Si buscás un panel de
-  indicadores macro tradicionales, filtrá por `observations > 12` **y**
-  `identity_stability = 'semantic'`.
-
----
-
-## 4. Detalle por fuente
-
-| Fuente | Series | Hojas con datos | Periodicidad(es) | Rango temporal | Posicional/lane | Unidad ambigua |
-|---|---:|---:|---|---|---:|---:|
-| `economic_annex` | 10.607 | 93 (de 94; la restante es sólo índice) | monthly (9.783), annual (516), quarterly (296), semiannual (12) | 1950-12-31 → 2028-12-01 | 8.214 (7.812 son R45; ver abajo) | 69 |
-| `lrm_auctions` | 3.083 | — (row-event, sin hoja) | irregular_daily | 2013-01-08 → 2026-07-30 | 3.083 (diseño, no defecto) | 0 |
-| `credit_survey` | 2.805 | 1 hoja (`%`) | quarterly | 2013-03-31 → 2026-06-30 | 2.534 | 0 |
-| `eve` | 2.760 | — (snapshot, sin hoja) | monthly_survey | 2006-04-01 → 2026-08-01 | 0 | 0 |
-| `insurance_annex` | 2.050 | ver detalle propio (no expandido acá) | annual | 2009-06-30 → 2025-06-30 | 2 | 0 |
-| `financial_indicators` | 1.868 | 1 hoja | monthly | 2011-01-31 → 2026-06-30 | 1.636 | 0 |
-| `interbank_market` | 1.814 | — (row-event) | irregular_daily (1.263), daily (551) | 2010-01-04 → 2026-08-14 | 1.263 (diseño) | 632 |
-| `corporate_bond_curves` | 1.287 | — (row-event, CSV largo) | irregular_daily | 2010-11-01 → 2026-07-31 | 0 | 0 |
-| `exchange_houses` | 770 | 3 (de 10; 4 formularios vacíos, otras metadata) | annual (434), monthly (336) | 2016-07-31 → 2026-07-31 | 0 | 0 |
-| `payments` | 573 | 38 (de 40) | monthly | 2013-11-30 → 2026-07-31 | 74 | 142 |
-| `direct_investment` | 407 | ver detalle propio | annual (256), quarterly (151) | 1995-12-31 → 2024-12-31 | 0 | 0 |
-| `bcp_fx_daily` | 168 | 1 hoja | daily | 2013-01-02 → 2026-08-14 | 0 | 0 |
-| `liquidity_facility` | 56 | — (row-event) | irregular_daily | 2016-01-20 → 2021-09-09 | 56 (diseño) | 0 |
-| `exchange_rates` | 52 | 1 hoja | daily (28), monthly (22), annual (2) | 1945-12-31 → 2026-07-31 | 14 | 0 |
-| `banking_indicators` | 39 | 1 hoja | monthly | 2016-01-01 → 2026-06-01 | 0 | 20 |
-| `compensatory_fx_sales` | 36 | 1 hoja | monthly | 2015-01-31 → 2026-07-31 | 36 (diseño) | 0 |
-| `fx_operations` | 30 | — (snapshot) | annual (10), monthly (10), quarterly (10) | 1990-12-31 → 2026-12-31 | 0 | 0 |
-| `icc` | 12 | — (snapshot) | monthly | 2018-01-31 → 2026-07-31 | 0 | 0 |
-
-**"Posicional/lane" y "diseño, no defecto":** en las fuentes row-event
-(`lrm_auctions`, buena parte de `interbank_market`, `liquidity_facility`,
-`compensatory_fx_sales`), cada evento sin identificador propio del publicador se
-modela como su propia serie a propósito (`README.md`, sección "What v9 repaired").
-En `economic_annex`, en cambio, la enorme mayoría de los casos `positional_lane`
-(7.812 de 8.214) es el defecto R45 recién diagnosticado — la distinción importa
-para decidir si conviene filtrar esas filas del análisis.
-
----
-
-## 5. `economic_annex`, hoja por hoja (las 93 hojas con series reales)
-
-`hierarchy_status = 'unresolved'` es prácticamente universal en esta fuente (10.607
-de 10.607 series) — no es una señal útil hoja por hoja acá, se omite de esta tabla
-(sí es comparable entre fuentes, ver sección 4).
-
-| Hoja | Series | Periodicidad(es) | Rango | Positional/lane | Nota |
-|---|---:|---|---|---:|---|
-| Cuadro 53a | 1.309 | monthly | 1994-01 → 2026-07 | 1.160 | R45 |
-| Cuadro 53b | 1.309 | monthly | 1994-01 → 2026-07 | 1.160 | R45 |
-| Cuadro 46a | 1.290 | monthly | 1994-01 → 2026-07 | 1.142 | R45 |
-| Cuadro 46b | 1.288 | monthly | 1994-01 → 2026-07 | 1.140 | R45 |
-| Cuadro 52b | 1.287 | monthly | 2006-01 → 2026-07 | 1.104 | R45 |
-| Cuadro 52a | 1.287 | monthly | 2006-01 → 2026-07 | 1.104 | R45 |
-| Cuadro 51b | 574 | monthly | 1994-01 → 2026-07 | 513 | R45 |
-| Cuadro 51a | 574 | monthly | 1994-01 → 2026-07 | 513 | R45 |
-| CUADRO 61 | 170 | monthly | 2004-01 → 2026-07 | 170 | Dimensión de entidad no capturada (distinto de R45, ver MEJORAS #4) |
-| CUADRO 38 | 120 | annual/quarterly | 2008-03 → 2026-12 | 92 | sin diagnosticar en detalle |
-| CUADRO 40 | 88 | quarterly/annual | 2008-03 → 2026-12 | 0 | — |
-| CUADRO 41 | 84 | quarterly/annual | 2008-03 → 2026-12 | 12 | sin diagnosticar |
-| CUADRO 37 | 76 | quarterly/annual | 2008-03 → 2026-12 | 0 | — |
-| CUADRO 39 | 76 | annual/quarterly | 2008-03 → 2026-12 | 8 | sin diagnosticar |
-| CUADRO 32 A | 56 | monthly | 2013-01 → 2026-06 | 0 | — |
-| CUADRO 14 b | 44 | monthly | 1995-01 → 2026-07 | 33 | sin diagnosticar |
-| CUADRO 36 | 38 | monthly/annual | 2003-12 → 2026-12 | 0 | — |
-| CUADRO 32 | 38 | monthly/annual | 1994-01 → 2026-05 | 0 | — |
-| CUADRO 42 | 30 | annual | 2008-12 → 2024-12 | 16 | sin diagnosticar |
-| CUADRO 58 | 30 | annual/monthly | 2008-01 → 2026-12 | 0 | — |
-| CUADRO 20 | 30 | annual/quarterly/monthly | 1990-12 → 2026-12 | 0 | — |
-| CUADRO 18 | 29 | annual/monthly | 1990-12 → 2024-11 | 2 | menor |
-| CUADRO 15 | 24 | monthly | 1992-12 → 2026-07 | 0 | — |
-| CUADRO 12 | 22 | annual/semiannual | 2001-06 → 2025-12 | 0 | — |
-| CUADRO 1 | 21 | annual | 1991-12 → 2026-12 | 0 | — |
-| CUADRO 2 | 21 | annual | 1991-12 → 2026-12 | 0 | — |
-| CUADRO 3 | 21 | annual | 1992-12 → 2026-12 | 0 | — |
-| CUADRO 4a | 21 | annual | 1991-12 → 2026-12 | 0 | — |
-| CUADRO 4b | 21 | annual | 1991-12 → 2026-12 | 0 | — |
-| CUADRO 27 | 20 | annual/monthly | 1990-12 → 2024-11 | 0 | — |
-| CUADRO 14 a | 20 | monthly | 1995-01 → 2026-07 | 15 | sin diagnosticar |
-| CUADRO 16 a | 20 | monthly | 1994-12 → 2026-07 | 0 | — |
-| CUADRO 19 | 19 | monthly | 1993-01 → 2026-07 | 0 | — |
-| CUADRO 5 | 19 | annual | 1991-12 → 2026-12 | 18 | sin diagnosticar |
-| CUADRO 17 | 18 | monthly | 1995-12 → 2026-06 | 0 | — |
-| CUADRO 56a | 18 | annual/monthly | 1990-12 → 2026-08 | 0 | — |
-| CUADRO 35 | 18 | annual/monthly | 1990-12 → 2026-05 | 4 | sin diagnosticar |
-| Cuadro 47 | 18 | monthly | 2003-01 → 2026-07 | 0 | — |
-| CUADRO 9 a | 18 | monthly | 2014-01 → 2026-06 | 0 | — |
-| Cuadro 44a | 17 | monthly | 1994-01 → 2026-07 | 0 | — |
-| Cuadro 44b | 17 | monthly | 1994-01 → 2026-07 | 0 | — |
-| CUADRO 23 | 17 | monthly | 1995-12 → 2024-03 | 0 | — |
-| CUADRO 14 | 16 | monthly | 1994-12 → 2026-07 | 0 | — |
-| CUADRO 23a | 15 | monthly | 1995-03 → 2024-03 | 0 | — |
-| CUADRO 16 (Cont.) | 14 | monthly | 1994-12 → 2026-07 | 0 | — |
-| Cuadro 50 | 13 | monthly | 1994-01 → 2026-07 | 0 | — |
-| Cuadro 49 | 13 | monthly | 1994-01 → 2028-12 | 0 | proyección oficial, ya revisada (R40) |
-| Cuadro 45 | 13 | monthly | 1994-01 → 2026-07 | 0 | — |
-| CUADRO 25 | 12 | monthly | 1997-01 → 2024-03 | 0 | — |
-| CUADRO 26 | 12 | monthly/annual | 2002-01 → 2026-12 | 0 | — |
-| CUADRO 16 | 11 | monthly | 1994-12 → 2026-07 | 0 | — |
-| CUADRO 21 | 10 | monthly | 1995-01 → 2024-11 | 0 | — |
-| Cuadro 54 | 10 | monthly | 2003-01 → 2026-07 | 0 | — |
-| CUADRO 22 | 10 | monthly | 1996-01 → 2024-11 | 0 | — |
-| CUADRO 31 | 10 | monthly/annual | 1990-12 → 2026-05 | 0 | — |
-| CUADRO 6a (Cont.) | 9 | quarterly | 1995-03 → 2026-03 | 0 | — |
-| CUADRO 6 | 9 | quarterly | 1994-03 → 2026-03 | 0 | — |
-| CUADRO 6 (Cont.) | 9 | quarterly | 1995-03 → 2026-03 | 0 | — |
-| CUADRO 6a | 9 | quarterly | 1994-03 → 2026-03 | 0 | — |
-| CUADRO 29 (Cont.) | 8 | monthly | 1995-01 → 2024-03 | 0 | — |
-| CUADRO 10 a | 8 | monthly | 2001-01 → 2026-06 | 0 | — |
-| Cuadro 43 | 8 | monthly | 1994-01 → 2026-07 | 2 | sin diagnosticar |
-| CUADRO 8 | 8 | annual | 1950-12 → 2026-12 | 0 | serie más larga de toda la base |
-| CUADRO 34 | 7 | monthly | 2002-01 → 2026-05 | 0 | — |
-| CUADRO 23b | 7 | monthly | 2017-12 → 2025-11 | 2 | sin diagnosticar |
-| CUADRO 7a (Cont.) | 7 | quarterly | 1995-03 → 2026-03 | 0 | — |
-| CUADRO 7a | 7 | quarterly | 1994-03 → 2026-03 | 0 | — |
-| CUADRO 24b | 7 | monthly | 2017-12 → 2025-11 | 2 | sin diagnosticar |
-| CUADRO 24 | 7 | monthly | 1995-03 → 2024-03 | 0 | — |
-| CUADRO 28 | 7 | monthly | 1995-01 → 2024-03 | 0 | — |
-| CUADRO 7 (Cont.) | 7 | quarterly | 1995-03 → 2026-03 | 0 | — |
-| CUADRO 7 | 7 | quarterly | 1994-03 → 2026-03 | 0 | — |
-| CUADRO 24a | 7 | monthly | 1995-03 → 2024-03 | 0 | — |
-| CUADRO 59 | 7 | monthly/annual | 1994-01 → 2026-12 | 0 | — |
-| CUADRO 29 | 7 | monthly | 1995-01 → 2024-03 | 0 | — |
-| CUADRO 11 | 7 | annual/monthly | 1980-12 → 2026-12 | 0 | — |
-| Cuadro 48 | 6 | monthly | 2003-01 → 2026-07 | 0 | — |
-| CUADRO 60b | 6 | monthly | 1995-01 → 2026-06 | 0 | — |
-| CUADRO 55 | 6 | monthly/annual | 1994-01 → 2026-12 | 0 | — |
-| CUADRO 33 | 6 | monthly | 1999-01 → 2026-05 | 2 | sin diagnosticar |
-| CUADRO 31 (Cont.) | 5 | annual/monthly | 1990-12 → 2026-05 | 0 | — |
-| CUADRO 56b | 5 | monthly | 2009-01 → 2026-08 | 0 | — |
-| Cuadro 21 a | 5 | monthly | 1960-01 → 2024-11 | 0 | serie histórica más larga después de CUADRO 8 |
-| CUADRO 60c | 5 | monthly | 1995-01 → 2026-06 | 0 | — |
-| CUADRO 13 | 5 | monthly | 1988-01 → 2026-07 | 0 | — |
-| CUADRO 13 a | 4 | monthly | 1988-01 → 2026-07 | 0 | — |
-| CUADRO 14 c | 4 | monthly | 2003-01 → 2026-07 | 0 | — |
-| CUADRO 30 | 4 | monthly | 1997-01 → 2024-03 | 0 | — |
-| CUADRO 60a | 4 | monthly | 1997-01 → 2026-07 | 0 | — |
-| CUADRO 10 | 3 | monthly | 2001-01 → 2026-06 | 0 | — |
-| CUADRO 9 | 2 | monthly | 1994-01 → 2026-06 | 0 | — |
-| CUADRO 57a | 1 | monthly | 2021-01 → 2021-12 | 0 | arreglada esta sesión (R40) |
-| CUADRO 57b | 1 | monthly | 1991-01 → 2020-12 | 0 | — |
-
-**"Sin diagnosticar":** hojas con algo de `positional_lane` pero en cantidades
-pequeñas (2-33 series), no investigadas en esta ronda porque no tienen el patrón
-100%-en-el-último-período de R45 ni son evidentemente el mismo problema — quedan
-como candidatas para una revisión puntual futura, no se afirma una causa sin
-evidencia (misma disciplina que el resto de esta auditoría).
-
----
-
-## 6. `payments`, hoja por hoja (38 de 40 hojas)
-
-Periodicidad uniforme `monthly` en todas. `SIPAP_08` es la única con concentración
-notable de `positional_lane` (52 de 55 series) — no investigada en esta ronda;
-patrón a confirmar antes de asumir que es la misma familia que R45.
-
-| Hoja | Series | Rango | Positional/lane |
-|---|---:|---|---:|
-| SIPAP_05 | 73 | 2013-11 → 2026-07 | 0 |
-| SIPAP_04 | 64 | 2013-11 → 2026-07 | 0 |
-| SIPAP_08 | 55 | 2022-05 → 2026-07 | 52 |
-| CCC 02 | 40 | 2013-11 → 2026-07 | 0 |
-| SIPAP_15 | 24 | 2023-01 → 2026-07 | 0 |
-| CCC 04 | 24 | 2013-11 → 2026-07 | 0 |
-| SIPAP_10 | 24 | 2022-05 → 2026-07 | 0 |
-| SIPAP_14 | 24 | 2023-01 → 2026-07 | 0 |
-| OMP 04 | 21 | 2018-01 → 2026-07 | 0 |
-| SIPAP_09 | 16 | 2022-05 → 2026-07 | 0 |
-| SIPAP_12 | 16 | 2022-05 → 2026-07 | 0 |
-| SIPAP_03 | 16 | 2021-10 → 2026-07 | 0 |
-| CCC 03 | 14 | 2013-11 → 2026-07 | 0 |
-| OMP 03_02 | 14 | 2024-01 → 2026-07 | 0 |
-| OMP 01_02 | 14 | 2024-01 → 2026-07 | 0 |
-| OMP 02_02 | 14 | 2024-01 → 2026-07 | 0 |
-| OMP 01 | 14 | 2018-01 → 2026-07 | 0 |
-| OMP 02 | 12 | 2018-01 → 2026-07 | 0 |
-| OMP 03 | 12 | 2018-01 → 2026-07 | 0 |
-| CCCoop | 10 | 2021-12 → 2026-07 | 0 |
-| SIPAP_11 | 8 | 2023-07 → 2026-07 | 0 |
-| SIPAP_13 | 7 | 2023-08 → 2026-07 | 0 |
-| SIPAP_01 | 6 | 2013-11 → 2026-07 | 0 |
-| CCC 01 | 6 | 2013-11 → 2026-07 | 6 |
-| SIPAP_02 | 6 | 2013-11 → 2026-07 | 0 |
-| AFD 03 | 5 | 2013-11 → 2026-07 | 4 |
-| AFD 02 | 5 | 2013-11 → 2026-07 | 4 |
-| MIHA 02 | 5 | 2013-11 → 2026-07 | 4 |
-| MIHA 03 | 5 | 2013-11 → 2026-07 | 4 |
-| SIPAP_06 | 3 | 2013-11 → 2026-07 | 0 |
-| MIHA 04 | 3 | 2013-11 → 2026-07 | 0 |
-| MIHA 05 | 3 | 2013-11 → 2026-07 | 0 |
-| AFD 04 | 2 | 2013-11 → 2026-07 | 0 |
-| AFD 05 | 2 | 2013-11 → 2026-07 | 0 |
-| SIPAP_07 | 2 | 2022-05 → 2026-07 | 0 |
-| CCE | 2 | 2020-10 → 2026-07 | 0 |
-| MIHA 01 | 1 | 2013-11 → 2026-07 | 0 |
-| AFD 01 | 1 | 2014-06 → 2026-07 | 0 |
-
----
-
-## 7. `exchange_houses`, hoja por hoja (3 de 10 hojas tienen series; 4 son
-formularios sin contenido — ver `test-v10-runtime-repairs.R` — y las restantes son
-metadata/entidad, no series temporales)
-
-| Hoja | Series | Periodicidad | Rango |
-|---|---:|---|---|
-| 1. EEFF | 434 | annual | 2016-07 → 2026-07 |
-| 2. Ratios | 240 | monthly | 2026-06 (corte único) |
-| 3. Dep y Person | 96 | monthly | 2026-06 (corte único) |
-
-`2. Ratios` y `3. Dep y Person` sólo tienen el corte más reciente disponible (no es
-un error — la fuente publica esos indicadores sólo para el mes vigente, no una
-serie histórica).
-
----
-
-## 8. Columnas de `series_inventory.csv`
+## 7. Columnas de `series_inventory.csv`
 
 `source_id, source_sheet, series_id, series_label, frequency, first_period,
 last_period, observations, unit, scale, currency, identity_stability,
 hierarchy_status`
 
-- `source_sheet`: vacío para las 4 fuentes sin modelo de hoja documentada
-  (`icc`, `eve`, `fx_operations` usan tablas de snapshot dedicadas;
-  `lrm_auctions`/`interbank_market`/`liquidity_facility`/`compensatory_fx_sales`
-  son row-event sin hoja única).
-- `first_period` / `last_period`: primera y última fecha con una observación real
-  (no son límites sintéticos).
-- `observations`: cantidad real en `fact_series_events` (sparse).
-- `series_id`: formato `fuente:hoja_o_ruta:hash`, mismo identificador usado en
-  todas las vistas `v_*` (`README.md`, "Data layers").
+- `source_sheet`: vacío para fuentes sin modelo de hoja documentada (`icc`, `eve`,
+  `fx_operations` usan snapshot dedicado; las fuentes row-event no tienen hoja
+  única).
+- `observations`: cantidad real en `fact_series_events` (sparse, no interpolada).
+- `series_id`: formato `fuente:hoja_o_ruta:hash`.
