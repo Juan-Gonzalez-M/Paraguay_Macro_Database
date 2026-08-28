@@ -48,6 +48,29 @@ The corrected minimum acceptance targets encoded in tests are:
 | Reference credit activities | At least 1,112 |
 | Economic Annex documented sheets | At least 93 |
 | Economic Annex observations | At least 100,000 |
+
+## Audit P0 repair targets
+
+`tests/testthat/test-audit-p0-repairs.R` and the cardinality block of `test-full-pipeline-smoke.R` lock the P0 findings of the external technical audit. These are exact counts, not minimums: each is a repaired identity defect, so drift in either direction means a parser or the identity rule regressed. The full verification record is in `revisiones/REVISION_AUDITORIA_EXTERNA.md`.
+
+| Check | Before | After |
+|---|---:|---:|
+| `compensatory_fx_sales` series | 36 | 3 |
+| `compensatory_fx_sales` conflicting months (Total / Compensatorias / Complementarias) | 114 / 109 / 92 | 0 / 0 / 0 |
+| `eve` series | 2,760 | 16 |
+| `bcp_fx_daily` series | 168 | 12 |
+| `credit_survey` one-observation series | 2,539 | 5 (register R52) |
+| `CUADRO 61` series / non-semantic identities | 170 / 25,912 | 182 / 0 |
+| `fx_operations` series | 30 | 30 (unchanged by design) |
+| Documented series whose slug differs from `make_clean_names(sheet)` | — | 0 of 21,667 |
+| Series with no declared table status | — | 0 |
+
+Independent evidence that the repairs did not move data:
+
+- Observation totals are identical source by source against the pre-migration database, except `compensatory_fx_sales` (−1,005 duplicated rows removed) and `economic_annex` (+394 `CUADRO 61` cells the generic extractor never read).
+- `CUADRO 61` source-to-target balance is exact: the 26,306 numeric cells in columns 2-11 produce 26,306 observations, none unaccounted. The 301 cells in column 1 are the year axis and the 45 in columns 225-236 are a stray duplicated block; both are deliberate exclusions.
+- Compensatory FX accepts 417 of 422 numeric cells. The five excluded (rows 114-118, column 9) are placeholder zeros in the totals column for August-December 2026, months whose component columns are still empty; accepting them would invent future zero-valued observations.
+- Arithmetic reconciliation: `Total Ventas = Ventas Compensatorias + Ventas Complementarias` in all 139 months; in `CUADRO 61` the five operation types sum to the period total in 1,822 of 1,822 groups and the three institutions sum to `Total` in 350 of 350, within 0.01%.
 | Payments documented sheets | At least 38 |
 | Payments observations | At least 40,000 |
 | Exchange-house documented panels | 3; at least 4,000 observations |

@@ -386,10 +386,22 @@ documented_parse_compensatory_sales <- function(raw, source_sheet) {
     year_label <- text[max(candidates[, "row"]), month_col]
     year <- as.integer(stringr::str_extract(year_label, "20[0-9]{2}"))
     component_cols <- seq.int(month_col + 1L, min(ncol(text), month_col + 2L))
-    possible_rows <- seq.int(month_row + 1L, nrow(text))
+    # Each year header owns exactly the rows up to the next year header in the
+    # same column. Without this bound the block ran to the last numeric row of
+    # the sheet, re-reading every later year block under this block's year: 474
+    # rows for 139 months, with conflicting values in 92-114 months per measure.
+    following_years <- year_hits[year_hits[, "col"] == month_col & year_hits[, "row"] > month_row, "row"]
+    block_end <- if (length(following_years)) min(following_years) - 1L else nrow(text)
+    if (block_end <= month_row) next
+    possible_rows <- seq.int(month_row + 1L, block_end)
     active_rows <- possible_rows[rowSums(!is.na(numbers[possible_rows, component_cols, drop = FALSE])) > 0L]
     if (!length(active_rows)) next
     last_active_row <- max(active_rows)
+    block_months <- documented_month_number(text[seq.int(month_row + 1L, last_active_row), month_col])
+    if (sum(!is.na(block_months)) > 12L) stop(
+      "Compensatory-sales guard: year block ", year, " spans ", sum(!is.na(block_months)),
+      " month rows; a calendar year cannot exceed 12.", call. = FALSE
+    )
     for (r in seq.int(month_row + 1L, last_active_row)) {
       month <- documented_month_number(text[r, month_col]); if (is.na(month)) next
       components <- numbers[r, seq.int(month_col + 1L, min(ncol(text), month_col + 3L))]

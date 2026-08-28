@@ -139,6 +139,7 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
     ))
   }
   apply_reviewed_concept_mappings(con, root)
+  apply_table_status(con, root)
   flags <- validate_database(con, manifest, release_id, root)
   errors <- sum(flags$severity == "error")
   warnings <- sum(flags$severity == "warning")

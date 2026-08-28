@@ -880,7 +880,7 @@ documented_sheet_rule <- function(root, source_id, source_sheet) {
   path <- file.path(root, "config", "sheet_modes.csv")
   empty_rule <- list(
     parser_mode_override = NA_character_, hierarchy_status = "unresolved",
-    note = NA_character_, year_axis_minimum = NA_integer_
+    note = NA_character_, year_axis_minimum = NA_integer_, continuation_group = NA_character_
   )
   if (!file.exists(path)) return(empty_rule)
   rules <- documented_sheet_modes(root)
@@ -891,11 +891,15 @@ documented_sheet_rule <- function(root, source_id, source_sheet) {
   year_axis_minimum <- if ("year_axis_minimum" %in% names(rule)) {
     suppressWarnings(as.integer(dplyr::na_if(rule$year_axis_minimum[[1]], "")))
   } else NA_integer_
+  continuation_group <- if ("continuation_group" %in% names(rule)) {
+    dplyr::na_if(rule$continuation_group[[1]], "")
+  } else NA_character_
   list(
     parser_mode_override = dplyr::na_if(rule$parser_mode_override[[1]], ""),
     hierarchy_status = dplyr::coalesce(dplyr::na_if(rule$hierarchy_status[[1]], ""), "unresolved"),
     note = dplyr::na_if(rule$note[[1]], ""),
-    year_axis_minimum = year_axis_minimum
+    year_axis_minimum = year_axis_minimum,
+    continuation_group = continuation_group
   )
 }
 
@@ -940,8 +944,41 @@ documented_attach_payment_participants <- function(observations, participants) {
     dplyr::select(-dplyr::all_of("participant_id_matched"))
 }
 
+# Parser modes whose period axis runs across columns. The structural slot used
+# to disambiguate a repeated label must sit on the axis that is NOT the period
+# axis: source_row for these modes, source_column for every other (vertical)
+# mode. Getting it backwards pins the period and turns each column into its own
+# one-observation series -- credit_question_quarter was missing from this list
+# and produced 2,534 single-observation identities out of 2,805.
+documented_horizontal_period_modes <- c(
+  "horizontal_date", "horizontal_year", "horizontal_year_month", "horizontal_year_quarter",
+  "credit_question_quarter", "credit_index_quarter"
+)
+
+documented_period_axis_is_horizontal <- function(parser_mode) {
+  parser_mode %in% documented_horizontal_period_modes
+}
+
+# Slug a worksheet name for use inside series_id. janitor::make_clean_names() is
+# deliberately applied one value at a time: given a vector it uniquifies
+# duplicates BY POSITION (Datos, Datos_2, ... Datos_26), so the same sheet name
+# would receive a different slug depending on where its series happened to fall
+# in the identity table. Series identity would then shift for every downstream
+# series as soon as the publisher inserted one column. The slug must depend only
+# on the sheet name.
+documented_sheet_slug <- function(source_sheet) {
+  vapply(source_sheet, function(sheet) janitor::make_clean_names(sheet), character(1), USE.NAMES = FALSE)
+}
+
 documented_finalize_observations <- function(observations, item, release_id, publication_date) {
   if (!nrow(observations)) return(observations)
+  # identity_sheet is the worksheet key that participates in series identity. It
+  # equals source_sheet unless config/sheet_modes.csv declares a
+  # continuation_group, i.e. the publisher split one continuous series across
+  # several worksheets (bcp_fx_daily: one sheet per year). source_sheet itself is
+  # never touched, so per-sheet lineage, drift and raw-cell paths are unaffected.
+  if (!"identity_sheet" %in% names(observations)) observations$identity_sheet <- NA_character_
+  observations$identity_sheet <- dplyr::coalesce(observations$identity_sheet, observations$source_sheet)
   observations <- observations %>%
     dplyr::filter(!is.na(.data$period), !is.na(.data$value), nzchar(.data$series_path)) %>%
     dplyr::mutate(
@@ -949,10 +986,10 @@ documented_finalize_observations <- function(observations, item, release_id, pub
         !is.na(.data$exchange_item_id) & !is.na(.data$entity_id),
         paste(.data$exchange_item_id, .data$entity_id, sep = "|"), .data$series_path
       ),
-      collision_key = paste(.data$source_sheet, .data$frequency, .data$identity_path, sep = "|"),
-      structural_slot = dplyr::case_when(
-        .data$parser_mode %in% c("horizontal_date", "horizontal_year", "horizontal_year_quarter") ~ paste0("row_", .data$source_row),
-        TRUE ~ paste0("column_", .data$source_column)
+      collision_key = paste(.data$identity_sheet, .data$frequency, .data$identity_path, sep = "|"),
+      structural_slot = dplyr::if_else(
+        documented_period_axis_is_horizontal(.data$parser_mode),
+        paste0("row_", .data$source_row), paste0("column_", .data$source_column)
       ),
       .row_order = dplyr::row_number()
     )
@@ -967,7 +1004,7 @@ documented_finalize_observations <- function(observations, item, release_id, pub
         paste(.data$identity_path, .data$structural_slot, sep = " — "),
         .data$identity_path
       ),
-      axis_collision_key = paste(.data$source_sheet, .data$frequency, .data$axis_path, sep = "|")
+      axis_collision_key = paste(.data$identity_sheet, .data$frequency, .data$axis_path, sep = "|")
     )
   axis_collisions <- observations %>%
     dplyr::count(.data$axis_collision_key, .data$period, name = "n") %>%
@@ -998,22 +1035,22 @@ documented_finalize_observations <- function(observations, item, release_id, pub
   # once, then join it back; this is byte-for-byte equivalent to the former
   # per-observation vapply() while avoiding hundreds of thousands of digests.
   identity_lookup <- observations %>%
-    dplyr::distinct(.data$source_sheet, .data$frequency, .data$stable_path) %>%
+    dplyr::distinct(.data$identity_sheet, .data$frequency, .data$stable_path) %>%
     dplyr::mutate(
-      identity_basis = paste(.data$source_sheet, .data$frequency, .data$stable_path, sep = "|"),
+      identity_basis = paste(.data$identity_sheet, .data$frequency, .data$stable_path, sep = "|"),
       series_hash = substr(vapply(
         paste(.data$stable_path, .data$frequency, sep = "|"), digest::digest,
         character(1), algo = "sha256", serialize = FALSE
       ), 1L, 24L),
       series_id = paste0(
-        item$source_id, ":", janitor::make_clean_names(.data$source_sheet), ":", .data$series_hash
+        item$source_id, ":", documented_sheet_slug(.data$identity_sheet), ":", .data$series_hash
       )
     ) %>%
     dplyr::select(-dplyr::all_of("series_hash"))
   observations <- observations %>%
     dplyr::left_join(
       identity_lookup,
-      by = c("source_sheet", "frequency", "stable_path"),
+      by = c("identity_sheet", "frequency", "stable_path"),
       na_matches = "na"
     ) %>%
     dplyr::arrange(.data$.row_order) %>%
@@ -1178,6 +1215,158 @@ documented_parse_credit_sheet <- function(raw, source_sheet) {
   observations <- if (length(records)) dplyr::bind_rows(records) else documented_empty_observations()
   mode <- if (nrow(observations)) unique(observations$parser_mode)[[1]] else "unparsed_credit_layout"
   list(observations = observations, mode = mode,
+       raw_nonempty_cells = sum(!documented_blank(text)), title = title)
+}
+
+# CUADRO 61 -- "Compra / Venta de divisas en el mercado cambiario local".
+#
+# The generic extractor reads the date axis of this sheet correctly but never
+# captures its two-level column header, so it names series from data rows: 170
+# identities whose labels are concatenated numbers ("221174 - 2534436.331676 -
+# ..."), all positional lanes. Right values, unusable identities.
+#
+# Published layout (verified against report_cell_values, 2,752 x 236 sheet):
+#   row  10        "Compra" at the first value column, "Venta" at the second
+#                  block; both span their five columns and must be filled right.
+#   row  11        "Año" in column 1, then the institution for each column:
+#                  Bancos comerciales | Casas de cambio | Financieras |
+#                  Casas de cambios y financieras | Total, repeated per side.
+#   column 1       the row axis, mixing three period kinds and their breakdowns:
+#                  a bare year (an annual observation, and/or the anchor for the
+#                  quarter rows below it), "1er. trim." .. "4to. trim.", and a
+#                  typed month date. Every row between two period rows is a
+#                  breakdown OF the period above it. From July 2015 the
+#                  breakdown is two levels deep: an operation type (Spot y
+#                  Efectivo, Arbitraje, Operación Nominal, Forward, Canje) and,
+#                  under some of them, a dash-prefixed split by currency
+#                  (- Dólar, - Euros, ...) or residency (- Residentes). The dash
+#                  is the publisher's nesting marker, so "- Euros" means one
+#                  thing under Arbitraje and another under Operación Nominal and
+#                  the parent has to stay in the identity.
+# Columns 12+ and the rows after the last period carry a stray duplicated block
+# and the published footnotes; both are excluded by requiring an institution
+# header on the column and a resolved period on the row.
+documented_parse_fx_market_turnover <- function(raw, source_sheet) {
+  text <- documented_text_matrix(raw)
+  numbers <- documented_number_matrix(raw)
+  dates <- documented_date_matrix(raw, text)
+  if (nrow(text) < 12L || ncol(text) < 3L) stop(
+    "FX-turnover guard: sheet is smaller than the published CUADRO 61 layout.", call. = FALSE
+  )
+  normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
+  side_rows <- which(
+    rowSums(normalized == "compra", na.rm = TRUE) > 0L &
+      rowSums(normalized == "venta", na.rm = TRUE) > 0L
+  )
+  if (!length(side_rows)) stop(
+    "FX-turnover guard: no header row carries both Compra and Venta.", call. = FALSE
+  )
+  side_row <- side_rows[[1]]
+  entity_row <- side_row + 1L
+  if (entity_row > nrow(text) || !identical(normalized[entity_row, 1], "ano")) stop(
+    "FX-turnover guard: the row below the Compra/Venta header does not start with 'Año'.", call. = FALSE
+  )
+
+  entity_labels <- stringr::str_squish(text[entity_row, ])
+  entity_cols <- which(!documented_blank(entity_labels))
+  entity_cols <- entity_cols[entity_cols > 1L]
+  if (!length(entity_cols)) stop(
+    "FX-turnover guard: no institution columns found under the Año header.", call. = FALSE
+  )
+  side_labels <- stringr::str_squish(text[side_row, ])
+  filled_sides <- rep(NA_character_, ncol(text))
+  current_side <- NA_character_
+  for (j in seq_len(max(entity_cols))) {
+    if (!documented_blank(side_labels[[j]])) current_side <- side_labels[[j]]
+    filled_sides[[j]] <- current_side
+  }
+  value_cols <- entity_cols[!is.na(filled_sides[entity_cols])]
+  sides_present <- unique(filled_sides[value_cols])
+  if (length(sides_present) != 2L) stop(
+    "FX-turnover guard: expected exactly two published sides, found ",
+    length(sides_present), ".", call. = FALSE
+  )
+
+  title <- documented_table_title(text, seq_len(entity_row))
+  row_years <- documented_year_values(text[, 1])
+  row_quarters <- documented_quarter_number(text[, 1])
+  records <- list(); k <- 0L
+  anchor_year <- NA_integer_
+  period <- as.Date(NA); frequency <- NA_character_
+  period_label <- NA_character_
+  parent <- NA_character_; detail <- NA_character_
+  for (r in seq.int(entity_row + 1L, nrow(text))) {
+    label <- stringr::str_squish(text[r, 1])
+    values <- numbers[r, value_cols]
+    has_values <- any(!is.na(values))
+    row_date <- documented_as_date(dates[r, 1])
+    if (!is.na(row_date)) {
+      anchor_year <- lubridate::year(row_date)
+      period <- month_end(anchor_year, lubridate::month(row_date))
+      frequency <- "monthly"; period_label <- label
+      parent <- "Total"; detail <- NA_character_
+    } else if (!is.na(row_years[[r]])) {
+      anchor_year <- row_years[[r]]
+      period_label <- label; parent <- "Total"; detail <- NA_character_
+      # A bare year with no values is only a section header for the month rows
+      # below it. Clear the period so a following breakdown row cannot be
+      # attributed to a period that was never published.
+      if (!has_values) { period <- as.Date(NA); frequency <- NA_character_; next }
+      period <- month_end(anchor_year, 12L); frequency <- "annual"
+    } else if (!is.na(row_quarters[[r]])) {
+      if (is.na(anchor_year)) next
+      period <- quarter_end(anchor_year, row_quarters[[r]])
+      frequency <- "quarterly"; period_label <- paste(anchor_year, label)
+      parent <- "Total"; detail <- NA_character_
+    } else if (!documented_blank(label) && has_values && !is.na(period)) {
+      if (stringr::str_detect(label, "^[-–—]")) {
+        if (is.na(parent)) stop(
+          "FX-turnover guard: nested breakdown row ", r, " has no parent breakdown above it.", call. = FALSE
+        )
+        detail <- stringr::str_squish(stringr::str_remove(label, "^[-–—]\\s*"))
+      } else {
+        parent <- label; detail <- NA_character_
+      }
+    } else next
+    if (!has_values || is.na(period)) next
+    breakdown <- if (is.na(detail)) parent else paste(parent, detail, sep = " — ")
+    for (j in value_cols) {
+      value <- numbers[r, j]
+      if (is.na(value)) next
+      series_label <- paste(filled_sides[[j]], entity_labels[[j]], breakdown, sep = " — ")
+      k <- k + 1L
+      records[[k]] <- documented_record(
+        source_sheet, title, "fx_market_turnover", period, period_label, frequency,
+        series_label, "Mercado cambiario local", breakdown, value, r, j
+      )
+      records[[k]]$unit <- "USD"
+      records[[k]]$scale <- "thousands"
+      records[[k]]$currency <- "USD"
+      records[[k]]$is_total <- identical(normalize_semantic_label(entity_labels[[j]]), "total") &&
+        identical(normalize_semantic_label(breakdown), "total")
+    }
+  }
+  observations <- documented_bind_records(records)
+  if (!nrow(observations)) stop(
+    "FX-turnover guard: the published layout was recognized but produced no observations.", call. = FALSE
+  )
+  if (dplyr::n_distinct(observations$frequency) < 2L) stop(
+    "FX-turnover guard: expected annual, quarterly and monthly rows; found only ",
+    paste(unique(observations$frequency), collapse = ", "), ".", call. = FALSE
+  )
+  # Every published cell must resolve to a distinct (series, period) on its own.
+  # Without this the shared identity guard would silently absorb an unrecognized
+  # nesting level into positional lanes instead of failing here -- which is how
+  # the dash-prefixed currency splits stayed hidden under their operation type.
+  ambiguous <- observations %>%
+    dplyr::count(.data$series_label, .data$frequency, .data$period) %>%
+    dplyr::filter(.data$n > 1L)
+  if (nrow(ambiguous)) stop(
+    "FX-turnover guard: ", nrow(ambiguous),
+    " series/period pairs are published more than once; the row hierarchy is not fully resolved (e.g. ",
+    ambiguous$series_label[[1]], " at ", ambiguous$period[[1]], ").", call. = FALSE
+  )
+  list(observations = observations, mode = "fx_market_turnover",
        raw_nonempty_cells = sum(!documented_blank(text)), title = title)
 }
 
@@ -1388,7 +1577,11 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
         result_note[[sheet]] <- "Workbook table of contents; retained as raw cells, not duplicated as observations."
       } else {
         rule <- documented_sheet_rule(root, source_id, sheet)
-        results[[sheet]] <- documented_extract_generic_sheet(raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum)
+        results[[sheet]] <- if (identical(rule$parser_mode_override, "fx_market_turnover")) {
+          documented_parse_fx_market_turnover(raw, sheet)
+        } else {
+          documented_extract_generic_sheet(raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum)
+        }
       }
     }
   }
@@ -1498,8 +1691,12 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
   for (sheet in names(results)) {
     rule <- documented_sheet_rule(root, source_id, sheet)
     if (is.null(results[[sheet]]$hierarchy_status)) results[[sheet]]$hierarchy_status <- rule$hierarchy_status
+    identity_sheet <- dplyr::coalesce(rule$continuation_group, sheet)
     results[[sheet]]$observations <- results[[sheet]]$observations %>%
-      dplyr::mutate(hierarchy_status = results[[sheet]]$hierarchy_status)
+      dplyr::mutate(
+        hierarchy_status = results[[sheet]]$hierarchy_status,
+        identity_sheet = identity_sheet
+      )
   }
   observations <- dplyr::bind_rows(lapply(results, `[[`, "observations"))
   # The credit parser supplies an explicit semantic contract, including

@@ -1,10 +1,25 @@
 # Inventario de series — paraguay_macro_pilot.duckdb
 
-**Generado:** 2026-08-26, contra `release:748d41036c3a73638a1c2086` (última corrida
-completa, `completed_with_warnings`, 22/22 fuentes).
+> **Aviso (2026-08-27).** El **texto** de este documento describe la base
+> **anterior** a la ronda P0 de la auditoría técnica externa (esquema 11,
+> 28.417 series). Los **CSV** sí están regenerados contra la base actual
+> (esquema 12, 23.012 series), así que los conteos citados en la prosa ya no
+> coinciden con ellos. Los cambios y sus cifras verificadas están en
+> [`REVISION_AUDITORIA_EXTERNA.md`](REVISION_AUDITORIA_EXTERNA.md); los
+> diagnósticos R45/R46/R47 que se citan más abajo siguen siendo correctos como
+> descripción del defecto, pero R46 y R47 ya están cerrados.
+>
+> Cambios que afectan a los identificadores de estos CSV: el slug de hoja dentro
+> de `series_id` ya no lleva sufijo posicional (`datos_16` → `datos`), y las 14
+> hojas anuales de `bcp_fx_daily` comparten ahora una sola identidad (la columna
+> `source_sheet` lista las hojas de origen separadas por ` | `).
+
+**Generado:** 2026-08-26 (texto) / 2026-08-27 (CSV), contra
+`release:748d41036c3a73638a1c2086` (última corrida completa,
+`completed_with_warnings`, 22/22 fuentes).
 **Archivos de datos completos** (texto plano, sin Git LFS):
-- [`series_inventory.csv`](series_inventory.csv) — 28.417 filas: fuente, hoja,
-  período, periodicidad, unidad, flags de revisión.
+- [`series_inventory.csv`](series_inventory.csv) — 23.012 filas, una por serie:
+  fuente, hoja(s), período, periodicidad, unidad, flags de revisión.
 - [`series_observations/`](series_observations/) — un CSV por fuente con las
   observaciones reales (`series_id, period, value`).
 

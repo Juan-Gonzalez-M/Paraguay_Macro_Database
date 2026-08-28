@@ -450,7 +450,8 @@ validate_database <- function(con, manifest, release_id, root) {
                 "dim_ratio", "dim_portfolio_item", "dim_credit_activity", "dim_credit_sector",
                 "documented_table_catalog", "documented_series_snapshot", "dim_payment_participant",
                 "dim_exchange_item", "documented_sheet_drift", "documented_series_continuity",
-                "dim_concept", "map_series_concept", "bond_curve_snapshot", "securities_transactions_snapshot")
+                "dim_concept", "map_series_concept", "bond_curve_snapshot", "securities_transactions_snapshot",
+                "table_status")
   for (tbl in required) if (!database_object_exists(con, tbl)) insert_quality_flag(
     con, release_id, "error", "missing_table", NA_character_, paste("Expected table not created:", tbl)
   )
@@ -498,6 +499,31 @@ validate_database <- function(con, manifest, release_id, root) {
     con, release_id, "error", "reviewed_concept_mapping_incomplete", NA_character_,
     paste(invalid_reviewed, "reviewed concept mappings lack evidence or review metadata.")
   )
+  # Research-readiness gate: no series may reach the catalogue without a
+  # declared table status. 'unreviewed' means a source or worksheet appeared in
+  # the database that config/table_status.csv never accounted for -- exactly the
+  # silent expansion of the research surface the audit warns about.
+  if (database_object_exists(con, "v_series_table_status")) {
+    unreviewed <- DBI::dbGetQuery(con, paste(
+      "SELECT source_id, source_sheet, COUNT(*) AS n FROM v_series_table_status",
+      "WHERE status = 'unreviewed' GROUP BY 1, 2 ORDER BY 3 DESC"
+    ))
+    if (nrow(unreviewed)) insert_quality_flag(
+      con, release_id, "error", "table_status_incomplete", NA_character_,
+      paste0(
+        sum(unreviewed$n), " series in ", nrow(unreviewed),
+        " source tables have no row in config/table_status.csv: ",
+        paste(head(paste0(unreviewed$source_id, "/", unreviewed$source_sheet), 10), collapse = "; ")
+      )
+    )
+    quarantined <- DBI::dbGetQuery(con, paste(
+      "SELECT COUNT(*) AS n FROM v_series_table_status WHERE status IN ('quarantined', 'needs_remodeling')"
+    ))$n[[1]]
+    if (quarantined) insert_quality_flag(
+      con, release_id, "warning", "series_excluded_from_research_views", NA_character_,
+      paste(quarantined, "series belong to tables marked quarantined or needs_remodeling and are excluded from v_research_series.")
+    )
+  }
   view_names <- unlist(lapply(c("banks", "financial"), function(source_id) paste0(
     "v_", source_id, "_", c("eeff", "ratios", "carteras", "credito_sector", "credito_actividad"),
     "_documented"

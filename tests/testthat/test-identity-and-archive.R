@@ -61,7 +61,7 @@ testthat::test_that("schema-v2 curated outputs are invalidated before v3 reinges
   DBI::dbExecute(con, "INSERT INTO eve_expectations_snapshot VALUES ('eve:old')")
   initialize_database(con)
   status <- DBI::dbGetQuery(con, "SELECT ingestion_status, publication_date FROM source_files")
-  testthat::expect_identical(status$ingestion_status[[1]], "needs_v3_reingestion")
+  testthat::expect_identical(status$ingestion_status[[1]], "needs_v12_reingestion")
   testthat::expect_true(is.na(status$publication_date[[1]]))
   testthat::expect_equal(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM fact_series_events")$n[[1]], 0)
   testthat::expect_equal(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM dim_series")$n[[1]], 0)
@@ -124,9 +124,9 @@ testthat::test_that("schema-v4 documented sources are invalidated before v5 rein
   initialize_database(con)
   status <- DBI::dbGetQuery(con, "SELECT source_id, ingestion_status FROM source_files ORDER BY source_id")
   # economic_annex is explicitly listed in every subsequent invalidate_v*() step
-  # (v6, v8, v9, v10 all target it too), so migrating from a genuinely stale v4
-  # database cascades through all of them, landing on the latest, v11.
-  testthat::expect_identical(status$ingestion_status[status$source_id == "economic_annex"], "needs_v11_reingestion")
+  # (v6, v8, v9, v10 and v12 all target it too), so migrating from a genuinely
+  # stale v4 database cascades through all of them, landing on the latest, v12.
+  testthat::expect_identical(status$ingestion_status[status$source_id == "economic_annex"], "needs_v12_reingestion")
   testthat::expect_identical(status$ingestion_status[status$source_id == "icc"], "completed")
   testthat::expect_equal(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM schema_version WHERE version = 5")$n[[1]], 1)
   testthat::expect_equal(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM schema_version WHERE version = 6")$n[[1]], 1)

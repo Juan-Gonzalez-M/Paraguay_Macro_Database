@@ -13,6 +13,16 @@
 
 Concept mappings are maintained separately in `config/concept_mappings.csv`. Adding a row is a semantic assertion, not routine ingestion maintenance; record the official evidence, reviewer and date before running the update.
 
+Table statuses are maintained in `config/table_status.csv`. Every registered source needs a `*` row so a newly published worksheet cannot reach the catalogue undeclared; `validate_database()` raises `table_status_incomplete` and blocks the release if one does. Promoting a table to `validated` publishes it through `v_research_series` and requires a named reviewer and a review date — it asserts that an economist checked its definitions, units, period conventions and hierarchy, which is not something the automated gates can establish.
+
+## Schema migrations
+
+`initialize_database()` applies every version step a database still needs, in order, on each run. A step that changes how `series_id` is built also invalidates the affected sources so they re-parse from the immutable raw layer instead of merging into stale identities; the sources reappear as `needs_v<N>_reingestion` and are re-ingested by the same run.
+
+Schema 12 rebuilds all 14 `semantic_table` sources plus `eve`, because the worksheet slug inside `series_id` changed. `banks`, `financial`, `bank_reference`, `icc`, `fx_operations`, `corporate_bond_curves` and `securities_trades` are untouched and reuse their vintages. Back up `database/paraguay_macro_pilot.duckdb` into `database/backups/` before a migrating run: a migration deletes curated content by design, and the backup is what lets you diff observation totals source by source afterwards.
+
+`scripts/upgrade_v1_to_v12.R` is the current entry point from a version-1 database; the earlier `upgrade_v1_to_v*.R` scripts are compatibility stubs that source it.
+
 ## Routine replacement
 
 1. Close the Excel workbooks.

@@ -36,7 +36,8 @@ The reference workbook is processed first because bank and finance-company views
 - `config/reference_schema.csv` guards all fifteen semantic-reference tables by worksheet and column signature; display names are hints only.
 - `config/specs/*.yml` guards the ICC, EVE and FX layouts using anchors and expected tokens.
 - `config/documented_source_contracts.csv` guards semantic-table Excel sources by required sheets, minimum parsed-sheet coverage, observations, lower date bounds, reviewed future horizons and series-disappearance tolerances.
-- `config/sheet_modes.csv` holds reviewed parser-mode overrides and hierarchy status by source and sheet.
+- `config/sheet_modes.csv` holds reviewed parser-mode overrides, hierarchy status and continuation groups by source and sheet. A continuation group declares that several worksheets are chronological segments of one published series, so they share a series identity while keeping their own lineage.
+- `config/table_status.csv` declares the reviewed research status of every source table (`validated`, `provisional`, `needs_remodeling`, `quarantined`). Only `validated` tables reach `v_research_series`, and a source or worksheet with no declared status blocks the release.
 - `config/long_csv_contracts.csv` guards typed CSV tables by row count, date range, unique key where applicable and required currencies.
 - `config/concept_mappings.csv` contains only reviewed cross-source semantic relationships. Automatic source identities are generated separately and never imply equivalence.
 

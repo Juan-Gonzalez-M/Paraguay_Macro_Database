@@ -47,6 +47,9 @@ v_series_latest,view,series-period,Latest resolved observation for everyday anal
 v_series_catalogue,view,series,Series metadata plus current coverage,dynamic view
 v_series_concept_catalogue,view,series-concept relationship,Series metadata with source-specific or reviewed concept mapping,dynamic view
 v_concept_latest,view,concept-series-period,Latest series observations exposed through explicit concept relationships,dynamic view
+table_status,governance,source table,Reviewed research status per source worksheet loaded from config/table_status.csv,replaced from configuration on every run
+v_series_table_status,view,series,Each series resolved to its declared table status with wildcard fallback,dynamic view
+v_research_series,view,series,Allowlist of series belonging to economically reviewed tables,dynamic view
 v_fx_operations_annual,view,vintage-year-sector-operation,Compatibility view for annual FX data,dynamic view
 v_documented_series_latest_snapshot,view,latest source-series-period,Latest full documented-source snapshot with source coordinates,dynamic view
 v_documented_series_catalogue,view,documented series,Labels units frequencies and current period coverage,dynamic view

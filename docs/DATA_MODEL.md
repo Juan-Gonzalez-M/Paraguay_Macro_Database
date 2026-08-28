@@ -27,6 +27,22 @@ Curated snapshot tables retain a complete publication by `vintage_id`. `fact_ser
 
 `dim_series` keeps `unit` and `scale` separate. For example, FX values use `unit = USD` and `scale = millions`; this avoids encoding magnitude inside the economic unit.
 
+## Documented series identity
+
+A documented `series_id` is `source_id : worksheet_slug : hash(stable_path | frequency)`, and `identity_basis` is `worksheet | frequency | stable_path`.
+
+The worksheet slug is produced by `documented_sheet_slug()`, which applies `janitor::make_clean_names()` to one sheet name at a time. Applying it to a vector would uniquify duplicates by position (`datos`, `datos_2`, … `datos_26`), which would make identity depend on where a series happened to fall in the identity table rather than on the sheet it came from: inserting one column upstream would silently reassign every later series in that sheet.
+
+The worksheet that participates in identity is not always `source_sheet`. When `config/sheet_modes.csv` declares a `continuation_group` for a source or sheet, that value is used instead — for publishers that split one continuous series across several worksheets, such as `bcp_fx_daily`, which publishes one worksheet per year. `source_sheet`, `source_row` and `source_column` remain untouched on every observation, so the annual worksheets stay addressable as aliases and per-sheet drift, continuity and raw-cell lineage are unaffected.
+
+When a label repeats within a sheet, the identity guard appends a structural slot drawn from the axis that is *not* the period axis: the source row for horizontal layouts (periods across columns) and the source column for vertical ones. `documented_period_axis_is_horizontal()` is the single place that decides this. Using the wrong axis pins the period and turns each column into a one-observation series.
+
+## Research-readiness gate
+
+`table_status` carries one reviewed status per source table, loaded from `config/table_status.csv`: `validated`, `provisional`, `needs_remodeling` or `quarantined`. `v_series_table_status` resolves each series to its status, matching an exact `(source_id, source_sheet)` row first and falling back to the source-level `*` row; curated sources with no worksheet grain always match the wildcard.
+
+`v_research_series` exposes only `validated` tables. That status is a claim about economic review — definitions, units, period conventions, hierarchy — and no automated check can grant it, so `apply_table_status()` requires a named reviewer and a review date for every validated row. `validate_database()` raises a release-blocking `table_status_incomplete` error if a source or worksheet reaches the catalogue without a declared status, so the research surface cannot expand silently.
+
 ## Documented complex-report model
 
 `documented_series_snapshot` has grain `vintage × series × period`. It normalizes semantic-table Excel sources while retaining `source_sheet`, `source_row`, `source_column`, original period label, parser mode and source file. `identity_basis`, `identity_stability` and `hierarchy_status` expose identity and aggregation risk. `identity_stability = positional_lane` identifies multiple same-period source events that have equal published dimensions and no official operation key; deterministic occurrence order distinguishes them, while observed values are excluded from identity. `documented_table_catalog` records one audit row per worksheet, including parsed observations, series count, date coverage, units and hierarchy status.

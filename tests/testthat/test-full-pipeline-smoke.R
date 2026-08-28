@@ -97,6 +97,77 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
   testthat::expect_gt(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM v_exchange_houses_latest WHERE entity_id IS NOT NULL AND exchange_item_id IS NOT NULL")$n[[1]], 4000)
   testthat::expect_gt(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM v_credit_survey_latest WHERE question IS NOT NULL AND response IS NOT NULL")$n[[1]], 10000)
   testthat::expect_gte(DBI::dbGetQuery(con, "SELECT COUNT(DISTINCT currency) n FROM documented_series_snapshot WHERE source_id = 'exchange_rates' AND source_sheet = 'Cotizaciones Diarias'")$n[[1]], 14)
+
+  # Target cardinalities from the external technical audit, section 10. These
+  # are exact: each one is a repaired identity defect, and any drift means a
+  # parser or the identity rule regressed. Before the repairs the same queries
+  # returned 36, 2760, 168, 170 and 2534.
+  audit_series_count <- function(source_id) DBI::dbGetQuery(con, paste0(
+    "SELECT COUNT(*) n FROM dim_series WHERE source_id = ", sql_string(source_id)
+  ))$n[[1]]
+  testthat::expect_equal(audit_series_count("compensatory_fx_sales"), 3L)
+  testthat::expect_equal(audit_series_count("eve"), 16L)
+  testthat::expect_equal(audit_series_count("bcp_fx_daily"), 12L)
+  testthat::expect_equal(audit_series_count("fx_operations"), 30L)
+  testthat::expect_equal(
+    DBI::dbGetQuery(con, "SELECT COUNT(DISTINCT series_id) n FROM eve_expectations_snapshot")$n[[1]],
+    16L
+  )
+  # 170 monthly identities (2 sides x 5 institutions x 17 breakdowns) plus the
+  # 6 annual and 6 quarterly identities published for the early years.
+  testthat::expect_equal(
+    DBI::dbGetQuery(con, paste0(
+      "SELECT COUNT(DISTINCT series_id) n FROM documented_series_snapshot ",
+      "WHERE source_sheet = 'CUADRO 61'"
+    ))$n[[1]],
+    182L
+  )
+  testthat::expect_equal(
+    DBI::dbGetQuery(con, paste0(
+      "SELECT COUNT(*) n FROM documented_series_snapshot ",
+      "WHERE source_sheet = 'CUADRO 61' AND identity_stability <> 'semantic'"
+    ))$n[[1]],
+    0L
+  )
+  # The credit survey's quarter axis runs across columns; no series may be left
+  # holding a single observation because the slot pinned its period. 2,539
+  # before the repair, 5 after. The five that remain are a different and much
+  # smaller defect, logged as R52: a question-header row that carries a stray
+  # zero fails the "header rows have no values" test in
+  # documented_parse_credit_sheet(), so the next question header is read as a
+  # response under the previous question. Exact, not a maximum, so any drift in
+  # either direction is caught.
+  testthat::expect_equal(
+    DBI::dbGetQuery(con, paste0(
+      "SELECT COUNT(*) n FROM (SELECT series_id FROM documented_series_snapshot ",
+      "WHERE source_id = 'credit_survey' GROUP BY 1 HAVING COUNT(*) = 1)"
+    ))$n[[1]],
+    5L
+  )
+  # The worksheet slug inside series_id must be a pure function of the sheet
+  # name. It used to be uniquified by position (Datos, Datos_2, ... Datos_26),
+  # so inserting one column upstream reassigned the identity of every later
+  # series in that sheet. A plain regexp cannot test this -- real sheet names
+  # end in digits (CUADRO 61, SIPAP_01) -- so recompute the slug and compare.
+  documented_identity <- DBI::dbGetQuery(con, paste0(
+    "SELECT identity_basis, split_part(series_id, ':', 2) AS slug FROM dim_series ",
+    "WHERE semantic_status = 'documented_series'"
+  ))
+  identity_sheet <- sub("[|].*$", "", documented_identity$identity_basis)
+  expected_slug <- vapply(
+    unique(identity_sheet), function(sheet) janitor::make_clean_names(sheet), character(1)
+  )
+  testthat::expect_equal(sum(documented_identity$slug != expected_slug[identity_sheet]), 0L)
+  # The research gate: every series carries a declared table status, and the
+  # allowlist only ever exposes reviewed tables.
+  testthat::expect_equal(
+    DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM v_series_table_status WHERE status = 'unreviewed'")$n[[1]],
+    0L
+  )
+  testthat::expect_equal(
+    DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM v_research_series WHERE status <> 'validated'")$n[[1]],
+    0L
+  )
   testthat::expect_true(all(c("compra", "venta") %in% DBI::dbGetQuery(con, "SELECT DISTINCT lower(measure) measure FROM documented_series_snapshot WHERE source_id = 'exchange_rates' AND source_sheet = 'USD Prom'")$measure))
   testthat::expect_gte(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM bond_curve_snapshot")$n[[1]], 38000)
   testthat::expect_gte(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM securities_transactions_snapshot")$n[[1]], 300000)

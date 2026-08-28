@@ -290,6 +290,87 @@ invalidate_v10_annex_year_axis <- function(con) {
   invisible(TRUE)
 }
 
+# Schema 12 -- P0 identity and parser repairs from the external technical audit
+# (Technical_Audit.docx, 27 Aug 2026). Every source listed here produces
+# different series_id values under version 12 than it did under version 11, so
+# their curated output must be discarded and rebuilt from the immutable raw
+# layer rather than merged:
+#   * all semantic_table sources: the worksheet slug inside series_id was
+#     uniquified by position (Datos, Datos_2, ... Datos_26), so identity moved
+#     whenever a column was inserted upstream. documented_sheet_slug() now
+#     depends only on the sheet name.
+#   * bcp_fx_daily: the 14 annual worksheets are merged into one continuation
+#     group, 168 series become 12.
+#   * economic_annex: CUADRO 61 gets a table-specific parser (170 numeric-label
+#     identities become 130 named series).
+#   * credit_survey: the structural slot moves to the row axis, collapsing 2,534
+#     one-observation identities.
+#   * compensatory_fx_sales: year blocks are bounded, 36 lane series become 3.
+#   * eve: slug() no longer sees the materialized tibble column, 2,760 series
+#     become 16. eve is curated, not documented, so its identity has to be
+#     selected by source_id and its own snapshot table cleared as well.
+invalidate_v12_p0_identity_repairs <- function(con) {
+  if (!DBI::dbExistsTable(con, "schema_version") || !DBI::dbExistsTable(con, "source_files")) {
+    return(invisible(FALSE))
+  }
+  versions <- DBI::dbGetQuery(con, "SELECT version FROM schema_version")$version
+  if (!11L %in% versions || 12L %in% versions) return(invisible(FALSE))
+  documented_sources <- c(
+    "economic_annex", "payments", "exchange_houses", "credit_survey",
+    "direct_investment", "insurance_annex", "bcp_fx_daily", "exchange_rates",
+    "banking_indicators", "financial_indicators", "interbank_market", "lrm_auctions",
+    "compensatory_fx_sales", "liquidity_facility"
+  )
+  affected_sources <- c(documented_sources, "eve")
+  source_sql <- paste(vapply(affected_sources, sql_string, character(1)), collapse = ", ")
+  series_query <- paste0("SELECT series_id FROM dim_series WHERE source_id IN (", source_sql, ")")
+  vintage_query <- paste0("SELECT vintage_id FROM source_files WHERE source_id IN (", source_sql, ")")
+  affected_concepts <- if (DBI::dbExistsTable(con, "map_series_concept")) {
+    DBI::dbGetQuery(con, paste0(
+      "SELECT DISTINCT concept_id FROM map_series_concept WHERE series_id IN (",
+      series_query, ") AND mapping_status = 'source_specific_unreviewed'"
+    ))$concept_id
+  } else character()
+  DBI::dbWithTransaction(con, {
+    for (table_name in c("map_series_concept", "fact_series_events", "series_revisions")) {
+      if (DBI::dbExistsTable(con, table_name)) DBI::dbExecute(con, paste0(
+        "DELETE FROM ", DBI::dbQuoteIdentifier(con, table_name),
+        " WHERE series_id IN (", series_query, ")"
+      ))
+    }
+    if (DBI::dbExistsTable(con, "dim_series")) DBI::dbExecute(con, paste0(
+      "DELETE FROM dim_series WHERE series_id IN (", series_query, ")"
+    ))
+    if (DBI::dbExistsTable(con, "dim_concept") && length(affected_concepts)) {
+      concept_sql <- paste(vapply(affected_concepts, sql_string, character(1)), collapse = ", ")
+      DBI::dbExecute(con, paste0(
+        "DELETE FROM dim_concept WHERE concept_id IN (", concept_sql, ") ",
+        "AND mapping_status = 'source_specific_unreviewed' ",
+        "AND concept_id NOT IN (SELECT concept_id FROM map_series_concept)"
+      ))
+    }
+    # eve_expectations_snapshot is included because append_snapshot() is a no-op
+    # when the vintage already has rows; leaving it would silently keep the
+    # fragmented snapshot alongside the repaired series. discarded_rows is
+    # included because eve_parser() re-inserts the same content-addressed
+    # discard_id values on every pass, so re-ingesting an unchanged vintage
+    # without clearing them aborts on the primary key.
+    for (table_name in c(
+      "documented_series_snapshot", "documented_table_catalog", "documented_sheet_drift",
+      "documented_series_continuity", "semantic_coverage", "eve_expectations_snapshot",
+      "discarded_rows"
+    )) if (DBI::dbExistsTable(con, table_name)) DBI::dbExecute(con, paste0(
+      "DELETE FROM ", DBI::dbQuoteIdentifier(con, table_name),
+      " WHERE vintage_id IN (", vintage_query, ")"
+    ))
+    DBI::dbExecute(con, paste0(
+      "UPDATE source_files SET ingestion_status = 'needs_v12_reingestion' WHERE source_id IN (",
+      source_sql, ")"
+    ))
+  })
+  invisible(TRUE)
+}
+
 migrate_report_cells_storage <- function(con) {
   object_type <- database_object_type(con, "report_cells")
   if (identical(object_type, "BASE TABLE")) {
@@ -379,6 +460,7 @@ initialize_database <- function(con) {
     "CREATE TABLE IF NOT EXISTS securities_transactions_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_file VARCHAR, transaction_id VARCHAR, source_row BIGINT, operation_date DATE, broker_tax_id VARCHAR, broker_name VARCHAR, isin VARCHAR, issuer_tax_id VARCHAR, issuer_name VARCHAR, instrument VARCHAR, market VARCHAR, operation_type VARCHAR, local_currency_volume DOUBLE, currency VARCHAR, trading_venue VARCHAR)",
     "CREATE TABLE IF NOT EXISTS dim_concept (concept_id VARCHAR PRIMARY KEY, concept_label VARCHAR, concept_domain VARCHAR, definition VARCHAR, unit VARCHAR, scale VARCHAR, frequency VARCHAR, mapping_status VARCHAR, first_vintage_id VARCHAR)",
     "CREATE TABLE IF NOT EXISTS map_series_concept (series_id VARCHAR, concept_id VARCHAR, relationship VARCHAR, mapping_status VARCHAR, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, first_vintage_id VARCHAR, PRIMARY KEY (series_id, concept_id))",
+    "CREATE TABLE IF NOT EXISTS table_status (source_id VARCHAR, source_sheet VARCHAR, status VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, note VARCHAR, PRIMARY KEY (source_id, source_sheet))",
     "CREATE TABLE IF NOT EXISTS fact_series_events (series_id VARCHAR, period DATE, value DOUBLE, vintage_id VARCHAR, publication_date DATE, value_hash VARCHAR, is_deleted BOOLEAN, source_file VARCHAR)",
     "CREATE TABLE IF NOT EXISTS series_revisions (revision_id VARCHAR PRIMARY KEY, series_id VARCHAR, period DATE, previous_value DOUBLE, new_value DOUBLE, previous_vintage_id VARCHAR, new_vintage_id VARCHAR, publication_date DATE, absolute_revision DOUBLE)"
   )
@@ -462,6 +544,10 @@ initialize_database <- function(con) {
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 11")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (11, current_timestamp, 'Bootstrap-safe migrations and sequence-aware annotated year-axis selection')")
   }
+  if (!fresh_bootstrap) invalidate_v12_p0_identity_repairs(con)
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 12")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (12, current_timestamp, 'Audit P0 identity repairs: sheet-stable series identity, sheet continuation groups, bounded year blocks, credit-survey period axis, EVE slug scalars and the CUADRO 61 parser')")
+  }
   create_series_views(con)
   create_report_cells_view(con)
   if (exists("documented_create_views", mode = "function")) documented_create_views(con)
@@ -469,6 +555,7 @@ initialize_database <- function(con) {
     sync_source_specific_concepts(con)
     create_concept_views(con)
   }
+  if (exists("create_table_status_views", mode = "function")) create_table_status_views(con)
   if (exists("create_market_views", mode = "function")) create_market_views(con)
 }
 

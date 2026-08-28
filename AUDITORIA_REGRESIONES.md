@@ -15,7 +15,204 @@ registro activo. El detalle de por qué se consolidó está en
 
 ---
 
+## Cerrados en la ronda P0 de la auditoría técnica externa (2026-08-27)
+
+Fuente: `Technical_Audit.docx`, auditoría externa de sólo lectura sobre la base
+de producción. Antes de tocar nada se reverificó cada cifra del informe contra la
+base real: **todas exactas** (28.417 `dim_series`, 1.216.910 `fact_series_events`,
+12.630 `positional_lane` = 44,45%, 474 filas → 139 meses con 114/109/92 meses en
+conflicto en FX compensatorias, 168 IDs de `bcp_fx_daily`, 2.760 de `eve`, 170 y
+25.912 filas en `CUADRO 61`, 521 grupos de firma numérica idéntica, 565
+observaciones futuras, 0 restricciones de clave foránea). Dos diferencias
+inmateriales: el informe dice 28.417 mapeos de concepto (real 28.420 = 28.417
+source-specific + 3 revisados) y 1.441 grupos de etiqueta repetida (contamos
+2.521 con nuestra definición; el informe no publica la suya).
+
+Alcance acordado con el usuario: **sólo los defectos P0 de parser/identidad** que
+el informe nombra, más la compuerta de allowlist. Todo lo demás (P1/P2/P3 y la
+arquitectura objetivo de la sección 9) queda explícitamente fuera.
+
+Resultado global: `dim_series` 28.417 → 23.012; series de una sola observación
+15.756 → 10.462; `positional_lane` 12.630 → 9.924; **cero** flags de severidad
+`error`; observaciones conservadas fuente por fuente salvo los dos cambios
+buscados (FX compensatorias −1.005 filas duplicadas, `CUADRO 61` +394 celdas que
+antes no se leían). Migración `schema_version` 12 con reingesta dirigida.
+
+---
+
+### R48 — `documented_parse_compensatory_sales()` no cortaba cada bloque anual en el encabezado siguiente · silencioso · CERRADO
+**Dónde:** `scripts/03_curate_expanded.R`, `documented_parse_compensatory_sales()`.
+**Causa raíz:** la hoja `Ventas(DatosMensuales)` publica seis bandas de filas con
+encabezados `AÑO 2015`…`AÑO 2025` en la **columna 1** y `AÑO 2016`…`AÑO 2026` en
+la **columna 6** (filas 3, 21, 39, 57, 75, 93), doce filas de meses por bloque.
+El parser hacía `possible_rows <- seq.int(month_row + 1L, nrow(text))` y luego
+recorría hasta `max(active_rows)`: nunca se detenía en el encabezado siguiente,
+así que el bloque 1 emitía 72 registros con año 2015, el bloque 2 sesenta con año
+2017, y así (72/60/48/36/24/12 por grupo de columnas = 474 filas). El guard de
+identidad repartía las colisiones en seis `lane_`.
+**Alcance medido:** 3 medidas × 474 filas para 139 meses reales; valores en
+conflicto en 114 meses (`Total Ventas`), 109 (`Compensatorias`) y 92
+(`Complementarias`). Confirmado que `lane_1` de cada grupo de columnas contenía
+por casualidad la serie correcta y `lane_2`..`lane_6` eran copias corridas de
+año — pero se reparseó desde la fuente, no se eligió una lane.
+**Arreglo (aplicado):** el bloque termina en la fila anterior al siguiente
+`AÑO` de la **misma columna**, más un guard duro: ningún bloque anual puede
+tener más de 12 filas de mes.
+**Verificado:** 36 → 3 series, 417 observaciones, 139 meses distintos, **cero**
+meses en conflicto; `Total = Compensatorias + Complementarias` en los 139 meses;
+ninguna celda fuente alimenta dos observaciones. Contrastes contra celdas crudas:
+2015-01 = 84,0 (fila 8), 2016-01 = 175,8, 2017-01 = 29,6 (fila 26).
+**Exclusión documentada:** 5 celdas numéricas de la hoja (filas 114-118, columna
+9) quedan fuera a propósito: son ceros de relleno en la columna de total para
+ago-dic 2026, meses todavía no publicados (las columnas de componentes están
+vacías). Incorporarlas inventaría observaciones futuras con valor cero.
+
+---
+
+### R49 — El slot estructural del guard de identidad usaba el eje equivocado en la encuesta de crédito · silencioso · CERRADO
+**Dónde:** `scripts/03_curate_documented.R`, `documented_finalize_observations()`.
+**Causa raíz:** la lista de modos "horizontales" estaba escrita literalmente
+(`horizontal_date`, `horizontal_year`, `horizontal_year_quarter`) y
+`credit_question_quarter` no estaba en ella, pese a ser un diseño horizontal
+(trimestres a lo ancho, pregunta-respuesta a lo alto). Cuando dos filas
+publicadas repetían el mismo par pregunta-respuesta, la desambiguación se hacía
+por **columna** — lo que fija el período y deja **una observación por serie**.
+**Alcance medido:** 2.500 series `positional_lane` + 34 `positional`, todas con
+exactamente una observación (2.534 de las 2.805 de la fuente).
+**Arreglo (aplicado):** la orientación se deriva de un único helper,
+`documented_period_axis_is_horizontal()`, para que un parser horizontal nuevo no
+pueda heredar el slot equivocado en silencio — es el defecto de clase, no el
+caso puntual. Se agregaron `credit_question_quarter`, `credit_index_quarter` y
+`horizontal_year_month` (este último latente: `CUADRO 57a` no colisiona hoy).
+**Verificado:** `credit_survey` 2.805 → 321 series con las mismas 15.830
+observaciones y la misma cobertura 2013-03 a 2026-06.
+
+---
+
+### R50 — `CUADRO 61` nombraba las series desde filas de datos · silencioso · CERRADO
+**Dónde:** nuevo `documented_parse_fx_market_turnover()` en
+`scripts/03_curate_documented.R`, despachado por
+`parser_mode_override = fx_market_turnover` en `config/sheet_modes.csv`.
+**Causa raíz:** el extractor genérico resolvía bien el eje de fechas de la hoja
+(2.752 × 236, 29.119 celdas no vacías) pero nunca capturaba su encabezado de dos
+niveles, así que tomaba etiquetas de filas de datos: 170 identidades cuyas
+etiquetas eran concatenaciones de números (`221174 — 2534436.331676 — …`), el
+100% `positional_lane`.
+**Estructura real (verificada contra `report_cell_values`):** fila 10
+`Compra`/`Venta`, fila 11 la institución por columna (`Bancos comerciales`,
+`Casas de cambio`, `Financieras`, `Casas de cambios y financieras`, `Total`) para
+las columnas 2-6 y 7-11; columna 1 es el eje de filas y mezcla 30 años sueltos,
+28 filas `Ner. trim.` y 271 fechas mensuales. Desde julio de 2015 el desglose es
+de **dos niveles**: un tipo de operación (`Spot y Efectivo`, `Arbitraje`,
+`Operación Nominal`, `Forward`, `Canje`) y, bajo algunos de ellos, filas con
+guion inicial por moneda (`- Dólar`, `- Euros`, …) o residencia
+(`- Residentes`). El guion es el marcador de anidamiento del publicador: `Euros`
+significa una cosa bajo `Arbitraje` y otra bajo `Operación Nominal`, así que el
+padre tiene que quedar dentro de la identidad. La primera versión del parser
+aplanó ese nivel y reintrodujo 80 `positional_lane`; el guard de ambigüedad que
+ahora tiene el parser lo detectó.
+**Arreglo (aplicado):** parser específico con guards duros sobre las dos filas de
+encabezado, jerarquía padre-hijo en el eje de filas, y un guard final que aborta
+si algún par (serie, frecuencia, período) aparece más de una vez — para que un
+nivel de anidamiento no reconocido falle acá en vez de disolverse en lanes.
+**Verificado:** 170 → 182 identidades (170 mensuales = 2 lados × 5 instituciones
+× 17 desgloses, más 6 anuales y 6 trimestrales de los años tempranos), **100%
+`semantic`**, 25.912 → 26.306 observaciones. Balance fuente-a-destino perfecto:
+las 26.306 celdas numéricas de las columnas 2-11 producen exactamente 26.306
+observaciones, cero sin explicar; las 301 de la columna 1 son el eje de años y
+las 45 de las columnas 225-236 son un bloque duplicado suelto, ambos excluidos.
+Reconciliación aritmética: los cinco tipos de operación suman el total del
+período en 1.822 de 1.822 grupos, y las tres instituciones suman el `Total` en
+350 de 350, dentro del 0,01%.
+
+---
+
+### R51 — El slug de hoja dentro de `series_id` se unificaba por posición · silencioso, no reportado por la auditoría externa · CERRADO
+**Dónde:** `scripts/03_curate_documented.R`, `documented_finalize_observations()`,
+construcción de `series_id`.
+**Causa raíz:** `janitor::make_clean_names(.data$source_sheet)` se aplicaba a la
+**columna repetida** de la tabla de identidades, y `make_clean_names()` unifica
+duplicados **por posición**: `datos`, `datos_2`, … `datos_26`. Es la misma
+familia que R46, un nivel más arriba. El sufijo no describe nada: depende de
+dónde cayó la serie en la tabla, así que **insertar una columna aguas arriba
+reasignaba la identidad de todas las series posteriores de esa hoja**, sin aviso.
+**Evidencia de que ya mordía:** los únicos tres mapeos de concepto revisados por
+humanos del proyecto estaban anclados exactamente a esos sufijos
+(`interbank_market:datos_16`, `datos_26`, `datos_de_1_dia_10`).
+**Por qué se arregló acá:** es bloqueante para R47 — al fusionar 14 hojas en un
+grupo de continuación, la misma unificación habría producido
+`op_divisas_datos_diarios_2 … _12` y refragmentado justo lo que R47 corrige.
+Decisión del usuario: arreglarlo globalmente y reingerir todas las fuentes
+documentadas.
+**Arreglo (aplicado):** `documented_sheet_slug()` aplica `make_clean_names()` a
+un valor por vez, así que el slug depende sólo del nombre de la hoja.
+`config/concept_mappings.csv` se reescribió a los tres identificadores estables
+(los hashes no cambian: se calculan sobre `stable_path|frequency`).
+**Verificado:** 21.667 series documentadas, 221 hojas distintas, **cero**
+discrepancias entre el slug almacenado y `make_clean_names(hoja)`. Un test de
+regexp no sirve acá (hay nombres de hoja que terminan en dígitos: `CUADRO 61`,
+`SIPAP_01`), así que el smoke test recalcula el slug y compara.
+
+---
+
+### R46 — `eve_parser()`: `slug(block)` recibe la columna ya materializada de `tibble()` · CERRADO
+Diagnóstico completo más abajo (sección de la auditoría del inventario). El
+arreglo es el que ese diagnóstico proponía: `block_slug <- slug(block)` y
+`label_slug <- slug(label)` **antes** del `tibble()`.
+**Verificado:** `eve` 2.760 → 16 series, mismas 2.760 observaciones, cobertura
+completa 2006-04 a 2026-08, entre 108 y 245 observaciones por serie.
+**Hallazgo secundario destapado por la reingesta:** `discarded_rows` no estaba en
+ninguna de las funciones `invalidate_v*()`. Como `eve_parser()` reinserta los
+mismos `discard_id` (direccionados por contenido) en cada pasada, reingerir un
+vintage sin cambios abortaba con violación de clave primaria. Agregado a la
+limpieza de `invalidate_v12_p0_identity_repairs()`.
+
+---
+
+### R47 — `bcp_fx_daily`: 14 hojas anuales de una misma serie diaria continua · CERRADO
+**Arreglo (aplicado):** mecanismo general de continuación de hojas, no un caso
+especial. `config/sheet_modes.csv` tiene una columna nueva `continuation_group`;
+cuando está definida, `documented_finalize_observations()` usa ese valor en lugar
+de `source_sheet` para `identity_basis`, el componente de hoja del `series_id` y
+las claves de colisión. `source_sheet`, `source_row` y `source_column` quedan
+intactos en cada observación, así que el linaje por hoja,
+`documented_sheet_drift` y el camino a la celda cruda no cambian: las hojas
+anuales siguen siendo alias, exactamente en el sentido que pedía la auditoría.
+**Verificado:** 168 → 12 series diarias, 3.394 observaciones cada una, 3.394
+fechas distintas, 2013-01-02 a 2026-08-14, y cada serie sigue apuntando a las 14
+hojas de origen. Las fechas son disjuntas entre hojas, así que no aparece
+ninguna colisión (serie, período) nueva.
+**Pregunta abierta de R47, cerrada con evidencia:** `lrm_auctions` tiene también
+14 hojas anuales pero **no** recibe grupo de continuación. Sus series son
+`row_event_semantic` (3.044 de 3.083): cada fila es un resultado de subasta, no
+un punto de una serie temporal. La auditoría externa es explícita en que las
+tablas de eventos deben seguir siendo tablas de eventos (sección 5.3).
+
+---
+
 ## Abierto — hallazgo nuevo (auditoría del inventario de series, 2026-08-26)
+
+### R52 — Una fila de encabezado de pregunta con un cero suelto se lee como respuesta · silencioso, residual, no aplicado
+**Dónde:** `scripts/03_curate_documented.R`, `documented_parse_credit_sheet()`,
+rama de la hoja `%`.
+**Síntoma:** el reconocimiento de encabezado de pregunta exige
+`all(is.na(values))`. Una fila de encabezado que además trae un cero suelto no
+pasa ese test, se toma como respuesta de la pregunta anterior y el encabezado
+siguiente termina concatenado en la etiqueta, p. ej. `8 - Si su entidad
+presentara un exceso de recursos… — 9 - Ordene las siguientes actividades…`.
+**Alcance medido:** **5** series espurias, todas de una sola observación y valor
+0 (períodos 2021-09-30 y 2023-12-31). Antes de R49 este residuo estaba escondido
+entre las 2.539 series de una observación de la fuente; con R49 cerrado queda a
+la vista.
+**Por qué no se aplicó:** fuera del alcance P0 acordado — la auditoría externa
+midió y nombró las 2.500 lanes + 34 posicionales (R49), no este residuo, que es
+dos órdenes de magnitud menor. El arreglo natural (reconocer el patrón de
+numeración de pregunta aun con valores presentes) tiene que decidir además qué
+hacer con el cero suelto en vez de descartarlo en silencio.
+**Anclado:** `tests/testthat/test-full-pipeline-smoke.R` afirma exactamente 5,
+no un máximo, para que cualquier deriva en cualquier dirección se note.
+
+---
 
 ### R45 — Bloque final de comparación interanual mal interpretado como columnas de período, en 8 hojas del Anexo · silencioso
 **Dónde:** `Cuadro 46a`, `Cuadro 46b`, `Cuadro 51a`, `Cuadro 51b`, `Cuadro 52a`,
@@ -85,15 +282,23 @@ recalcular de la propia serie mensual, no consultarlas como observaciones suelta
 con `series_id` opacos). Ver `revisiones/INVENTARIO_SERIES.md` para el detalle
 completo con evidencia de coordenadas reales.
 
-**Arreglo:** no aplicado en esta ronda — es un cambio de parser compartido
+**Arreglo:** no aplicado — es un cambio de parser compartido
 (`documented_extract_horizontal_time()` o el detector de eje de columnas genérico),
 mismo nivel de riesgo que el ítem #4 de `revisiones/MEJORAS_v11.md` (ya excluido
 explícitamente por el usuario de la ronda de mejoras de riesgo bajo/medio). Requiere
 sesión propia con regresión completa sobre las 94 hojas antes de aplicar.
 
+**Estado tras la ronda P0 de la auditoría externa (2026-08-27):** sigue abierto y
+es el mayor foco restante de inflación del catálogo (7.812 de las 9.924 series
+`positional_lane` que quedan). Quedó explícitamente fuera de alcance porque la
+auditoría externa ubica el trabajo de comercio detallado en **P1** ("needs
+remodeling", secciones 8.1 y 12), no en P0. Mientras tanto las 8 hojas están
+marcadas `needs_remodeling` en `config/table_status.csv`, así que ninguna llega a
+`v_research_series`. **Es el siguiente paso recomendado.**
+
 ---
 
-### R46 — `eve_parser()`: `slug(block)` recibe la columna ya materializada de `tibble()`, no el escalar del loop — 2.760 "series" son en realidad 16 · silencioso, causa raíz encontrada, arreglo trivial no aplicado
+### R46 — `eve_parser()`: `slug(block)` recibe la columna ya materializada de `tibble()`, no el escalar del loop — 2.760 "series" son en realidad 16 · silencioso · CERRADO (diagnóstico original; el cierre está arriba, ronda P0 2026-08-27)
 **Dónde:** `scripts/03_curate_special.R`, dentro de `eve_parser()` (función completa
 ~línea 142-206), específicamente la construcción de:
 ```r
@@ -140,7 +345,7 @@ temporal completa 2006-2026 antes de aceptar el cambio.
 
 ---
 
-### R47 — `bcp_fx_daily`: el publicador divide una serie diaria continua en una hoja por año; el pipeline no la vuelve a unir · menor, diseño de identidad, no un bug de parseo
+### R47 — `bcp_fx_daily`: el publicador divide una serie diaria continua en una hoja por año; el pipeline no la vuelve a unir · menor, diseño de identidad · CERRADO (diagnóstico original; el cierre está arriba, ronda P0 2026-08-27)
 **Dónde:** `input/current/bcp_fx_daily/*.xlsx` tiene 14 hojas, una por año
 (`OpDivisas2013(DatosDiarios)` … `OpDivisas2026(DatosDiarios)`), cada una con las
 mismas 12 etiquetas ("Compra del BCP — Sector Financiero", "Venta del BCP — Total",

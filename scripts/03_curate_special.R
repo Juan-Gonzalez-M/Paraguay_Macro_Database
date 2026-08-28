@@ -170,11 +170,17 @@ eve_parser <- function(con, item, dimensions, release_id, root, publication_date
     keep <- !is.na(dates) & !is.na(vals)
     if (!any(keep)) next
     k <- k + 1L
+    # Slug the scalars BEFORE tibble(). Inside tibble(), `block = block` creates
+    # a column named `block`, and a later argument resolves `block` to that
+    # recycled column, not to the loop scalar. slug() then uniquifies the
+    # repeated values by position (bloque_de_inflacion, _2, ... _245), giving one
+    # series_id per observation: 16 indicators became 2,760 one-observation series.
+    block_slug <- slug(block); label_slug <- slug(label)
     records[[k]] <- tibble(
       vintage_id = item$vintage_id, release_id = release_id, publication_date = as.Date(publication_date),
       date = dates[keep], block = block, variable = label, value = vals[keep],
       source_file = item$source_file, source_sheet = spec$sheet,
-      series_id = paste("eve", slug(block), slug(label), sep = ":")
+      series_id = paste("eve", block_slug, label_slug, sep = ":")
     )
   }
   check <- assert_same_structure(unlist(spec$expected_layout), layout, "eve", spec$sheet, "block_variable_layout")

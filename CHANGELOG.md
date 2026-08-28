@@ -1,5 +1,20 @@
 # Changelog
 
+## v12
+
+P0 parser and identity repairs from the external technical audit. See
+`revisiones/REVISION_AUDITORIA_EXTERNA.md` for the verification record and
+`AUDITORIA_REGRESIONES.md` R46-R52 for per-defect detail.
+
+- Bounded each compensatory-FX year block at the next year header in its own column; 36 lane series became 3 measures with zero conflicting months.
+- Made the worksheet slug inside `series_id` a pure function of the sheet name; it was uniquified by position, so an inserted column reassigned the identity of every later series in that sheet.
+- Added `continuation_group` to `config/sheet_modes.csv` so worksheets that are chronological continuations of one series share an identity while keeping per-sheet lineage; `bcp_fx_daily` went from 168 series to 12.
+- Derived period-axis orientation from a single helper so a horizontal parser cannot inherit a column slot; the credit survey lost 2,534 one-observation identities.
+- Computed the EVE block and label slugs before `tibble()` so `slug()` no longer sees the materialized column; 2,760 series became 16.
+- Added a table-specific `CUADRO 61` parser with a two-level row hierarchy, header guards and an ambiguity guard; 170 numeric-label lane identities became 182 semantic series with a perfect source-cell balance.
+- Added `config/table_status.csv`, `table_status`, `v_series_table_status` and `v_research_series` so the generic catalogue is not exposed as research-ready, plus a release-blocking `table_status_incomplete` check.
+- Added schema 12 with targeted reingestion of every documented source plus EVE, and cleared `discarded_rows` during invalidation so a re-ingested vintage no longer aborts on its content-addressed primary key.
+
 ## v11
 
 - Separated fresh schema bootstrap from versioned data migrations so a new database never executes historical invalidation code.

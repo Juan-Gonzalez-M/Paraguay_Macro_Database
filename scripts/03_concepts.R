@@ -107,6 +107,118 @@ apply_reviewed_concept_mappings <- function(con, root) {
   invisible(nrow(reviewed))
 }
 
+# --- Research-readiness gate ------------------------------------------------
+# The audit's P0 asks for an explicit allowlist so the generic catalogue is not
+# exposed as research-ready. config/table_status.csv carries one reviewed status
+# per source table; v_research_series exposes only what has been reviewed.
+#
+# The four statuses are deliberately narrow:
+#   validated        an economist has reviewed the table's definitions, units,
+#                    period conventions and hierarchy. Only these reach
+#                    v_research_series. No automated check can grant this.
+#   provisional      parses cleanly and passes the automated gates, but has had
+#                    no economic review. The default for everything.
+#   needs_remodeling values are believed right but the identities are not usable
+#                    for research (missing source dimensions).
+#   quarantined      proven defective; excluded from every research-facing view.
+TABLE_STATUS_VALUES <- c("validated", "provisional", "needs_remodeling", "quarantined")
+
+read_table_status <- function(root) {
+  path <- file.path(root, "config", "table_status.csv")
+  required <- c("source_id", "source_sheet", "status", "reviewed_by", "reviewed_at", "note")
+  if (!file.exists(path)) stop("Table status configuration not found: ", path, call. = FALSE)
+  status <- readr::read_csv(path, col_types = readr::cols(.default = readr::col_character()))
+  if (!identical(names(status), required)) stop(
+    "Table status guard: config/table_status.csv columns changed or are reordered.", call. = FALSE
+  )
+  status
+}
+
+apply_table_status <- function(con, root) {
+  status <- read_table_status(root)
+  for (field in c("source_id", "source_sheet", "status")) {
+    if (any(is.na(status[[field]]) | !nzchar(trimws(status[[field]])))) stop(
+      "Table status guard: ", field, " is required on every row.", call. = FALSE
+    )
+  }
+  invalid <- setdiff(unique(status$status), TABLE_STATUS_VALUES)
+  if (length(invalid)) stop(
+    "Table status guard: unsupported status value(s): ", paste(invalid, collapse = "; "),
+    ". Allowed: ", paste(TABLE_STATUS_VALUES, collapse = ", "), ".", call. = FALSE
+  )
+  if (anyDuplicated(status[c("source_id", "source_sheet")])) stop(
+    "Table status guard: duplicate source_id/source_sheet rows.", call. = FALSE
+  )
+  # A validated row is a claim about economic review, so it carries the same
+  # evidence burden as a reviewed concept mapping.
+  validated <- status$status == "validated"
+  if (any(validated & (is.na(status$reviewed_by) | !nzchar(trimws(status$reviewed_by)) |
+                       status$reviewed_by == "unreviewed"))) stop(
+    "Table status guard: every validated table requires a named reviewer.", call. = FALSE
+  )
+  if (any(validated)) {
+    dates <- suppressWarnings(lubridate::ymd(status$reviewed_at[validated], quiet = TRUE))
+    if (any(is.na(dates))) stop(
+      "Table status guard: validated tables require a reviewed_at date (YYYY-MM-DD).", call. = FALSE
+    )
+  }
+  # Validate against the registry, not against source_files: the configuration
+  # legitimately declares a status for every registered source, while any single
+  # run may have ingested only some of them. The opposite direction -- a source
+  # present in the database with no declared status -- is the one that matters,
+  # and validate_database() raises it as table_status_incomplete.
+  registry_path <- file.path(root, "config", "source_registry.csv")
+  if (file.exists(registry_path)) {
+    registered <- readr::read_csv(registry_path, show_col_types = FALSE)$source_id
+    unknown <- setdiff(unique(status$source_id), registered)
+    if (length(unknown)) stop(
+      "Table status guard: unknown source_id(s): ", paste(unknown, collapse = "; "), call. = FALSE
+    )
+  }
+  rows <- status %>% dplyr::transmute(
+    source_id, source_sheet, status,
+    reviewed_by = dplyr::coalesce(.data$reviewed_by, "unreviewed"),
+    reviewed_at = suppressWarnings(lubridate::ymd(.data$reviewed_at, quiet = TRUE)),
+    note
+  )
+  DBI::dbWithTransaction(con, {
+    DBI::dbExecute(con, "DELETE FROM table_status")
+    DBI::dbWriteTable(con, "table_status", rows, append = TRUE)
+  })
+  create_table_status_views(con)
+  invisible(nrow(rows))
+}
+
+create_table_status_views <- function(con) {
+  # Documented sources are keyed by worksheet; curated sources (eve, icc,
+  # fx_operations, the long-CSV markets) have no worksheet grain, so they match
+  # the source-level wildcard row.
+  DBI::dbExecute(con, paste(
+    "CREATE OR REPLACE VIEW v_series_table_status AS",
+    "WITH sheets AS (",
+    "  SELECT DISTINCT series_id, source_id, source_sheet FROM documented_series_snapshot",
+    "  UNION",
+    "  SELECT series_id, source_id, '*' AS source_sheet FROM dim_series",
+    "   WHERE semantic_status IS DISTINCT FROM 'documented_series'",
+    ")",
+    "SELECT s.series_id, s.source_id, s.source_sheet,",
+    "COALESCE(e.status, w.status, 'unreviewed') AS status,",
+    "COALESCE(e.reviewed_by, w.reviewed_by, 'unreviewed') AS reviewed_by,",
+    "COALESCE(e.reviewed_at, w.reviewed_at) AS reviewed_at,",
+    "COALESCE(e.note, w.note) AS status_note",
+    "FROM sheets s",
+    "LEFT JOIN table_status e ON e.source_id = s.source_id AND e.source_sheet = s.source_sheet",
+    "LEFT JOIN table_status w ON w.source_id = s.source_id AND w.source_sheet = '*'"
+  ))
+  DBI::dbExecute(con, paste(
+    "CREATE OR REPLACE VIEW v_research_series AS",
+    "SELECT c.*, t.source_sheet, t.status, t.reviewed_by, t.reviewed_at",
+    "FROM v_series_catalogue c JOIN v_series_table_status t USING (series_id)",
+    "WHERE t.status = 'validated'"
+  ))
+  invisible(TRUE)
+}
+
 create_concept_views <- function(con) {
   DBI::dbExecute(con, paste(
     "CREATE OR REPLACE VIEW v_series_concept_catalogue AS SELECT s.series_id, s.source_id, s.label AS series_label,",
