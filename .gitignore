@@ -5,6 +5,8 @@
 .DS_Store
 **/.DS_Store
 **/.Rhistory
+.claude/
+~$*
 database/*.duckdb
 !database/paraguay_macro_pilot.duckdb
 database/*.wal

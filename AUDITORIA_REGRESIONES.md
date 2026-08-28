@@ -298,6 +298,86 @@ marcadas `needs_remodeling` en `config/table_status.csv`, así que ninguna llega
 
 ---
 
+#### CORRECCIÓN al diagnóstico de R45 (2026-08-27, forense sobre celdas crudas) — el defecto tiene DOS mitades, no una
+
+El diagnóstico de arriba describe **la mitad** del problema. Antes de implementar
+el arreglo se releyeron las celdas crudas de `Cuadro 53a` (vía
+`report_cell_values`) y apareció un segundo mecanismo, más dañino, que el
+diagnóstico original no menciona. **No aplicar el arreglo asumiendo sólo la
+mitad documentada arriba: dejaría todas las series partidas en dos.**
+
+**Layout real de `Cuadro 53a`** (idéntico en las 8 hojas, salvo desplazamientos
+menores de fila/columna):
+
+| Coordenada | Contenido |
+|---|---|
+| fila 12, cols 2–392 | eje mensual genuino, 1994-01-01 → 2026-07-01 (391 columnas) |
+| fila 12, cols 393–399 | los 7 encabezados de comparación interanual ya catalogados arriba |
+| **fila 13, cols 369–392** | **`*` y nada más** — marcador de dato provisional del publicador sobre los últimos 24 meses (ago-2024 a jul-2026) |
+
+La fila 13 no aparece en el diagnóstico original. Es la que genera la segunda
+mitad del defecto.
+
+**Mecanismo 1 — eje de columnas sin cota derecha** (`scripts/03_curate_documented.R`,
+`documented_extract_horizontal_time()` líneas 584-586 y 600). El bucle de arrastre
+`for (j in seq.int(first_time_col, ncol(text)))` llega hasta la última columna de
+la hoja, así que toda columna a la derecha de la última fecha real hereda el
+período anterior (`period_values[[j]] <- period_values[[j - 1L]]`). En la línea
+600, `time_cols <- which(!is.na(period_values))` termina siendo literalmente
+`first_time_col:ncol(text)`. Las 7 columnas de comparación heredan `2026-07-01`.
+Ésta es la mitad que el diagnóstico original describe correctamente.
+
+**Mecanismo 2 — el marcador de provisionalidad entra en la identidad de la serie**
+(mismas función, líneas 610 y 613). `documented_fill_right()` convierte el `*` de
+la fila 13 en un sub-encabezado y `column_labels` lo transforma en `measure`, de
+modo que las columnas 369–392 producen `series_label = "<fila> — *"` mientras las
+columnas 2–368 producen `series_label = "<fila>"`. **Cada serie económica de estas
+8 hojas queda cortada en dos en 2024-08.** Medido contra la base real:
+
+```
+Soja       — 367 observaciones, 1994-01-01 → 2024-07-01, identity_stability = semantic
+Soja — *   —  31 observaciones, 2024-08-01 → 2026-07-01, identity_stability = positional_lane
+```
+
+Etiquetas `— *` afectadas por hoja: `Cuadro 52a`/`52b` 186 cada una, `53a`/`53b`
+149, `46a`/`46b` 148, `51a`/`51b` 62 → **1.090 etiquetas en total**.
+
+**Corrección a la medición original.** El diagnóstico de arriba afirma que el 100%
+de las observaciones `positional_lane` cae en el último período real de la hoja.
+Es incorrecto: caen en el rango **2024-08 → 2026-07** (24 períodos). La razón es
+que `lane_required`, en `documented_finalize_observations()`, se evalúa por
+`axis_collision_key` — la serie entera — no por período. En cuanto `Soja — *`
+colisiona en 2026-07-01 (su valor genuino de julio más los 7 heredados de las
+columnas de comparación), **los 24 meses** de esa serie escalan a
+`positional_lane`. De ahí también el 31 = 24 meses reales + 7 columnas de
+comparación.
+
+**Qué implica para el arreglo.** Acotar el eje de columnas **no alcanza**: elimina
+las 7 columnas espurias pero deja cada serie partida en dos en 2024-08, que es el
+daño analítico mayor (rompe rezagos, tasas de variación y muestras justo en el
+tramo más reciente). El arreglo necesita las dos mitades:
+
+1. **Cota derecha del eje**, siguiendo el precedente ya resuelto del eje de filas
+   en `documented_extract_vertical_date()` (líneas 498-517): compuerta de token
+   con `documented_date_axis_token()` más arrastre acotado a la última columna con
+   token válido. Ojo: `documented_date_axis_token()` está anclado `^...$`, así que
+   `A Julio 2026*` y `Var. % Interanual Julio 2026/2025` no lo pasan — es
+   exactamente la discriminación que hace falta.
+2. **El marcador de nota al pie no puede entrar en la etiqueta.** Debe rutearse al
+   campo `footnote_marker` que `documented_series_snapshot` ya tiene, con el
+   precedente de `documented_year_footnote()` y `CUADRO 57a` (ver R40). Es
+   información editorial legítima —"provisional, sujeto a revisión"— y hoy se está
+   perdiendo como tal a la vez que corrompe la identidad.
+
+**Regresión obligatoria antes de aceptar el cambio:** ambas mitades tocan el
+extractor horizontal genérico, compartido por todas las hojas del Anexo y de
+`payments`. Hay que correr el extractor sobre las 94 hojas antes y después y
+diferenciar serie por serie, verificando en particular que ninguna hoja pierda
+columnas de datos legítimas ubicadas a la derecha de la última fecha del
+encabezado.
+
+---
+
 ### R46 — `eve_parser()`: `slug(block)` recibe la columna ya materializada de `tibble()`, no el escalar del loop — 2.760 "series" son en realidad 16 · silencioso · CERRADO (diagnóstico original; el cierre está arriba, ronda P0 2026-08-27)
 **Dónde:** `scripts/03_curate_special.R`, dentro de `eve_parser()` (función completa
 ~línea 142-206), específicamente la construcción de:
