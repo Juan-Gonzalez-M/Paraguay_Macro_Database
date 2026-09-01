@@ -109,15 +109,32 @@ testthat::test_that("compensatory FX year blocks stop at the next year header", 
     dplyr::count(.data$series_label, year = lubridate::year(.data$period))
   testthat::expect_true(all(per_year$n <= 12L))
   testthat::expect_equal(sum(duplicated(observations[c("series_label", "period")])), 0L)
+  # 139 months. Schema 23 read 144 by admitting Agosto-Diciembre 2026, whose two
+  # component cells are empty and whose Total holds a cached zero from the
+  # sheet's own '=+G+H'; schema 24 recognises the trailing run of a year block
+  # with no component values as the template it is. Five months the publisher had
+  # not reported are no longer published, and the vintage's availability comes
+  # back to 2026-07-31 with it.
   testthat::expect_equal(dplyr::n_distinct(observations$period), 139L)
+  testthat::expect_equal(max(observations$period), as.Date("2026-07-31"))
 
-  # Arithmetic reconciliation of the published subtotal, every month.
+  # Arithmetic reconciliation of the published subtotal, on every month where the
+  # publisher printed all three figures. A month with a total and no components
+  # is not a failed subtotal, it is a month with nothing to decompose, and
+  # asserting over it compares against NA rather than against zero.
   wide <- observations %>%
     dplyr::select(dplyr::all_of(c("period", "series_label", "value"))) %>%
     tidyr::pivot_wider(names_from = "series_label", values_from = "value")
+  complete <- !is.na(wide$`Ventas Compensatorias`) & !is.na(wide$`Ventas Complementarias`) &
+    !is.na(wide$`Total Ventas`)
+  testthat::expect_gt(sum(complete), 130L)
   testthat::expect_true(all(abs(
-    wide$`Ventas Compensatorias` + wide$`Ventas Complementarias` - wide$`Total Ventas`
+    wide$`Ventas Compensatorias`[complete] + wide$`Ventas Complementarias`[complete] -
+      wide$`Total Ventas`[complete]
   ) < 1e-6))
+  # Every month now published carries all three figures: the only rows that ever
+  # had a total without components were the template tail of the current year.
+  testthat::expect_equal(sum(!complete), 0L)
 
   # Parser-region non-overlap: one source cell feeds at most one observation.
   testthat::expect_equal(sum(duplicated(observations[c("source_row", "source_column")])), 0L)

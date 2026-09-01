@@ -5,9 +5,16 @@
 > 28.417 series). Los **CSV** sí están regenerados contra la base actual
 > (esquema 12, 23.012 series), así que los conteos citados en la prosa ya no
 > coinciden con ellos. Los cambios y sus cifras verificadas están en
-> [`REVISION_AUDITORIA_EXTERNA.md`](REVISION_AUDITORIA_EXTERNA.md); los
-> diagnósticos R45/R46/R47 que se citan más abajo siguen siendo correctos como
-> descripción del defecto, pero R46 y R47 ya están cerrados.
+> [`REVISION_AUDITORIA_EXTERNA.md`](REVISION_AUDITORIA_EXTERNA.md).
+>
+> **Actualización (2026-08-29).** Tras las rondas P0/P1/P2 la base está en esquema
+> 14 con **15.191 series**, así que la prosa y los CSV de este documento quedaron
+> los dos desactualizados y hay que regenerarlos. **R45, R46, R47 y R52 están
+> todos cerrados**; los diagnósticos citados más abajo siguen siendo correctos
+> como descripción de los defectos, no como pendientes. En particular las 8 hojas
+> de comercio exterior ya no producen series `positional_lane`, y la nota sobre
+> `SIPAP_08` sigue sin investigar. Las cifras verificadas están en
+> [`REVISION_AUDITORIA_P0_P1_P2.md`](REVISION_AUDITORIA_P0_P1_P2.md).
 >
 > Cambios que afectan a los identificadores de estos CSV: el slug de hoja dentro
 > de `series_id` ya no lleva sufijo posicional (`datos_16` → `datos`), y las 14

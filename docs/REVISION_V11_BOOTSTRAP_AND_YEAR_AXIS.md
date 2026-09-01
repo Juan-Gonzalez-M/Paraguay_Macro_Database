@@ -1,3 +1,5 @@
+> Historical record of one release. The current acceptance rule, run-status vocabulary and data model are in `README.md`, `docs/OPERATIONS.md` and `docs/DATA_MODEL.md`; where this file disagrees with them it is describing an earlier state. Since schema 23 a failing run reports `release_blocked`, not `completed_with_errors`, and since schema 24 a release carries its own lifecycle in `audit.releases`.
+
 # Version 11 bootstrap and year-axis repairs
 
 Version 11 responds directly to `REVISION_v10.md`. It preserves the 22-source model, stable series identities, v8 performance work and the source-isolated v9/v10 parsers.

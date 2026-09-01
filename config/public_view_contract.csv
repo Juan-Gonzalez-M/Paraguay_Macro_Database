@@ -1,0 +1,122 @@
+schema_name,object_name,object_type,public_scope,carries_release_boundary,reason,reviewed_by,reviewed_at
+main,v_banks_carteras_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_banks_credito_actividad_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_banks_credito_sector_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_banks_eeff_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_banks_ratios_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_financial_carteras_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_financial_credito_actividad_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_financial_credito_sector_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_financial_eeff_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_financial_ratios_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_fx_operations_annual_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_canales_person_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_carteras_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_categoria_creditos_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_credito_actividad_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_credito_sector_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_eeff_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_inhab_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_ratios_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_tc_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_canales_person_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_carteras_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_categoria_creditos_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_credito_actividad_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_credito_sector_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_eeff_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_ratios_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_tc_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_publisher_statement_latest_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_series_catalogue_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_series_latest_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,v_series_observations_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+marts,v_mart_external_accounts_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+marts,v_mart_fiscal_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+marts,v_mart_money_credit_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+marts,v_mart_national_accounts_activity_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+marts,v_mart_prices_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+marts,v_mart_reserves_fx_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+marts,v_mart_trade_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
+main,series_as_of_date,macro,current,FALSE,"What a researcher could have known on a given date, realized observations only.",juan.manuel.gonzalez,2026-08-31
+main,series_statement_as_of_date,macro,current,FALSE,"The publisher's full statement as of a given date, projections included.",juan.manuel.gonzalez,2026-08-31
+main,v_banks_carteras_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_banks_credito_actividad_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_banks_credito_sector_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_banks_eeff_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_banks_ratios_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_bond_curves_latest,view,current,TRUE,Published source surface at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_canonical_observations,view,current,FALSE,Observations of reviewed canonical series.,juan.manuel.gonzalez,2026-08-31
+main,v_canonical_series_catalogue,view,current,FALSE,Catalogue of reviewed canonical series.,juan.manuel.gonzalez,2026-08-31
+main,v_concept_latest,view,current,FALSE,Reviewed cross-source concepts at their newest accepted value.,juan.manuel.gonzalez,2026-08-31
+main,v_credit_survey_latest,view,current,FALSE,Published source surface at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_documented_series_latest_snapshot,view,current,TRUE,The documented-parser surface at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_economic_annex_latest,view,current,FALSE,Published source surface at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_exchange_houses_latest,view,current,FALSE,Published source surface at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_financial_carteras_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_financial_credito_actividad_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_financial_credito_sector_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_financial_eeff_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_financial_ratios_documented,view,current,FALSE,"Publisher-shaped panel joined to reviewed institution, currency and hierarchy dimensions.",juan.manuel.gonzalez,2026-08-31
+main,v_fx_operations_annual,view,current,TRUE,Annual foreign-exchange operations at the accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_canales_person,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_carteras,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_categoria_creditos,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_credito_actividad,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_credito_sector,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_eeff,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_inhab,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_ratios,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_banks_tc,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_canales_person,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_carteras,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_categoria_creditos,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_credito_actividad,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_credito_sector,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_eeff,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_ratios,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_latest_raw_financial_tc,view,current,TRUE,Publisher-shaped panel at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_payments_latest,view,current,FALSE,Published source surface at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_publisher_statement_latest,view,current,TRUE,"What the publisher currently says, projections included. Not an estimation sample.",juan.manuel.gonzalez,2026-08-31
+main,v_securities_daily_activity,view,current,FALSE,Daily securities activity aggregated from the accepted transaction surface.,juan.manuel.gonzalez,2026-08-31
+main,v_securities_transactions_latest,view,current,TRUE,Published source surface at its newest accepted vintage.,juan.manuel.gonzalez,2026-08-31
+main,v_series_catalogue,view,current,FALSE,"Catalogue of the published series, with coverage.",juan.manuel.gonzalez,2026-08-31
+main,v_series_latest,view,current,FALSE,"The research default: the newest accepted value per series and period, realized observations only.",juan.manuel.gonzalez,2026-08-31
+main,v_series_latest_observed,view,current,FALSE,"Deprecated alias of v_series_latest, retained so schema-27 queries keep working.",juan.manuel.gonzalez,2026-08-31
+main,v_series_observations,view,current,TRUE,The filtered base relation every current observation view descends from.,juan.manuel.gonzalez,2026-08-31
+marts,v_catalogue_by_grain,view,current,FALSE,Catalogue of the published series of one grain.,juan.manuel.gonzalez,2026-08-31
+marts,v_catalogue_curve_panel,view,current,FALSE,Catalogue of the published series of one grain.,juan.manuel.gonzalez,2026-08-31
+marts,v_catalogue_entity_panel,view,current,FALSE,Catalogue of the published series of one grain.,juan.manuel.gonzalez,2026-08-31
+marts,v_catalogue_event,view,current,FALSE,Catalogue of the published series of one grain.,juan.manuel.gonzalez,2026-08-31
+marts,v_catalogue_scalar_series,view,current,FALSE,Catalogue of the published series of one grain.,juan.manuel.gonzalez,2026-08-31
+marts,v_mart_external_accounts,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
+marts,v_mart_fiscal,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
+marts,v_mart_money_credit,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
+marts,v_mart_national_accounts_activity,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
+marts,v_mart_prices,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
+marts,v_mart_reserves_fx,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
+marts,v_mart_trade,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
+marts,v_research_series,view,current,FALSE,The reviewed research surface. Empty by design until series pass economic review.,juan.manuel.gonzalez,2026-08-31
+marts,v_series_missingness,view,current,TRUE,"Expected periods with no observation, and the reason, for accepted vintages.",juan.manuel.gonzalez,2026-08-31
+marts,v_series_projections,view,current,FALSE,The after-publication rows on their own.,juan.manuel.gonzalez,2026-08-31
+main,report_cells,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,resolve_series_id,macro,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,resolve_series_ids,macro,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_reconciliation_unclassified,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_report_cells_a1,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_series_id_resolution,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_series_id_scalar_resolution,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_series_migration_summary,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_source_provenance,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_source_region_completeness,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_source_region_unreviewed,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_table_reconciliation,view,diagnostic,FALSE,"Evidence about how the database was built -- cells, reconciliation, provenance, identity migration -- rather than published economic data.",juan.manuel.gonzalez,2026-08-31
+main,v_canonical_membership,view,reference,FALSE,"Describes series, dimensions or their review status. Carries no observation and therefore no release boundary.",juan.manuel.gonzalez,2026-08-31
+main,v_documented_series_catalogue,view,reference,FALSE,"Describes series, dimensions or their review status. Carries no observation and therefore no release boundary.",juan.manuel.gonzalez,2026-08-31
+main,v_series_concept_catalogue,view,reference,FALSE,"Describes series, dimensions or their review status. Carries no observation and therefore no release boundary.",juan.manuel.gonzalez,2026-08-31
+main,v_series_dimension_evidence,view,reference,FALSE,"Describes series, dimensions or their review status. Carries no observation and therefore no release boundary.",juan.manuel.gonzalez,2026-08-31
+main,v_series_dimensions,view,reference,FALSE,"Describes series, dimensions or their review status. Carries no observation and therefore no release boundary.",juan.manuel.gonzalez,2026-08-31
+main,v_series_domain,view,reference,FALSE,"Describes series, dimensions or their review status. Carries no observation and therefore no release boundary.",juan.manuel.gonzalez,2026-08-31
+main,v_series_measurement,view,reference,FALSE,"Describes series, dimensions or their review status. Carries no observation and therefore no release boundary.",juan.manuel.gonzalez,2026-08-31
+main,v_series_semantic_evidence,view,reference,FALSE,"Describes series, dimensions or their review status. Carries no observation and therefore no release boundary.",juan.manuel.gonzalez,2026-08-31
+main,v_series_table_status,view,reference,FALSE,"Describes series, dimensions or their review status. Carries no observation and therefore no release boundary.",juan.manuel.gonzalez,2026-08-31

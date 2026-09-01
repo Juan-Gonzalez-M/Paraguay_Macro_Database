@@ -200,7 +200,7 @@ append_reference_snapshot <- function(con, role, data, item, release_id) {
       " WHERE vintage_id = ", sql_string(item$vintage_id)
     ))
     DBI::dbWriteTable(con, table_name, snapshot, append = TRUE)
-  } else DBI::dbWriteTable(con, table_name, snapshot, overwrite = TRUE)
+  } else write_table_in_storage_layer(con, table_name, snapshot)
   invisible(NULL)
 }
 
@@ -209,21 +209,37 @@ create_documented_financial_views <- function(con) {
     "translate(lower(regexp_replace(trim(CAST(", expression,
     " AS VARCHAR)), '[[:space:]]+', ' ', 'g')), 'áéíóúüñ', 'aeiouun')"
   )
+  # The project's second view factory: ten published views per release, five per
+  # institution family, each with an unfiltered `_all` twin. The published view
+  # shows only an accepted release; the twin is what the source's own ingestion
+  # checks read, because a source is validated inside its own transaction and the
+  # release it belongs to has not been decided yet.
   create_view <- function(view_name, source_view, joins, select_extra) {
-    if (!database_object_exists(con, source_view)) return(invisible(NULL))
-    DBI::dbExecute(con, paste0(
-      "CREATE OR REPLACE VIEW ", DBI::dbQuoteIdentifier(con, view_name), " AS SELECT r.*, ",
-      select_extra, " FROM ", DBI::dbQuoteIdentifier(con, source_view), " r ", joins
-    ))
+    for (variant in c("", "_all")) {
+      source_variant <- paste0(source_view, variant)
+      if (!database_object_exists(con, source_variant)) next
+      create_project_view(con, paste0(view_name, variant), paste0(
+        "SELECT r.*, ", select_extra, " FROM ", source_variant, " r ", joins
+      ))
+    }
   }
   for (source_id in c("banks", "financial")) {
     entity_type <- if (source_id == "banks") "bank" else "finance_company"
     prefix <- paste0("v_latest_raw_", source_id, "_")
+    # Codes are compared as the labels they are. Both dimensions already store
+    # them as text; since schema 27 the raw panels do too, so the round trip
+    # through BIGINT is gone. It was never a comparison of numbers -- it was a
+    # way of undoing the panels having stored an identifier as a double, which
+    # is what dropped a leading zero and what turned a large code into
+    # scientific notation.
     entity_join <- paste0(
       " LEFT JOIN dim_entity e ON e.entity_type = '", entity_type,
-      "' AND TRY_CAST(e.entity_code AS BIGINT) = TRY_CAST(r.codigo_entidad AS BIGINT)"
+      "' AND trim(CAST(e.entity_code AS VARCHAR)) = trim(CAST(r.codigo_entidad AS VARCHAR))"
     )
-    currency_join <- " LEFT JOIN dim_currency c ON TRY_CAST(c.currency_code AS BIGINT) = TRY_CAST(r.codigo_moneda AS BIGINT)"
+    currency_join <- paste(
+      " LEFT JOIN dim_currency c ON trim(CAST(c.currency_code AS VARCHAR))",
+      "= trim(CAST(r.codigo_moneda AS VARCHAR))"
+    )
     create_view(paste0("v_", source_id, "_eeff_documented"), paste0(prefix, "eeff"), paste0(
       entity_join, currency_join,
       " LEFT JOIN dim_statement_item d ON d.entity_type = '", entity_type,

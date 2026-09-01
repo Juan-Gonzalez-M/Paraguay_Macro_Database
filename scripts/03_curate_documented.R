@@ -42,18 +42,25 @@ documented_date_matrix <- function(raw, text) {
       "%s-%02d-01", match[char_keep, 2], as.integer(match[char_keep, 3])
     )), "month") - lubridate::days(1)
   }
-  month_match <- stringr::str_match(
-    normalize_semantic_label(trimws(text)),
-    "^(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[- /]([0-9]{2}|[0-9]{4})$"
-  )
+  normalized <- normalize_semantic_label(documented_strip_footnote(text))
+  month_match <- stringr::str_match(normalized, DOCUMENTED_MONTH_YEAR_PATTERN)
   month_keep <- !is.na(month_match[, 1])
   if (any(month_keep)) {
-    years <- as.integer(month_match[month_keep, 3])
-    years[years < 100L] <- years[years < 100L] + ifelse(years[years < 100L] >= 40L, 1900L, 2000L)
+    years <- documented_expand_two_digit_year(as.integer(month_match[month_keep, 3]))
     months <- documented_month_number(month_match[month_keep, 2])
     result[month_keep] <- as.Date(vapply(seq_along(years), function(i) {
       as.character(month_end(years[[i]], months[[i]]))
     }, character(1)))
+  }
+  # A day-month-year label names one day, not the month it falls in, so it is
+  # resolved to the exact date rather than pushed to month end.
+  day_match <- stringr::str_match(normalized, DOCUMENTED_DAY_MONTH_YEAR_PATTERN)
+  day_keep <- !is.na(day_match[, 1]) & is.na(result)
+  if (any(day_keep)) {
+    years <- documented_expand_two_digit_year(as.integer(day_match[day_keep, 4]))
+    months <- documented_month_number(day_match[day_keep, 3])
+    days <- as.integer(day_match[day_keep, 2])
+    result[day_keep] <- as.Date(sprintf("%04d-%02d-%02d", years, months, days))
   }
   result
 }
@@ -88,6 +95,17 @@ documented_year_footnote <- function(text) {
   marker[!nzchar(marker)] <- NA_character_
   if (!is.null(input_dim)) dim(marker) <- input_dim
   marker
+}
+
+# TRUE for a cell whose entire content is a published footnote marker -- "*",
+# "**", "(*)", "1/", "12/". Such a cell qualifies the data underneath it; it is
+# never a dimension of the series and must not reach a label.
+documented_footnote_only <- function(x) {
+  key <- trimws(as.character(x))
+  out <- stringr::str_detect(key, "^(?:\\(?\\*+\\)?|[0-9]{1,2}/)+$")
+  out[is.na(out)] <- FALSE
+  if (!is.null(dim(x))) dim(out) <- dim(x)
+  out
 }
 
 documented_year_axis_counts <- function(years, margin = 1L, minimum = 3L) {
@@ -136,19 +154,106 @@ documented_consecutive_year_rows <- function(text, minimum = 2L) {
   }, logical(1)))
 }
 
+# The published month-year cell, in the forms the BCP actually writes it.
+#
+# Two of them were missing and cost real observations. The Spanish abbreviation
+# is written with a full stop as often as without -- "mar.-19", "dic.-19" -- and
+# the four-letter "sept" appears alongside "sep" and "set"; CUADRO 56a/56b lost
+# 88 reserve-composition observations to the first and CUADRO 18/23/23a/26 lost
+# 72 to the second. Both are spellings of a period label, not different kinds of
+# cell, so both belong in the pattern rather than in a list of exceptions.
+DOCUMENTED_MONTH_ABBREVIATIONS <-
+  "ene|feb|mar|abr|may|jun|jul|ago|sept|sep|set|oct|nov|dic"
+
+# The separator is written loosely too: "dic- 19*" carries a space the publisher
+# typed after the dash, which cost CUADRO 35 a month of banking-system data.
+DOCUMENTED_MONTH_YEAR_PATTERN <- paste0(
+  "^(", DOCUMENTED_MONTH_ABBREVIATIONS, ")[.]?\\s*[- /]\\s*([0-9]{2}|[0-9]{4})$"
+)
+
+# Daily labels the BCP writes as text rather than as an Excel date: "30-nov.-20".
+# bcp_fx_daily's 2020 worksheet has nine of them, and they cost 108 observations
+# of the BCP's own foreign-exchange intervention.
+DOCUMENTED_DAY_MONTH_YEAR_PATTERN <- paste0(
+  "^([0-9]{1,2})\\s*[- /]\\s*(", DOCUMENTED_MONTH_ABBREVIATIONS,
+  ")[.]?\\s*[- /]\\s*([0-9]{2}|[0-9]{4})$"
+)
+
+# Two-digit years are read on the same century boundary the month-year path uses.
+documented_expand_two_digit_year <- function(years) {
+  short <- !is.na(years) & years < 100L
+  years[short] <- years[short] + ifelse(years[short] >= 40L, 1900L, 2000L)
+  years
+}
+
 documented_date_axis_token <- function(x) {
-  key <- normalize_semantic_label(trimws(as.character(x)))
-  out <- stringr::str_detect(
-    key,
-    "^(?:(?:19|20)[0-9]{2}-[0-1][0-9]-[0-3][0-9]|(?:19|20)[0-9]{2}[/.-](?:0?[1-9]|1[0-2])|(?:ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[- /](?:[0-9]{2}|[0-9]{4}))$"
-  )
+  key <- normalize_semantic_label(documented_strip_footnote(x))
+  out <- stringr::str_detect(key, "^(?:19|20)[0-9]{2}-[0-1][0-9]-[0-3][0-9]$") |
+    stringr::str_detect(key, "^(?:19|20)[0-9]{2}[/.-](?:0?[1-9]|1[0-2])$") |
+    stringr::str_detect(key, DOCUMENTED_MONTH_YEAR_PATTERN) |
+    stringr::str_detect(key, DOCUMENTED_DAY_MONTH_YEAR_PATTERN)
   out[is.na(out)] <- FALSE
   out
 }
 
+# A footnote marker on a period label is still a period label. The BCP marks
+# provisional and revised figures by hanging an asterisk on the month itself --
+# "Ene**", "Set*" -- and the annex uses it heavily: 240 month labels across the
+# Statistical Annex carry one. The reconciliation found what that cost. CUADRO 59
+# (external public debt) lost 480 observations and CUADRO 55 lost 229, because
+# every marked month failed to match and its whole row went unread, silently, for
+# the most recent years of the series -- exactly the years a researcher wants.
+#
+# The marker grammar is the one documented_year_values() already uses for year
+# cells -- asterisks, optionally parenthesised, and numbered "1/" references. The
+# year axis has handled footnotes since the CUADRO 57a repair; the month axis
+# never did, which is the whole of this defect.
+DOCUMENTED_FOOTNOTE_SUFFIX <- "((?:\\s*(?:\\(?\\*+\\)?|\\(?[0-9]{1,2}/\\)?))+)\\s*$"
+
+documented_strip_footnote <- function(x) {
+  input_dim <- dim(x)
+  out <- stringr::str_replace(trimws(as.character(x)), DOCUMENTED_FOOTNOTE_SUFFIX, "")
+  if (!is.null(input_dim)) dim(out) <- input_dim
+  out
+}
+
+# Same cell pattern, returning the marker instead of discarding it, exactly as
+# documented_year_footnote() does for years.
+documented_month_footnote <- function(x) {
+  input_dim <- dim(x)
+  marker <- trimws(stringr::str_match(
+    trimws(as.character(x)), DOCUMENTED_FOOTNOTE_SUFFIX
+  )[, 2])
+  marker[is.na(marker) | !nzchar(marker)] <- NA_character_
+  if (!is.null(input_dim)) dim(marker) <- input_dim
+  marker
+}
+
+# A published sub-annual interval: "Enero/Junio", "Mayo/Diciembre", "Junio/Agosto",
+# or a single month standing for itself. CUADRO 11 publishes the legal minimum
+# wage this way -- the annual row carries the year's average and the rows beneath
+# it carry the wage actually in force over each interval, which is what a
+# researcher dating a minimum-wage change needs. Neither documented_month_number()
+# nor documented_quarter_number() resolves a compound label, so those rows fell
+# through to `next` and 83 published values were never read.
+#
+# Returns the first and last month of the interval, or NA when the label is not
+# one. A reversed pair is refused rather than silently swapped: "Diciembre/Enero"
+# would be a publication error, not an interval this parser may guess at.
+documented_month_interval <- function(label) {
+  if (length(label) != 1L || documented_blank(label)) return(c(NA_integer_, NA_integer_))
+  parts <- stringr::str_split(stringr::str_squish(as.character(label)), "\\s*/\\s*")[[1]]
+  if (!length(parts) || length(parts) > 2L) return(c(NA_integer_, NA_integer_))
+  months <- documented_month_number(parts)
+  if (anyNA(months)) return(c(NA_integer_, NA_integer_))
+  bounds <- c(months[[1]], months[[length(months)]])
+  if (bounds[[2]] < bounds[[1]]) return(c(NA_integer_, NA_integer_))
+  bounds
+}
+
 documented_month_number <- function(x) {
   input_dim <- dim(x)
-  key <- normalize_semantic_label(x)
+  key <- normalize_semantic_label(documented_strip_footnote(x))
   key <- stringr::str_replace_all(key, "[.]", "")
   map <- c(
     ene = 1L, enero = 1L, jan = 1L, january = 1L,
@@ -171,7 +276,7 @@ documented_month_number <- function(x) {
 
 documented_quarter_number <- function(x) {
   input_dim <- dim(x)
-  key <- normalize_semantic_label(x)
+  key <- normalize_semantic_label(documented_strip_footnote(x))
   key <- stringr::str_replace_all(key, "[.]", "")
   out <- rep(NA_integer_, length(key))
   roman <- c(i = 1L, ii = 2L, iii = 3L, iv = 4L)
@@ -264,8 +369,18 @@ documented_table_title <- function(text, metadata_rows) {
   if (!length(metadata_rows)) return(NA_character_)
   values <- as.vector(t(text[metadata_rows, , drop = FALSE]))
   values <- stringr::str_squish(values)
+  # A navigation link is not part of the published title. Every financial-
+  # indicator worksheet carries a "Volver al índice" link in its header block,
+  # and because the unit derivation reads the title for the word "indice" it put
+  # unit = index on 146 series -- including sheet 8, whose entire title is that
+  # link, and sheets 4 and 7, which publish outstanding balances. The exclusion
+  # below already dropped a cell that is exactly "Índice"; the link says the same
+  # thing in four words and slipped past it.
   keep <- !documented_blank(values) & nchar(values) >= 6L &
-    !stringr::str_detect(normalize_semantic_label(values), "^(indice|cuadro n|ano mes|fecha)$")
+    !stringr::str_detect(
+      normalize_semantic_label(values),
+      "^(indice|cuadro n|ano mes|fecha)$|^volver al indice$|^volver$"
+    )
   values <- unique(values[keep])
   if (!length(values)) return(NA_character_)
   substr(paste(head(values, 6L), collapse = " — "), 1L, 800L)
@@ -339,12 +454,49 @@ documented_measure_metadata_vectorized <- function(series_label, table_title) {
   currency <- rep(NA_character_, size)
   single <- rowSums(currencies) == 1L
   currency[single] <- colnames(currencies)[max.col(currencies[single, , drop = FALSE], ties.method = "first")]
+  # A row label is read as a unit only where the published title has not already
+  # said what the table measures. The two label heuristics below look for a
+  # headcount and a duration, and on these tables they find a product name and a
+  # maturity bucket instead: "Préstamo Personal", "Tarjetas de Crédito",
+  # "<= 90 días". On a table the publisher named "Saldos desglosados por plazo y
+  # cartera" -- outstanding balances, broken down by exactly that maturity and
+  # that portfolio -- they said nothing about the unit, and reading them put
+  # count and days on 18,541 published balances.
+  #
+  # A title that states the money the table is denominated in settles the
+  # question just as firmly, and the Annex CUADRO 20 defect is what that omission
+  # cost. The table is headed "Operaciones cambiarias del Banco Central del
+  # Paraguay. — En millones de dólares." and twelve of its thirty series carry
+  # the word "operaciones" in their row label -- "Otras operaciones 1/",
+  # "Operaciones netas totales" -- so the count keyword won and they were stored
+  # as counts at scale 1 while the eighteen beside them were stored as USD
+  # millions. Their base-unit values were wrong by a factor of 1,000,000, and
+  # each of the twelve matches a dedicated fx_operations series, held in USD
+  # millions, across all 379 of its monthly observations. A currency and a
+  # magnitude printed under the table title is the publisher naming the unit; no
+  # word in a row label outranks it.
+  title_states_money <- stringr::str_detect(
+    global,
+    "(miles|millones|billones)\\s+(de\\s+)?(dolar|guarani|euro)|en\\s+(dolar|guarani|euro)"
+  )
+  title_names_measure <- stringr::str_detect(global, "(^|[^a-z])saldos([^a-z]|$)") |
+    title_states_money
   unit <- dplyr::case_when(
-    stringr::str_detect(local, "cantidad|numero|lotes|operaciones|tarjetas|cheques|dependencias|personal") ~ "count",
+    # A unit the publisher states in the table *title* outranks one inferred from
+    # a word in a row label. "Tasas de interés nominales - Bancos - Promedio
+    # mensuales en porcentajes anuales" states the unit of every column beneath
+    # it. Read from the label instead, "Préstamo Personal" and "<= 90 días" put
+    # unit = count on 311 published interest rates and days on 52 more, which is
+    # how a rate-labelled series ends up carrying a non-rate unit code. Only the
+    # title is consulted here -- the label-and-title `context` used further down
+    # would let the label win again through the back door.
+    stringr::str_detect(global, "porcentaje|%") ~ "percent",
+    !title_names_measure &
+      stringr::str_detect(local, "cantidad|numero|lotes|operaciones|tarjetas|cheques|dependencias|personal") ~ "count",
     stringr::str_detect(context, "porcentaje|%") ~ "percent",
     stringr::str_detect(context, "veces") ~ "ratio",
     stringr::str_detect(context, "indice|base .{0,40}100") ~ "index",
-    stringr::str_detect(local, "plazo.{0,20}dia|dias") ~ "days",
+    !title_names_measure & stringr::str_detect(local, "plazo.{0,20}dia|dias") ~ "days",
     stringr::str_detect(context, "usd[/ ]?(?:por )?ton|dolar.{0,12}ton") ~ "USD_per_tonne",
     stringr::str_detect(context, "usd[/ ]?(?:por )?barr|dolar.{0,12}barr") ~ "USD_per_barrel",
     stringr::str_detect(context, "tipo de cambio|pyg[/ ]?usd|guarani.{0,20}dolar") ~ "PYG_per_USD",
@@ -495,7 +647,8 @@ documented_add_record <- function(records, k, source_sheet, title, mode, period,
   records
 }
 
-documented_extract_vertical_date <- function(text, numbers, dates, source_sheet) {
+documented_extract_vertical_date <- function(text, numbers, dates, source_sheet,
+                                             merge_ranges = parse_merge_ranges(NA_character_)) {
   valid_axis_tokens <- matrix(
     documented_date_axis_token(text), nrow = nrow(text), ncol = ncol(text)
   )
@@ -520,18 +673,155 @@ documented_extract_vertical_date <- function(text, numbers, dates, source_sheet)
   possible_cols <- seq.int(axis_col + 1L, ncol(text))
   numeric_density <- colSums(!is.na(numbers[candidate_rows, possible_cols, drop = FALSE]))
   date_density <- colSums(!is.na(dates[candidate_rows, possible_cols, drop = FALSE]))
+  # A column that starts late is a new series, not a stray number.
+  #
+  # The density floor exists to keep footnote numerals and one-off marginal notes
+  # out of the data columns, and it does that well. But it also drops any column
+  # the publisher has only just begun: reconciliation found CUADRO 17 losing four
+  # real-exchange-rate partner indices introduced in March 2025 (16 months of
+  # data against an 18-row floor) and SIPAP_04 losing ten payment-band columns
+  # opened five months ago. Both would have kept failing silently until enough
+  # history accumulated to clear the threshold, which is the worst possible time
+  # to start reading a series -- the early months would simply never appear.
+  #
+  # The distinguishing feature is shape, not size: a new series runs unbroken
+  # from the row it starts on to the end of the data, and carries a published
+  # header. A footnote numeral does neither.
+  header_span <- seq_len(max(1L, min(candidate_rows) - 1L))
+  starts_late <- vapply(possible_cols, function(j) {
+    present <- !is.na(numbers[candidate_rows, j])
+    if (sum(present) < 2L) return(FALSE)
+    first <- which(present)[[1]]
+    all(present[first:length(present)]) &&
+      any(!documented_blank(text[header_span, j]))
+  }, logical(1))
   # Settlement/maturity columns are attributes of an observation, not numeric
   # measures. Excel dates are internally numeric, so explicitly exclude columns
   # whose candidate cells are predominantly dates.
-  data_cols <- possible_cols[numeric_density >= min_density & date_density < min_density]
+  data_cols <- possible_cols[
+    (numeric_density >= min_density | starts_late) & date_density < min_density
+  ]
   if (!length(data_cols)) return(documented_empty_observations())
-  first_data_col <- min(data_cols)
   header_rows <- documented_header_rows(text, min(candidate_rows), data_cols)
+  # A published column the density floor does not reach.
+  #
+  # The floor and starts_late between them describe a column that is either busy,
+  # or newly opened and running to the end. Three published shapes are neither,
+  # and reconciliation recorded all three as unread data:
+  #
+  #   a participant that reported once and left   CCC 02 columns 11-12, one value
+  #                                               each in 2013/11 and never again
+  #   a column opened in the final month          SIPAP_12 columns 17-18, one
+  #                                               value each, under the two-value
+  #                                               floor starts_late imposes
+  #   a thinly traded instrument                  interbank "Datos (+ de 1 dia)"
+  #                                               columns 15-20, the whole REPO
+  #                                               Tripartito block: 551 values on
+  #                                               95 of 3,653 trading days, 2.6%
+  #                                               against a 5% floor
+  #
+  # The last is the largest of the three and the least like the description it
+  # was filed under. It is not a grain problem and not a late start: a thin
+  # market does not trade every day, and a density floor cannot tell "rarely
+  # traded" from "not a data column".
+  #
+  # What can is the header. The floor was always a proxy for "did the publisher
+  # mean this to be a column", and the publisher answers that directly by heading
+  # it -- on the same header rows the confident columns just established, inside
+  # the block those columns span. A footnote numeral or a marginal note has no
+  # such header. Density stays as the first pass because it is what identifies
+  # those header rows in the first place; this is the second.
   headers <- documented_fill_right(text)
+  recovered_cols <- integer()
+  merged_cols <- integer()
+  if (length(header_rows)) {
+    # The window used to run only between the first and last confident data
+    # column, so a published block lying entirely outside that span could never
+    # be examined -- in either direction. The interbank sheets lose three blocks
+    # to it, all headed, all published, none read:
+    #
+    #   left of the first    "Datos" and "Datos (+ de 1 día)" both open with the
+    #                        Call Money Market (PYG) block, headed by the merge
+    #                        C18:G18 with its own Monto, Número de transacciones
+    #                        and Tasa Máxima/Mínima/Promedio on row 19. The first
+    #                        confident column is the REPO Interbancario block
+    #                        after it.
+    #   right of the last    "Datos (+ de 1 día)" column Z is the Plazo of the
+    #                        Call Money Market (USD) block and columns AB-AD are
+    #                        the whole Facilidad de Crédito Especial block, named
+    #                        on row 18 and detailed on row 19.
+    #
+    # The window is therefore the span the publisher headed: everything right of
+    # the period axis, out to the last column carrying a header. The evidence
+    # rule below is unchanged, so a stray numeral beyond the table is still
+    # rejected -- it has no header on the header rows and no merge over it.
+    headed_cols <- which(colSums(!documented_blank(text[header_rows, , drop = FALSE])) > 0L)
+    header_extent <- max(c(max(data_cols), headed_cols[headed_cols <= ncol(text)]))
+    block <- setdiff(seq.int(axis_col + 1L, header_extent), data_cols)
+    group_row <- min(header_rows)
+    # A row-label column holds text against the period axis, not numbers, so the
+    # numeric test is what keeps the widened window from swallowing one.
+    carries_values <- function(j) {
+      any(!is.na(numbers[candidate_rows, j])) &&
+        date_density[[match(j, possible_cols)]] < min_density
+    }
+    # First pass: a column the publisher headed in the column itself.
+    published_cols <- block[vapply(block, function(j) {
+      carries_values(j) && any(!documented_blank(text[header_rows, j]))
+    }, logical(1))]
+    accepted <- sort(c(data_cols, published_cols))
+    # Second pass: a column with no header of its own, admitted when a merged
+    # group header spans it together with a column that is accepted. That is the
+    # publisher stating, in the only place a workbook can state it, that the two
+    # columns are one block. SIPAP_12 column 18 is inside the merge Q2:R2 with
+    # column 17; CUADRO 35 column 12 is inside no merge at all, and stays the
+    # out_of_scope_block review classified it. The two are indistinguishable in
+    # the cell matrix, and the merge ranges -- now carried through from the
+    # workbook XML -- are the only thing that separates them. The passes are
+    # ordered because the partner can itself be a recovered column: column 17 is
+    # admitted on its own group header before column 18 is judged against it.
+    merged_group <- function(j) {
+      if (!nrow(merge_ranges)) return(FALSE)
+      spanning <- merge_ranges[
+        merge_ranges$row_from <= group_row & merge_ranges$row_to >= group_row &
+          merge_ranges$col_from <= j & merge_ranges$col_to >= j, , drop = FALSE
+      ]
+      if (!nrow(spanning)) return(FALSE)
+      any(vapply(seq_len(nrow(spanning)), function(k) {
+        span <- seq.int(spanning$col_from[[k]], spanning$col_to[[k]])
+        any(setdiff(span, j) %in% accepted) &&
+          !documented_blank(text[group_row, spanning$col_from[[k]]])
+      }, logical(1)))
+    }
+    merged_cols <- setdiff(block, published_cols)
+    merged_cols <- merged_cols[vapply(
+      merged_cols, function(j) carries_values(j) && merged_group(j), logical(1)
+    )]
+    recovered_cols <- sort(c(published_cols, merged_cols))
+    if (length(recovered_cols)) data_cols <- sort(c(data_cols, recovered_cols))
+  }
+  first_data_col <- min(data_cols)
   metadata_rows <- setdiff(seq_len(max(1L, min(candidate_rows) - 1L)), header_rows)
   title <- documented_table_title(text, metadata_rows)
+  # Filling right is right for a group header, which is merged, and wrong for a
+  # sub-header the publisher simply left blank -- it would carry the neighbour's
+  # meaning across a group boundary. On SIPAP_12 the QR block has no
+  # Cantidad/Importe row at all, and inheriting it would label a count of 302,815
+  # operations "Importe Destino". For a column admitted on a merged group header
+  # rather than on a header of its own, the group row is therefore taken filled
+  # and the sub-header rows only as published, so the two QR columns end up
+  # sharing the group name and are separated by the existing positional-identity
+  # machinery instead of by a label that is not true. A column that does publish
+  # its own sub-header -- the Call Money Market block on the interbank sheets
+  # names its Monto, Número de transacciones and three rate columns on row 19 --
+  # is labelled like any other.
   column_labels <- vapply(data_cols, function(j) {
-    label <- documented_compact_path(headers[header_rows, j])
+    parts <- if (j %in% recovered_cols) {
+      published <- text[header_rows, j]
+      published[header_rows == min(header_rows)] <- headers[min(header_rows), j]
+      published
+    } else headers[header_rows, j]
+    label <- documented_compact_path(parts)
     if (!nzchar(label)) paste0("column_", j) else label
   }, character(1))
   label_cols <- if (first_data_col > axis_col + 1L) seq.int(axis_col + 1L, first_data_col - 1L) else integer()
@@ -573,27 +863,111 @@ documented_extract_vertical_date <- function(text, numbers, dates, source_sheet)
       )
     }
   }
+  # Continuation operations.
+  #
+  # An undated row directly beneath a dated one is not a row whose date went
+  # missing. On the interbank sheets the dated row carries the day's published
+  # aggregate and the rows beneath it carry the individual operations that make
+  # it up: under a 9,000,000 total at an average 2.144% sit a 5,000,000 at 2.14%
+  # for 17 days and a 4,000,000 at 2.15% for 7. Total and components are a
+  # different grain, so simply inheriting the date -- which is what block_fill
+  # does where undated rows are the majority -- would put two different things in
+  # one series and collide them on (series_id, period).
+  #
+  # They are emitted as event records instead, which is what the audit asks for:
+  # the trade date inherited from the row above and an operation sequence saying
+  # which operation of that day this is. The sequence is positional and is
+  # declared positional -- the publisher does not number these rows, so nothing
+  # guarantees a given operation keeps its place when the sheet is republished.
+  if (!block_fill && length(candidate_rows) > 1L) {
+    in_data <- rowSums(!is.na(numbers[, data_cols, drop = FALSE])) > 0L
+    governing <- NA_integer_
+    sequence_number <- 0L
+    for (r in seq.int(min(candidate_rows), max(candidate_rows))) {
+      if (!is.na(periods[[r]])) {
+        governing <- r
+        sequence_number <- 0L
+        next
+      }
+      if (!in_data[[r]] || is.na(governing) || r %in% annual_rows) next
+      sequence_number <- sequence_number + 1L
+      for (jj in seq_along(data_cols)) {
+        j <- data_cols[[jj]]
+        value <- numbers[r, j]
+        if (is.na(value)) next
+        series_label <- documented_compact_path(c(
+          column_labels[[jj]], paste0("operacion ", sequence_number)
+        ))
+        k <- k + 1L
+        records[[k]] <- documented_record(
+          source_sheet, title, "vertical_date_event_positional_lane",
+          periods[[governing]], text[governing, axis_col], frequency_default,
+          series_label, "", column_labels[[jj]], value, r, j
+        )
+      }
+    }
+  }
   documented_bind_records(records)
 }
 
 documented_extract_horizontal_time <- function(text, numbers, dates, source_sheet, mode) {
+  # The period axis ends at the last header cell that actually parses as a
+  # period. Filling right past it swallows the comparison columns published to
+  # the right of the data -- on the foreign-trade sheets those are "A Julio
+  # 2024", "A Julio 2025*", "A Julio 2026*", "Var. Nominal", "Var. %",
+  # "Incidencia" and "Var. % Interanual", seven per sheet. Each inherited the
+  # last real period, so every product gained seven extra observations in the
+  # same month, which collided and were pushed onto positional lanes. Merged
+  # header cells inside the axis still fill right, which is what the fill is
+  # for; the bound only stops it running off the end of the axis (R45).
+  fill_right_within_axis <- function(values, first_col, last_col) {
+    for (j in seq.int(first_col, last_col)) {
+      if (j > first_col && is.na(values[[j]])) values[[j]] <- values[[j - 1L]]
+    }
+    values[seq_len(length(values)) > last_col] <- NA
+    values
+  }
+  # Where the last period's block ends, which is not where its label sits.
+  #
+  # A sheet that publishes several measures under each period writes the period
+  # once, above the first measure. Ending the axis at the last *label* therefore
+  # cuts the final period short by however many measures follow it: Cuadro 52a
+  # and 52b publish "Importación Registrada", "Importacion bajo el Regimen de
+  # Turismo" and "Importacion para consumo interno" under every month, so the
+  # last month lost two of its three columns -- 256 published cells across the
+  # pair, invisible because the sheet still balanced.
+  #
+  # The block width is the publisher's own stride between period labels, and the
+  # last block is as wide as the ones before it. The extension applies only when
+  # that stride is regular; an irregular axis extends by nothing, which is the
+  # behaviour every single-measure sheet already had.
+  axis_last_column <- function(axis_cols, columns) {
+    if (length(axis_cols) < 3L) return(max(axis_cols))
+    strides <- diff(axis_cols)
+    if (length(unique(strides)) != 1L || strides[[1]] <= 1L) return(max(axis_cols))
+    min(columns, max(axis_cols) + strides[[1]] - 1L)
+  }
   if (mode == "horizontal_date") {
     time_row <- which.max(rowSums(!is.na(dates)))
     period_values <- dates[time_row, ]
-    first_time_col <- min(which(!is.na(period_values)))
-    for (j in seq.int(first_time_col, ncol(text))) {
-      if (j > first_time_col && is.na(period_values[[j]])) period_values[[j]] <- period_values[[j - 1L]]
-    }
+    axis_cols <- which(!is.na(period_values))
+    if (!length(axis_cols)) return(documented_empty_observations())
+    first_time_col <- min(axis_cols)
+    period_values <- fill_right_within_axis(
+      period_values, first_time_col, axis_last_column(axis_cols, ncol(text))
+    )
     frequency_default <- documented_frequency(dates[time_row, !is.na(dates[time_row, ])])
   } else {
     years <- documented_year_values(text)
     time_row <- documented_year_axis_index(text, margin = 1L)
     if (is.na(time_row)) return(documented_empty_observations())
     year_values <- years[time_row, ]
-    first_time_col <- min(which(!is.na(year_values)))
-    for (j in seq.int(first_time_col, ncol(text))) {
-      if (j > first_time_col && is.na(year_values[[j]])) year_values[[j]] <- year_values[[j - 1L]]
-    }
+    axis_cols <- which(!is.na(year_values))
+    if (!length(axis_cols)) return(documented_empty_observations())
+    first_time_col <- min(axis_cols)
+    year_values <- fill_right_within_axis(
+      year_values, first_time_col, axis_last_column(axis_cols, ncol(text))
+    )
     period_values <- as.Date(ifelse(is.na(year_values), NA_character_, paste0(year_values, "-12-31")))
     frequency_default <- "annual"
   }
@@ -607,7 +981,22 @@ documented_extract_horizontal_time <- function(text, numbers, dates, source_shee
   if (!length(data_rows)) return(documented_empty_observations())
   data_start <- min(data_rows)
   subheader_rows <- if (data_start > time_row + 1L) seq.int(time_row + 1L, data_start - 1L) else integer()
-  subheaders <- documented_fill_right(text)
+  # A sub-header row that contains nothing but a provisional-data marker is
+  # editorial, not a dimension. On the foreign-trade sheets a bare "*" sits over
+  # the most recent 24 months; treated as a sub-header it became the measure, so
+  # every product was cut in two at the month the marker starts -- "Soja" with
+  # 367 observations to 2024-07 and "Soja - *" with 31 from 2024-08. The marker
+  # is real editorial information, so it is kept on the observation rather than
+  # discarded, but it must not enter the identity (R45).
+  marker_cells <- documented_footnote_only(text)
+  footnote_by_column <- rep(NA_character_, ncol(text))
+  if (length(subheader_rows)) for (r in subheader_rows) {
+    markers <- ifelse(marker_cells[r, ], trimws(as.character(text[r, ])), NA_character_)
+    footnote_by_column <- dplyr::coalesce(footnote_by_column, markers)
+  }
+  label_text <- text
+  label_text[marker_cells] <- NA_character_
+  subheaders <- documented_fill_right(label_text)
   metadata_rows <- if (time_row > 1L) seq_len(time_row - 1L) else integer()
   title <- documented_table_title(text, metadata_rows)
   column_labels <- vapply(time_cols, function(j) documented_compact_path(subheaders[subheader_rows, j]), character(1))
@@ -635,7 +1024,11 @@ documented_extract_horizontal_time <- function(text, numbers, dates, source_shee
       )
     }
   }
-  documented_bind_records(records)
+  observations <- documented_bind_records(records)
+  if (nrow(observations) && any(!is.na(footnote_by_column))) {
+    observations$footnote_marker <- footnote_by_column[observations$source_column]
+  }
+  observations
 }
 
 documented_extract_vertical_block <- function(text, numbers, source_sheet, mode = "vertical_block") {
@@ -682,11 +1075,27 @@ documented_extract_vertical_block <- function(text, numbers, source_sheet, mode 
       frequency <- "quarterly"; period <- quarter_end(current_year, quarter)
     } else if (!is.na(row_year)) {
       frequency <- "annual"; period <- as.Date(paste0(current_year, "-12-31"))
+    } else if (!anyNA(documented_month_interval(label))) {
+      # An irregular sub-annual interval. The period axis carries its closing
+      # month, which keeps the project's period-end convention and keeps two
+      # intervals in one year on distinct keys; the opening month is recorded by
+      # apply_series_period_bounds() from this same published label, so
+      # v_series_observations reports the interval a researcher must date the
+      # value to rather than a bound inferred from the frequency.
+      #
+      # These are a different measure from the annual row above them and are
+      # labelled as one: on CUADRO 11 the 1980 annual row is 22,065, the average
+      # of the 20,520 in force to June and the 23,610 in force from July.
+      frequency <- "irregular_interval"
+      period <- month_end(current_year, documented_month_interval(label)[[2]])
     } else next
+    interval_measure <- identical(frequency, "irregular_interval")
     for (jj in seq_along(data_cols)) {
       j <- data_cols[[jj]]; value <- numbers[r, j]
       if (is.na(value)) next
-      series_label <- column_labels[[jj]]
+      series_label <- if (interval_measure) {
+        documented_compact_path(c(column_labels[[jj]], "vigencia sub-anual"))
+      } else column_labels[[jj]]
       k <- k + 1L
       records[[k]] <- documented_record(
         source_sheet, title, mode, period, label, frequency,
@@ -694,7 +1103,63 @@ documented_extract_vertical_block <- function(text, numbers, source_sheet, mode 
       )
     }
   }
-  documented_bind_records(records)
+  observations <- documented_bind_records(records)
+  # Keep the "provisional" or "revised" marker the month label carried, the same
+  # way the horizontal extractor keeps the one on a year header. It is published
+  # editorial information about the figure, and now that these rows parse at all
+  # it would otherwise be discarded on the way in.
+  if (nrow(observations)) {
+    markers <- documented_month_footnote(text[, period_col])
+    if (any(!is.na(markers))) observations$footnote_marker <- markers[observations$source_row]
+  }
+  observations
+}
+
+# The publisher's own arithmetic, used as the check on a year mapping that is
+# otherwise only readable from two header rows at once.
+#
+# On a stock table the fourth quarter of a year *is* the year-end level, so the
+# Q4 column and the annual column that closes the block must hold the same
+# number on every row. If the mapping were shifted by one year -- which is
+# exactly what reading the shared header row alone does -- Q4 would line up
+# against the wrong annual column and this would fail on nearly every row.
+#
+# It is a hard stop rather than a warning because the failure it guards against
+# is silent: 12,000 observations dated a year early look entirely ordinary. If a
+# future workbook publishes flows in this layout, where the annual column is the
+# sum of the quarters rather than the last of them, this will fire and a person
+# will decide what the sheet means instead of the parser guessing.
+documented_assert_quarter_block_closes <- function(numbers, year_values, quarter_values,
+                                                   period_labels, source_sheet,
+                                                   minimum_agreement = 0.9) {
+  annual_cols <- which(!is.na(documented_year_values(period_labels)))
+  fourth_cols <- which(!is.na(quarter_values) & quarter_values == 4L)
+  if (!length(annual_cols) || !length(fourth_cols)) return(invisible(TRUE))
+  compared <- 0L; agreed <- 0L
+  for (annual in annual_cols) {
+    closing <- fourth_cols[fourth_cols < annual]
+    if (!length(closing)) next
+    closing <- max(closing)
+    # The Q4 immediately before the annual column, and only if it belongs to the
+    # year that column is labelled with.
+    if (!identical(year_values[[closing]], as.numeric(documented_year_values(period_labels)[[annual]]))) next
+    left <- numbers[, closing]; right <- numbers[, annual]
+    both <- !is.na(left) & !is.na(right)
+    if (!any(both)) next
+    compared <- compared + sum(both)
+    agreed <- agreed + sum(abs(left[both] - right[both]) <=
+                             1e-6 * pmax(abs(right[both]), 1))
+  }
+  if (!compared) return(invisible(TRUE))
+  share <- agreed / compared
+  if (share < minimum_agreement) stop(
+    "Year-quarter block guard on ", source_sheet, ": the fourth quarter of a block matches the ",
+    "annual column that closes it in only ", round(100 * share, 1), "% of ", compared,
+    " comparable cells. On a stock table those are the same figure, so the year each quarter ",
+    "block belongs to is not being read correctly, or this table publishes flows in a layout ",
+    "the two-header reading does not describe.", call. = FALSE
+  )
+  invisible(TRUE)
 }
 
 documented_extract_horizontal_year_quarter <- function(text, numbers, source_sheet) {
@@ -702,10 +1167,55 @@ documented_extract_horizontal_year_quarter <- function(text, numbers, source_she
   year_row <- documented_year_axis_index(text, margin = 1L)
   if (is.na(year_row)) return(documented_empty_observations())
   quarter_scores <- rowSums(!is.na(documented_quarter_number(text)))
-  nearby <- intersect(seq.int(year_row + 1L, min(nrow(text), year_row + 4L)), seq_len(nrow(text)))
-  if (!length(nearby)) return(documented_empty_observations())
-  quarter_row <- nearby[[which.max(quarter_scores[nearby])]]
+  # A window with no quarter labels in it has no quarter axis, and must yield
+  # nothing rather than a data row promoted to an axis.
+  #
+  # which.max over a vector of zeros returns the first candidate, so a sheet whose
+  # quarter labels are not on any row below the year row silently took its first
+  # *data* row as the period header. direct_investment Cuadro 5 and Cuadro 7 put
+  # the year and its quarters on one row -- row 11 of Cuadro 5 reads 1995, I, II,
+  # III, IV, 1996, I, ... across 147 columns -- so both failed this way, and the
+  # failure was not a quiet omission. ALEMANIA's 1995 balance became a header,
+  # every series was labelled with three of its own values, and all 72 surviving
+  # rows were stamped 2024-12-31 in the single column that came through; Cuadro 7
+  # produced 33 the same way. Those 105 rows are removed here.
+  #
+  # The two-header layout, now read.
+  #
+  # On these sheets the period axis is spread over two rows and neither is
+  # sufficient alone. Row 10 carries a year above the *first* column of each
+  # quarter block; row 11 carries the quarter numerals and, on the column that
+  # closes each block, that block's year as an annual total. Reading row 11 alone
+  # carries 1995 across the first four quarters, which dates every observation on
+  # the sheet a year early. The publisher's own arithmetic settles it: these are
+  # stock tables, so the fourth quarter of a block must equal the annual column
+  # beside it, and ALEMANIA's 538,145.747 sits in Q4 of the first block and in
+  # the annual column labelled 1996 -- not the 1995 that precedes it.
+  #
+  # So when the year row is also the quarter row, the quarters take their year
+  # from the row above and the annual columns keep the year written on them, and
+  # the Q4-equals-annual identity is asserted before anything is emitted.
+  shared_header <- quarter_scores[[year_row]] > 0L
+  below <- intersect(seq.int(year_row + 1L, min(nrow(text), year_row + 4L)), seq_len(nrow(text)))
+  quarter_row <- if (shared_header) {
+    year_row
+  } else if (length(below) && max(quarter_scores[below]) > 0L) {
+    below[[which.max(quarter_scores[below])]]
+  } else {
+    # A window with no quarter labels in it has no quarter axis, and must yield
+    # nothing rather than a data row promoted to an axis: which.max over a vector
+    # of zeros returns the first candidate, which is the first row of data.
+    return(documented_empty_observations())
+  }
   raw_year_values <- years[year_row, ]
+  # The row above the shared header, where the year of each quarter block is
+  # written. Absent on a single-header sheet, in which case the quarters carry
+  # the year forward from the shared row exactly as before.
+  block_year_values <- if (shared_header && year_row > 1L) {
+    above <- rev(seq_len(year_row - 1L))
+    candidate <- above[which(rowSums(!is.na(years[above, , drop = FALSE])) >= 2L)]
+    if (length(candidate)) years[candidate[[1]], ] else rep(NA_real_, ncol(text))
+  } else rep(NA_real_, ncol(text))
   year_values <- raw_year_values
   first_year_col <- min(which(!is.na(year_values)))
   for (j in seq.int(first_year_col, ncol(text))) {
@@ -713,6 +1223,20 @@ documented_extract_horizontal_year_quarter <- function(text, numbers, source_she
   }
   period_labels <- text[quarter_row, ]
   quarter_values <- documented_contextual_quarters(period_labels, raw_year_values)
+  if (shared_header && any(!is.na(block_year_values))) {
+    # Quarter columns take the block year stated above them; annual columns keep
+    # the year written on the shared row.
+    carried <- block_year_values
+    first_block_col <- min(which(!is.na(carried)))
+    for (j in seq.int(first_block_col, ncol(text))) {
+      if (j > first_block_col && is.na(carried[[j]])) carried[[j]] <- carried[[j - 1L]]
+    }
+    quarter_cols <- !is.na(quarter_values) & !is.na(carried)
+    year_values[quarter_cols] <- carried[quarter_cols]
+    documented_assert_quarter_block_closes(
+      numbers, year_values, quarter_values, period_labels, source_sheet
+    )
+  }
   annual_total <- stringr::str_detect(normalize_semantic_label(period_labels), "total|anual|ano") |
     !is.na(documented_year_values(period_labels))
   annual_total[is.na(annual_total)] <- FALSE
@@ -820,14 +1344,15 @@ documented_extract_horizontal_year_month <- function(text, numbers, source_sheet
 }
 
 documented_extract_generic_sheet <- function(raw, source_sheet, mode_override = NA_character_,
-                                             hierarchy_status = "unresolved", year_axis_minimum = NA_integer_) {
+                                             hierarchy_status = "unresolved", year_axis_minimum = NA_integer_,
+                                             merge_ranges = parse_merge_ranges(NA_character_)) {
   text <- documented_text_matrix(raw)
   numbers <- documented_number_matrix(raw)
   dates <- documented_date_matrix(raw, text)
   mode <- if (!is.na(mode_override) && nzchar(mode_override)) mode_override else documented_mode(text, dates)
   observations <- switch(
     mode,
-    vertical_date = documented_extract_vertical_date(text, numbers, dates, source_sheet),
+    vertical_date = documented_extract_vertical_date(text, numbers, dates, source_sheet, merge_ranges),
     horizontal_date = documented_extract_horizontal_time(text, numbers, dates, source_sheet, mode),
     horizontal_year = documented_extract_horizontal_time(text, numbers, dates, source_sheet, mode),
     vertical_block = documented_extract_vertical_block(text, numbers, source_sheet, mode),
@@ -844,22 +1369,10 @@ documented_extract_generic_sheet <- function(raw, source_sheet, mode_override = 
   )
 }
 
-.documented_config_cache <- new.env(parent = emptyenv())
-
-documented_cached_config <- function(path, reader) {
-  if (!file.exists(path)) return(NULL)
-  info <- file.info(path)
-  signature <- paste(info$size[[1]], as.numeric(info$mtime[[1]]), sep = "|")
-  key <- normalizePath(path, winslash = "/", mustWork = TRUE)
-  cached <- if (exists(key, envir = .documented_config_cache, inherits = FALSE)) {
-    get(key, envir = .documented_config_cache, inherits = FALSE)
-  } else NULL
-  if (is.null(cached) || !identical(cached$signature, signature)) {
-    cached <- list(signature = signature, data = reader(path))
-    assign(key, cached, envir = .documented_config_cache)
-  }
-  cached$data
-}
+# One cache for every project config file, in 01_utils.R, so the ingestion layer
+# and the documented parsers cannot hold two different views of the same edited
+# file within one run.
+documented_cached_config <- function(path, reader) project_cached_config(path, reader)
 
 documented_sheet_modes <- function(root) {
   path <- file.path(root, "config", "sheet_modes.csv")
@@ -1169,8 +1682,25 @@ documented_parse_credit_sheet <- function(raw, source_sheet) {
     for (r in seq.int(layout$quarter_row + 1L, nrow(text))) {
       label <- stringr::str_squish(text[r, 1])
       values <- numbers[r, layout$columns]
-      if (!documented_blank(label) && all(is.na(values)) && stringr::str_detect(
-        label, "^[0-9]+(?:[.,][0-9]+)*\\s*[-.)]"
+      # The published question number is what makes a row a question header, not
+      # the emptiness of its value columns. Nine of the 73 header rows on this
+      # worksheet carry a stray numeric in a period column -- "10,2 - Ganaderia"
+      # carries thirteen. Requiring all(is.na(values)) made those rows fail the
+      # test, so the header was consumed as a response of the previous question
+      # and every response row of the block that followed inherited the wrong
+      # question: Ganaderia's shares published under Agricultura, colliding with
+      # Agricultura's own responses in the same quarter and forcing both onto
+      # positional identities. A response label never begins with a digit, and a
+      # real response row carries 46-54 values rather than one or two, so the
+      # label pattern alone decides this safely (audit P0; R52).
+      # The separator after the question number is not published consistently:
+      # most headers read "18,1 - ..." but "18,2 ¿Cual sera..." has only a space,
+      # so requiring a dash/dot/parenthesis missed it and question 18,2's answers
+      # were published under 18,1. Accept a separator or plain whitespace. The
+      # only other label on this worksheet that opens with a digit is the
+      # footnote "1/ Los datos fueron empalmados...", which matches neither form.
+      if (!documented_blank(label) && stringr::str_detect(
+        label, "^[0-9]+(?:[.,][0-9]+)*(?:\\s*[-.)]|\\s)"
       )) {
         question <- label; next
       }
@@ -1503,29 +2033,34 @@ documented_skipped_result <- function(raw, mode, title = NA_character_) {
 }
 
 documented_create_views <- function(con) {
-  DBI::dbExecute(con, paste0(
-    "CREATE OR REPLACE VIEW v_documented_series_latest_snapshot AS ",
+  # Every documented "latest" view in this file is built on this one, so this is
+  # where the accepted-release boundary belongs. It was missing: schema 24 gave
+  # the generic series path a release filter and left the documented path ranking
+  # whatever had been committed, which meant "latest" answered two different
+  # questions depending on which view a researcher happened to open.
+  create_project_view(con, "v_documented_series_latest_snapshot", paste0(
     "SELECT * EXCLUDE(vintage_rank, source_ingested_at) FROM (SELECT d.*, ",
     "f.first_ingested_at AS source_ingested_at, dense_rank() OVER (PARTITION BY d.source_id ",
     "ORDER BY d.publication_date DESC NULLS LAST, f.first_ingested_at DESC NULLS LAST, d.vintage_id DESC) AS vintage_rank ",
-    "FROM documented_series_snapshot d LEFT JOIN source_files f USING (vintage_id)) WHERE vintage_rank = 1"
+    "FROM documented_series_snapshot d LEFT JOIN source_files f USING (vintage_id) ",
+    "WHERE d.vintage_id IN (", accepted_release_vintages_sql(), ")) WHERE vintage_rank = 1"
   ))
-  DBI::dbExecute(con, "CREATE OR REPLACE VIEW v_economic_annex_latest AS SELECT * FROM v_documented_series_latest_snapshot WHERE source_id = 'economic_annex'")
-  DBI::dbExecute(con, paste0(
-    "CREATE OR REPLACE VIEW v_payments_latest AS SELECT d.*, p.bic_code, p.legal_name AS participant_name, ",
+  create_project_view(con, "v_economic_annex_latest", "SELECT * FROM v_documented_series_latest_snapshot WHERE source_id = 'economic_annex'")
+  create_project_view(con, "v_payments_latest", paste0(
+    "SELECT d.*, p.bic_code, p.legal_name AS participant_name, ",
     "p.participant_type FROM v_documented_series_latest_snapshot d LEFT JOIN dim_payment_participant p ",
     "USING (participant_id) WHERE d.source_id = 'payments'"
   ))
-  DBI::dbExecute(con, paste0(
-    "CREATE OR REPLACE VIEW v_exchange_houses_latest AS SELECT d.*, e.entity_code, e.legal_name, ",
+  create_project_view(con, "v_exchange_houses_latest", paste0(
+    "SELECT d.*, e.entity_code, e.legal_name, ",
     "e.short_name, x.classification AS item_classification, x.item_label_normalized ",
     "FROM v_documented_series_latest_snapshot d LEFT JOIN dim_entity e USING (entity_id) ",
     "LEFT JOIN dim_exchange_item x USING (exchange_item_id) ",
     "WHERE d.source_id = 'exchange_houses'"
   ))
-  DBI::dbExecute(con, "CREATE OR REPLACE VIEW v_credit_survey_latest AS SELECT * FROM v_documented_series_latest_snapshot WHERE source_id = 'credit_survey'")
-  DBI::dbExecute(con, paste0(
-    "CREATE OR REPLACE VIEW v_documented_series_catalogue AS SELECT series_id, source_id, source_sheet, ",
+  create_project_view(con, "v_credit_survey_latest", "SELECT * FROM v_documented_series_latest_snapshot WHERE source_id = 'credit_survey'")
+  create_project_view(con, "v_documented_series_catalogue", paste0(
+    "SELECT series_id, source_id, source_sheet, ",
     "any_value(series_label) AS series_label, any_value(unit) AS unit, any_value(scale) AS scale, ",
     "any_value(currency) AS currency, any_value(frequency) AS frequency, ",
     "any_value(identity_stability) AS identity_stability, any_value(hierarchy_status) AS hierarchy_status, min(period) AS first_period, ",
@@ -1580,7 +2115,10 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
         results[[sheet]] <- if (identical(rule$parser_mode_override, "fx_market_turnover")) {
           documented_parse_fx_market_turnover(raw, sheet)
         } else {
-          documented_extract_generic_sheet(raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum)
+          documented_extract_generic_sheet(
+            raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum,
+            sheet_merge_ranges(dimensions, sheet)
+          )
         }
       }
     }
@@ -1601,7 +2139,10 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
         result_note[[sheet]] <- "BIC-to-institution reference loaded into dim_payment_participant."
       } else {
         rule <- documented_sheet_rule(root, source_id, sheet)
-        results[[sheet]] <- documented_extract_generic_sheet(raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum)
+        results[[sheet]] <- documented_extract_generic_sheet(
+          raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum,
+          sheet_merge_ranges(dimensions, sheet)
+        )
       }
     }
   }
@@ -1665,7 +2206,8 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
         "secondary_market_operation"
       )
     } else results[[sheet]] <- documented_extract_generic_sheet(
-      raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum
+      raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum,
+      sheet_merge_ranges(dimensions, sheet)
     )
   }
 
@@ -1684,7 +2226,8 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
     if (identical(rule$parser_mode_override, "skip_metadata")) {
       results[[sheet]] <- documented_skipped_result(raw, "metadata_only")
     } else results[[sheet]] <- documented_extract_generic_sheet(
-      raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum
+      raw, sheet, rule$parser_mode_override, rule$hierarchy_status, rule$year_axis_minimum,
+      sheet_merge_ranges(dimensions, sheet)
     )
   }
 
@@ -1711,8 +2254,8 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
   }
   if (source_id == "payments") observations <- documented_attach_payment_participants(observations, payment_participants)
   if (is.na(publication_date) && nrow(observations)) {
-    publication_date <- max(observations$period)
-    set_source_publication_date(con, item$vintage_id, publication_date)
+    set_source_publication_date(con, item$vintage_id, max(observations$period))
+    publication_date <- settled_publication_date(con, item$vintage_id, max(observations$period))
     update_archive_manifest_date(root, item$source_id, item$sha256, publication_date)
   }
   observations <- documented_finalize_observations(observations, item, release_id, publication_date)

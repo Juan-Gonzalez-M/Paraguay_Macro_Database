@@ -1,3 +1,5 @@
+> Historical record of one release. The current acceptance rule, run-status vocabulary and data model are in `README.md`, `docs/OPERATIONS.md` and `docs/DATA_MODEL.md`; where this file disagrees with them it is describing an earlier state. Since schema 23 a failing run reports `release_blocked`, not `completed_with_errors`, and since schema 24 a release carries its own lifecycle in `audit.releases`.
+
 # Auditoría — registro de defectos y regresiones
 
 **Cómo se usa.** Los **CERRADOS** son la batería de regresión: confirmá en cada
@@ -12,6 +14,90 @@ auditoría en paralelo con numeraciones que colisionaban desde R26.
 `docs/AUDITORIA_REGRESIONES.md` ahora es un stub que apunta acá — éste es el único
 registro activo. El detalle de por qué se consolidó está en
 `revisiones/MEJORAS_v11.md`, sección 1.
+
+---
+
+## Cerrados en la ronda P0/P1/P2 de la auditoría técnica externa (2026-08-29)
+
+Fuente: `Technical_Audit.docx`, edición comparativa, sobre `paraguay_macro_pilot (2).duckdb`
+(schema 12). Igual que en la ronda anterior, antes de tocar nada se reverificó cada
+cifra del informe contra la base real: **todas exactas** (23.012 `dim_series`,
+1.216.299 `fact_series_events`, 9.924 `positional_lane` = 43,13%, 10.462 series de
+una observación, 13.300 con menos de 12, 50 identidades posicionales en
+`credit_survey`, 7.812 `positional_lane` en `economic_annex`, 66/44 tablas y
+vistas, 0 claves foráneas, 1.571 de 28.417 IDs previos retenidos).
+
+Alcance acordado con el usuario: **P0, P1 y P2** de la sección 12. P3 fuera de alcance.
+
+Resultado global: `dim_series` 23.012 → 15.191; `positional_lane` 9.924 → 2.112;
+series de una observación 10.462 → 3.751; largo mediano 3 → 17; reuso de celda
+fuente **cero** en las 242 hojas; **cero** flags de severidad `error`.
+`v_research_series` sigue vacía a propósito. Migraciones `schema_version` 13 y 14.
+El registro completo de verificación está en
+`revisiones/REVISION_AUDITORIA_P0_P1_P2.md`.
+
+---
+
+### R45 — eje temporal horizontal sin borde derecho y marcador de provisionalidad dentro de la identidad · silencioso · CERRADO
+**Dónde:** `scripts/03_curate_documented.R`, `documented_extract_horizontal_time()`.
+
+**Causa raíz (dos mitades).** (1) El relleno hacia la derecha del eje de períodos
+corría hasta la última columna de la hoja, así que las siete columnas de
+comparación interanual que las hojas de comercio exterior publican a la derecha de
+los datos (`A Julio 2024`, `Var. % …`, `Incidencia`, …) heredaban el último período
+real. (2) La fila 13 lleva un `*` suelto sobre los últimos 24 meses; `documented_fill_right()`
+lo convertía en subencabezado y `column_labels` en `measure`, partiendo cada serie
+de producto en dos en 2024-08 (`Soja` 367 obs y `Soja — *` 31 obs).
+
+**Arreglo.** El eje se acota en la última celda de encabezado que efectivamente
+parsea como período; el relleno sigue operando dentro del eje, que es para lo que
+existe. Las celdas cuyo contenido es sólo un marcador de nota (`*`, `(*)`, `1/`)
+se excluyen del subencabezado mediante `documented_footnote_only()` y se conservan
+en `footnote_marker`.
+
+**Evidencia.** Se corrió el extractor compartido sobre las 94 hojas del Anexo antes
+y después y se diffeó serie por serie: **cambian exactamente 8 hojas**
+(Cuadro 46a/46b/51a/51b/52a/52b/53a/53b), **85 quedan idénticas**. Diffeando por
+celda física y valor, ignorando etiquetas: **6.962 quitadas, 0 agregadas**, y las
+6.962 llevan período **2026-07-01** y están en columnas más allá del fin del eje.
+Etiquetas terminadas en marcador: 22.228 → 0. `positional_lane` en `economic_annex`:
+7.812 → 0. Las ocho hojas ahora concilian exacto (`unmapped_in_region = 0`).
+
+**Cómo verificar que sigue cerrado:** `test-audit-p1-p2-remediation.R`, bloque
+"the foreign-trade axis is bounded"; y las firmas de `parser_contract_signatures.csv`.
+
+---
+
+### R52 — la prueba de encabezado de pregunta de la encuesta de crédito exigía fila sin valores · silencioso · CERRADO
+**Dónde:** `scripts/03_curate_documented.R`, `documented_parse_credit_sheet()`.
+
+**Causa raíz.** Una fila era encabezado de pregunta sólo si `all(is.na(values))`.
+**Nueve de las 73 filas de encabezado de la hoja `%` llevan un numérico suelto** en
+alguna columna de período (la fila 99, `10,2 - Ganadería`, lleva trece), y una
+décima (`18,2`) se publica sin guion después del número. Esos encabezados se
+consumían como respuesta de la pregunta anterior y **todo el bloque siguiente
+heredaba la pregunta equivocada**: las respuestas de Ganadería se publicaban bajo
+Agricultura y chocaban con las de Agricultura en el mismo trimestre, forzando a
+ambas a identidad posicional.
+
+**Nota sobre el alcance previo.** La entrada anterior de R52 estimaba el daño en
+5 series espurias de una observación. Era correcta en la causa pero corta en el
+alcance: esas 5 más **50 identidades posicionales y 25 grupos pregunta/respuesta en
+conflicto**, que la auditoría externa había medido por separado y atribuido a una
+dimensión institucional faltante que no existe.
+
+**Arreglo.** El número de pregunta publicado es la única autoridad; se acepta
+separador o espacio. Ninguna etiqueta de respuesta empieza con dígito y una fila de
+respuesta real trae 46-54 valores, no uno o dos, así que el patrón decide solo.
+
+**Evidencia.** `EXCEPT ALL` a nivel celda entre schema 12 y 13: **24 filas quitadas,
+0 agregadas, ninguna otra fuente tocada**; las 24 caen en las nueve filas de
+encabezado (76, 99, 109, 129, 144, 169, 199, 294, 339) y suman exactamente
+1+13+1+2+1+2+2+1+1. Posicionales 50 → 0; grupos en conflicto 25 → 0; singletons 5 → 0.
+
+**Cómo verificar que sigue cerrado:** `test-audit-p0-remediation.R`, bloque
+"the credit-survey question axis is fully semantic"; y el conteo exacto de 312
+series en `test-full-pipeline-smoke.R`.
 
 ---
 
@@ -190,9 +276,23 @@ tablas de eventos deben seguir siendo tablas de eventos (sección 5.3).
 
 ---
 
-## Abierto — hallazgo nuevo (auditoría del inventario de series, 2026-08-26)
+## Diagnóstico histórico de R45 y R52 — ambos CERRADOS en la ronda 2026-08-29
 
-### R52 — Una fila de encabezado de pregunta con un cero suelto se lee como respuesta · silencioso, residual, no aplicado
+**Estas dos entradas quedan como registro del diagnóstico, no como pendientes.**
+El arreglo, la evidencia y la verificación están arriba, en la ronda P0/P1/P2.
+Dos correcciones al texto que sigue, que se conservan sin editar para no perder
+la traza del razonamiento original:
+
+- **R52 subestimaba el alcance.** El texto de abajo lo cifra en 5 series espurias
+  de una observación. La causa raíz es correcta, pero el daño real incluía además
+  50 identidades posicionales y 25 grupos pregunta/respuesta en conflicto, porque
+  cada encabezado no reconocido arrastraba la pregunta equivocada a todo el bloque
+  siguiente. No eran nueve filas con "un cero suelto": son nueve filas con entre
+  uno y trece numéricos sueltos, más una décima (`18,2`) sin guion tras el número.
+- **R45 estaba bien diagnosticado en sus dos mecanismos** y el arreglo aplicado es
+  el que este texto propone.
+
+### R52 — Una fila de encabezado de pregunta con un cero suelto se lee como respuesta · silencioso, residual, CERRADO 2026-08-29
 **Dónde:** `scripts/03_curate_documented.R`, `documented_parse_credit_sheet()`,
 rama de la hoja `%`.
 **Síntoma:** el reconocimiento de encabezado de pregunta exige
@@ -214,7 +314,7 @@ no un máximo, para que cualquier deriva en cualquier dirección se note.
 
 ---
 
-### R45 — Bloque final de comparación interanual mal interpretado como columnas de período, en 8 hojas del Anexo · silencioso
+### R45 — Bloque final de comparación interanual mal interpretado como columnas de período, en 8 hojas del Anexo · silencioso · CERRADO 2026-08-29
 **Dónde:** `Cuadro 46a`, `Cuadro 46b`, `Cuadro 51a`, `Cuadro 51b`, `Cuadro 52a`,
 `Cuadro 52b`, `Cuadro 53a`, `Cuadro 53b` de `economic_annex` (todas hojas de comercio
 exterior por producto, mismo template de publicación). No reproducido en `CUADRO 61`
@@ -557,8 +657,13 @@ sigue sin ninguna fuente conectada.
 
 ---
 
-### R25 — La maquinaria de conceptos nunca se ejerció con contenido · menor
-Sin cambios desde v9. `config/concept_mappings.csv` sigue con sólo el encabezado.
+### R25 — La maquinaria de conceptos nunca se ejerció con contenido · menor · CERRADO
+**Corrección (2026-08-29):** esta entrada estaba desactualizada. `config/concept_mappings.csv`
+dejó de tener sólo el encabezado en la ronda post-v11: lleva tres filas revisadas
+sobre `concept:interbank_repo_rate_pyg` (un `aggregate` y dos `component`), así que
+la ruta de mapeo revisado sí se ejerce con contenido real. La capa canónica que
+la ronda P0/P1/P2 agregó (`canonical_series`, `map_canonical_series`) es la que
+queda vacía a propósito, y por una razón distinta: poblarla es revisión económica.
 
 ---
 

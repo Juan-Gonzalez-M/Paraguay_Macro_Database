@@ -104,13 +104,27 @@ Independent evidence that the repairs did not move data:
 - documented orientation helpers, per-source contracts, key Annex metadata, BIC/entity mapping and credit-survey ranges.
 - chartsheet exclusion, active-cell bounds, long-CSV dimensions and typed market-table baselines.
 
-## Environment limitation
+## Execution environment
 
-R is not installed in the current packaging environment, so the updated R suite and comparative runtime benchmark could not be executed here. The source workbooks, XML relationships, active bounds, CSV headers/row counts and configuration contracts were independently inspected, and the R code received static balance/configuration checks. The definitive correctness and performance acceptance commands on an R-enabled machine are:
+The historical note that R was unavailable in the packaging environment no longer applies. This
+project is developed and verified on a machine with R and a populated runtime database, and the
+schema-24 work was accepted only after a full migration, a complete 22-source rebuild and the test
+suite were executed here.
+
+The recorded environment is `renv.lock`. `check_environment()` compares the running R and package
+versions against it and fails loudly on drift; `run_tests.R` calls it and no longer installs
+anything, so running the tests cannot change the environment it is testing.
+
+The acceptance commands are:
 
 ```r
-source("run_tests.R")
-source("run_update.R")
+source("run_tests.R")     # verifies the environment, then runs the suite
+source("run_update.R")    # migrates, ingests, validates and decides the release
 ```
 
-The project should not be treated as runtime-certified until the tests complete successfully. After the update, use `outputs/ingestion_stage_timings_latest.csv` to compare elapsed time with the prior run on the same machine and inputs.
+`run_update.R` returns a nonzero status when the release is blocked. A release that ends `blocked`
+is never published: `v_series_latest`, `series_as_of_date()` and every mart join through
+`audit.releases` and return nothing until the run repeats without error-severity flags.
+
+After the update, use `outputs/ingestion_stage_timings_latest.csv` to compare elapsed time with the
+prior run on the same machine and inputs.

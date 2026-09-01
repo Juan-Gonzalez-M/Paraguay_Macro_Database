@@ -29,6 +29,16 @@ testthat::test_that("sparse series retain changes and explicit removals", {
   )
   first_item <- tibble::tibble(vintage_id = "test:first", source_file = "first.xlsx")
   second_item <- tibble::tibble(vintage_id = "test:second", source_file = "second.xlsx")
+  # The pipeline registers a vintage before curating it, and the fact table is
+  # keyed on the surrogate key that registration assigns.
+  for (item in list(first_item, second_item)) DBI::dbWriteTable(con, "source_files", tibble::tibble(
+    vintage_id = item$vintage_id, first_ingested_release_id = "release:test", source_id = "test",
+    source_label = "test", publisher = "test", source_format = "xlsx",
+    source_file = item$source_file, source_path = item$source_file,
+    archive_path = NA_character_, sha256 = item$vintage_id, size_bytes = 1,
+    publication_date = as.Date("2026-03-01"), publication_date_source = "test",
+    first_ingested_at = Sys.time(), ingestion_status = "completed"
+  ), append = TRUE)
   first <- tibble::tibble(
     series_id = "test:series", period = as.Date(c("2026-01-31", "2026-02-28")), value = c(1, 2)
   )
@@ -37,6 +47,14 @@ testthat::test_that("sparse series retain changes and explicit removals", {
   )
   write_sparse_series(con, first, meta, first_item, as.Date("2026-03-01"))
   write_sparse_series(con, second, meta, second_item, as.Date("2026-04-01"))
+  # v_series_latest shows accepted releases only, so a vintage written by hand
+  # needs its release link and its acceptance before it is published.
+  DBI::dbWriteTable(con, "release_sources", tibble::tibble(
+    release_id = "release:test", source_id = "test",
+    vintage_id = c("test:first", "test:second")
+  ), append = TRUE)
+  stage_release(con, "release:test", 2L)
+  decide_release(con, "release:test", "accepted", 0L, 0L)
   latest <- DBI::dbGetQuery(con, "SELECT period, value FROM v_series_latest ORDER BY period")
   events <- DBI::dbGetQuery(con, "SELECT is_deleted FROM fact_series_events WHERE vintage_id = 'test:second'")
   testthat::expect_equal(nrow(latest), 1)
@@ -123,10 +141,21 @@ testthat::test_that("schema-v4 documented sources are invalidated before v5 rein
   DBI::dbExecute(con, "INSERT INTO source_files VALUES ('annex:old', 'economic_annex', 'completed'), ('icc:old', 'icc', 'completed')")
   initialize_database(con)
   status <- DBI::dbGetQuery(con, "SELECT source_id, ingestion_status FROM source_files ORDER BY source_id")
-  # economic_annex is explicitly listed in every subsequent invalidate_v*() step
-  # (v6, v8, v9, v10 and v12 all target it too), so migrating from a genuinely
-  # stale v4 database cascades through all of them, landing on the latest, v12.
-  testthat::expect_identical(status$ingestion_status[status$source_id == "economic_annex"], "needs_v12_reingestion")
+  # economic_annex is named by nearly every invalidate_v*() step (v6, v8, v9,
+  # v10, v12, v14, v16, v17, v18, v23 and v27), so migrating from a genuinely
+  # stale v4 database cascades through all of them and lands on the last one that
+  # names it. The expected marker therefore moves whenever a new step touches the
+  # Annex; v13, v15, v25 and v26 do not, which is why the answer skips them.
+  #
+  # This assertion is also the cascade's only direct test, and it earned that
+  # description in schema 23: the detector that decides whether to run these
+  # steps at all had been asking dbExistsTable() on a connection with no search
+  # path, so after the schema-21 move it answered "empty database" and skipped
+  # every one of them. This test kept passing because it builds its fixture in
+  # main, where dbExistsTable() could still see it.
+  testthat::expect_identical(
+    status$ingestion_status[status$source_id == "economic_annex"], "needs_v27_reingestion"
+  )
   testthat::expect_identical(status$ingestion_status[status$source_id == "icc"], "completed")
   testthat::expect_equal(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM schema_version WHERE version = 5")$n[[1]], 1)
   testthat::expect_equal(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM schema_version WHERE version = 6")$n[[1]], 1)

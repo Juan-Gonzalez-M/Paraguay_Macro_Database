@@ -57,10 +57,16 @@ validate_documented_financial_source <- function(con, item, release_id) {
     credito_actividad = c("entity_id", "currency_of_origin", "unit_currency", "activity_code", "credit_sector_id")
   )
   for (suffix in names(checks)) {
-    view_name <- paste0("v_", item$source_id, "_", suffix, "_documented")
+    # The unfiltered twin, and scoped to the vintage this call is validating.
+    # This asks whether *this* ingestion mapped its rows to entities, currencies
+    # and statement items -- an ingestion question, asked inside the source's own
+    # transaction, before the release has been accepted and therefore before the
+    # published view can see anything at all.
+    published_name <- paste0("v_", item$source_id, "_", suffix, "_documented")
+    view_name <- paste0(published_name, "_all")
     if (!database_object_exists(con, view_name)) {
       insert_quality_flag(con, release_id, "error", "documented_view_missing", item$source_id,
-                          paste("Expected semantic view not created:", view_name), item$vintage_id)
+                          paste("Expected semantic view not created:", published_name), item$vintage_id)
       next
     }
     fields <- checks[[suffix]]
@@ -69,11 +75,12 @@ validate_documented_financial_source <- function(con, item, release_id) {
       DBI::dbQuoteIdentifier(con, paste0("mapped_", field))
     ), character(1)))
     result <- DBI::dbGetQuery(con, paste0(
-      "SELECT ", paste(expressions, collapse = ", "), " FROM ", DBI::dbQuoteIdentifier(con, view_name)
+      "SELECT ", paste(expressions, collapse = ", "), " FROM ", DBI::dbQuoteIdentifier(con, view_name),
+      " WHERE vintage_id = ", sql_string(item$vintage_id)
     ))
     if (!result$rows[[1]]) {
       insert_quality_flag(con, release_id, "error", "documented_view_empty", item$source_id,
-                          paste(view_name, "contains no rows."), item$vintage_id)
+                          paste(published_name, "contains no rows for this vintage."), item$vintage_id)
       next
     }
     for (field in fields) {
@@ -83,7 +90,7 @@ validate_documented_financial_source <- function(con, item, release_id) {
         con, release_id, if (coverage < 0.95) "error" else "warning",
         "documented_mapping_below_threshold", item$source_id,
         sprintf("%s maps %.3f%% of rows to %s; required %.1f%%.",
-                view_name, 100 * coverage, field, 100 * threshold), item$vintage_id
+                published_name, 100 * coverage, field, 100 * threshold), item$vintage_id
       )
     }
   }
@@ -443,7 +450,1592 @@ validate_source <- function(con, item, release_id, root) {
   }
 }
 
-validate_database <- function(con, manifest, release_id, root) {
+# The audit's section 11 lists eight P0 tests whose action is "block release".
+# Each one is an invariant the project currently satisfies, so recording them
+# here converts "we checked once" into "the pipeline refuses to ship without
+# it". Every flag raised is error severity, which now sets the run to
+# release_blocked in run_manifest_pipeline().
+# The audit's precise check 1: "For every fact, require fact.publication_date IS
+# NOT DISTINCT FROM source_files.publication_date." It is stated over facts, but
+# every table that carries the pair is a copy of the same thing and the audit
+# found the snapshot drifting alongside the facts, so all of them are tested.
+# propagate_vintage_publication_date() is what makes this pass; this is what
+# proves it did.
+validate_publication_date_consistency <- function(con, release_id) {
+  tables <- publication_date_mirror_tables(con)
+  source_files <- database_object_qualified_name(con, "source_files")
+  divergent <- list()
+  for (i in seq_len(nrow(tables))) {
+    qualified <- paste0(
+      DBI::dbQuoteIdentifier(con, tables$table_schema[[i]]), ".",
+      DBI::dbQuoteIdentifier(con, tables$table_name[[i]])
+    )
+    counted <- DBI::dbGetQuery(con, paste0(
+      "SELECT f.source_id, count(*) AS n, min(t.publication_date) AS mirror_date,",
+      " min(f.publication_date) AS vintage_date FROM ", qualified, " AS t",
+      " JOIN ", source_files, " AS f USING (vintage_id)",
+      " WHERE t.publication_date IS DISTINCT FROM f.publication_date GROUP BY 1"
+    ))
+    if (nrow(counted)) divergent[[tables$table_name[[i]]]] <- counted
+  }
+  if (length(divergent)) {
+    detail <- paste(vapply(names(divergent), function(name) paste0(
+      name, ": ", paste(sprintf(
+        "%s %d row(s) say %s, the vintage says %s", divergent[[name]]$source_id,
+        divergent[[name]]$n, divergent[[name]]$mirror_date, divergent[[name]]$vintage_date
+      ), collapse = "; ")
+    ), character(1)), collapse = " | ")
+    insert_quality_flag(
+      con, release_id, "error", "fact_publication_date_mismatch", NA_character_,
+      paste("Publication dates disagree with the authoritative source vintage:", detail)
+    )
+  }
+
+  # A source's later vintage cannot have been available earlier than its
+  # predecessor. With one vintage per source this cannot fire today; it is the
+  # check that makes a second vintage safe to add.
+  regressions <- DBI::dbGetQuery(con, paste0(
+    "SELECT source_id, count(*) AS n FROM (",
+    "  SELECT source_id, publication_date, first_ingested_at,",
+    "    lag(publication_date) OVER (PARTITION BY source_id ORDER BY first_ingested_at) AS previous",
+    "  FROM ", source_files, " WHERE publication_date IS NOT NULL",
+    ") WHERE previous IS NOT NULL AND publication_date < previous GROUP BY 1"
+  ))
+  if (nrow(regressions)) insert_quality_flag(
+    con, release_id, "error", "publication_date_not_monotonic", NA_character_,
+    paste0(
+      "A later vintage carries an earlier publication date than its predecessor: ",
+      paste0(regressions$source_id, " (", regressions$n, ")", collapse = "; ")
+    )
+  )
+
+  # A vintage whose date is *labelled* content_max_period while the content
+  # reaches further is an internal contradiction, and it is how the audit's
+  # defect first appeared. It is not the same as a workbook that legitimately
+  # publishes projections: those carry a filename or registry date, and this
+  # never looks at them.
+  periods <- publication_date_period_columns(con)
+  if (nrow(periods)) {
+    union_sql <- paste(vapply(seq_len(nrow(periods)), function(i) paste0(
+      "SELECT vintage_id, max(CAST(", DBI::dbQuoteIdentifier(con, periods$column_name[[i]]),
+      " AS DATE)) AS content_max FROM ",
+      DBI::dbQuoteIdentifier(con, periods$table_schema[[i]]), ".",
+      DBI::dbQuoteIdentifier(con, periods$table_name[[i]]), " GROUP BY 1"
+    ), character(1)), collapse = " UNION ALL ")
+    contradictory <- DBI::dbGetQuery(con, paste0(
+      "WITH content AS (", union_sql, ")",
+      " SELECT f.source_id, f.publication_date, max(content.content_max) AS content_max",
+      " FROM ", source_files, " AS f JOIN content USING (vintage_id)",
+      " WHERE f.publication_date_source = 'content_max_period'",
+      " GROUP BY 1, 2 HAVING max(content.content_max) > f.publication_date"
+    ))
+    if (nrow(contradictory)) insert_quality_flag(
+      con, release_id, "warning", "publication_date_source_contradicts_content", NA_character_,
+      paste0(
+        "The publication date is recorded as the maximum period in the content, but the content ",
+        "reaches further. Record the official release date in config/source_vintages.csv or ",
+        "review the parser: ",
+        paste0(
+          contradictory$source_id, " (recorded ", contradictory$publication_date,
+          ", content reaches ", contradictory$content_max, ")", collapse = "; "
+        )
+      )
+    )
+  }
+
+  inferred <- DBI::dbGetQuery(con, paste0(
+    "SELECT source_id, publication_date, publication_date_source FROM ", source_files,
+    " WHERE publication_date_source IS DISTINCT FROM 'official_registry' ORDER BY source_id"
+  ))
+  if (nrow(inferred)) insert_quality_flag(
+    con, release_id, "warning", "publication_date_inferred_from_content", NA_character_,
+    paste0(
+      nrow(inferred), " source vintage(s) have no official release date in ",
+      "config/source_vintages.csv, so availability is inferred from the filename or the ",
+      "content: ", paste0(
+        head(paste0(inferred$source_id, " (", inferred$publication_date_source, ")"), 25),
+        collapse = "; "
+      )
+    )
+  )
+  invisible(TRUE)
+}
+
+# The period-bearing columns of every vintage-keyed table, used to ask what the
+# latest period a vintage actually contains is. Discovered from the catalogue so
+# a snapshot added later is included without anyone remembering to.
+publication_date_period_columns <- function(con) {
+  candidates <- DBI::dbGetQuery(con, paste(
+    "SELECT c.table_schema, c.table_name, c.column_name FROM information_schema.columns c",
+    "JOIN information_schema.tables t ON t.table_schema = c.table_schema",
+    "  AND t.table_name = c.table_name AND t.table_type = 'BASE TABLE'",
+    "WHERE c.column_name IN ('period', 'date', 'operation_date', 'fecha')",
+    "  AND c.data_type IN ('DATE', 'TIMESTAMP')",
+    "  AND EXISTS (SELECT 1 FROM information_schema.columns v",
+    "              WHERE v.table_schema = c.table_schema AND v.table_name = c.table_name",
+    "                AND v.column_name = 'vintage_id')"
+  ))
+  candidates[!duplicated(paste(candidates$table_schema, candidates$table_name)), , drop = FALSE]
+}
+
+validate_release_gate <- function(con, release_id) {
+  gate <- function(check_name, detail) insert_quality_flag(
+    con, release_id, "error", check_name, NA_character_, detail
+  )
+  scalar <- function(sql) DBI::dbGetQuery(con, sql)$n[[1]]
+
+  validate_publication_date_consistency(con, release_id)
+
+  duplicated_keys <- scalar(paste(
+    "SELECT count(*) AS n FROM (SELECT 1 FROM fact_series_events",
+    "GROUP BY series_id, period, vintage_id HAVING count(*) > 1)"
+  ))
+  if (duplicated_keys) gate(
+    "observation_grain_violated",
+    paste(duplicated_keys, "observation keys occur more than once in fact_series_events.")
+  )
+
+  # A tombstone legitimately has no value; a live observation must have one.
+  incomplete_keys <- scalar(paste(
+    "SELECT count(*) AS n FROM fact_series_events",
+    "WHERE series_id IS NULL OR period IS NULL OR vintage_id IS NULL",
+    "OR is_deleted IS NULL OR (value IS NULL AND NOT is_deleted)"
+  ))
+  if (incomplete_keys) gate(
+    "observation_key_incomplete",
+    paste(incomplete_keys, "observations lack a series, period, vintage or value.")
+  )
+
+  orphan_facts <- scalar(paste(
+    "SELECT count(*) AS n FROM fact_series_events f",
+    "LEFT JOIN dim_series d USING (series_id) WHERE d.series_id IS NULL"
+  ))
+  if (orphan_facts) gate(
+    "orphan_observations",
+    paste(orphan_facts, "observations reference a series that is not in dim_series.")
+  )
+
+  # The fact table is keyed on surrogate integers and carries the human
+  # identifiers alongside them. That is only safe while the two agree: a
+  # surrogate key that drifted from its identifier would repoint observations at
+  # a different series without changing a single visible value, and every query
+  # in the project reads the identifier.
+  if ("series_sk" %in% table_column_names(con, "fact_series_events")) {
+    for (dimension in list(
+      list(table = "dim_series", key = "series_sk", natural = "series_id"),
+      list(table = "source_files", key = "vintage_sk", natural = "vintage_id")
+    )) {
+      unassigned <- scalar(paste0(
+        "SELECT count(*) AS n FROM ", dimension$table, " WHERE ", dimension$key, " IS NULL"
+      ))
+      if (unassigned) gate("surrogate_key_unassigned", paste(
+        unassigned, "rows in", dimension$table, "have no", dimension$key
+      ))
+      collisions <- scalar(paste0(
+        "SELECT count(*) AS n FROM (SELECT 1 FROM ", dimension$table,
+        " GROUP BY ", dimension$key, " HAVING count(*) > 1)"
+      ))
+      if (collisions) gate("surrogate_key_collision", paste(
+        collisions, dimension$key, "values in", dimension$table, "name more than one",
+        dimension$natural
+      ))
+      divergent <- scalar(paste0(
+        "SELECT count(*) AS n FROM fact_series_events f JOIN ", dimension$table, " d",
+        " ON d.", dimension$key, " = f.", dimension$key,
+        " WHERE d.", dimension$natural, " IS DISTINCT FROM f.", dimension$natural
+      ))
+      if (divergent) gate("surrogate_key_diverged", paste(
+        divergent, "observations carry a", dimension$key, "and a", dimension$natural,
+        "that name different rows of", dimension$table
+      ))
+    }
+  }
+
+  if (database_object_exists(con, "table_reconciliation")) {
+    # Parser-region non-overlap: a source cell may feed one observation unless a
+    # reviewed many-to-one rule says otherwise. This is the test the compensatory
+    # FX defect would have failed before it reached a release.
+    reuse <- DBI::dbGetQuery(con, paste(
+      "SELECT source_id, source_sheet, cell_reuse FROM table_reconciliation",
+      "WHERE cell_reuse > many_to_one_allowance ORDER BY cell_reuse DESC"
+    ))
+    if (nrow(reuse)) gate("source_cell_reuse", paste0(
+      nrow(reuse), " worksheet(s) feed one source cell into several observations: ",
+      paste(head(paste0(reuse$source_id, "/", reuse$source_sheet, " (", reuse$cell_reuse, ")"), 10),
+            collapse = "; ")
+    ))
+    # A worksheet whose accounting does not balance is reported, but only blocks
+    # the release once someone has claimed it is validated. Promotion is where
+    # the unexplained residual becomes a correctness claim.
+    unbalanced <- DBI::dbGetQuery(con, paste(
+      "SELECT r.source_id, r.source_sheet, r.balance_delta FROM table_reconciliation r",
+      "JOIN table_status t ON t.source_id = r.source_id",
+      "  AND (t.source_sheet = r.source_sheet OR t.source_sheet = '*')",
+      "WHERE r.status <> 'balanced' AND t.status = 'validated'"
+    ))
+    if (nrow(unbalanced)) gate("validated_table_unreconciled", paste0(
+      nrow(unbalanced), " validated worksheet(s) do not reconcile to their source cells: ",
+      paste(head(paste0(unbalanced$source_id, "/", unbalanced$source_sheet), 10), collapse = "; ")
+    ))
+    # The audit's central P0: a numeric cell nobody has accounted for is not a
+    # warning to be read later, it is a release that may be silently missing
+    # data. Classifying it -- as a header, a subtotal, report layout, an
+    # out-of-scope block, or an admitted parser defect -- is what clears this.
+    if (database_object_exists(con, "reconciliation_cell_classification") &&
+        "unclassified_cells" %in% table_column_names(con, "table_reconciliation")) {
+      unclassified <- DBI::dbGetQuery(con, paste(
+        "SELECT source_id, source_sheet, unclassified_cells FROM table_reconciliation",
+        "WHERE unclassified_cells > 0 ORDER BY unclassified_cells DESC"
+      ))
+      if (nrow(unclassified)) gate("reconciliation_unclassified", paste0(
+        sum(unclassified$unclassified_cells), " numeric source cell(s) across ", nrow(unclassified),
+        " worksheet(s) match no rule in config/reconciliation_cell_rules.csv. See ",
+        "outputs/reconciliation_unclassified_cells.csv and v_reconciliation_unclassified. Largest: ",
+        paste(head(paste0(unclassified$source_id, "/", unclassified$source_sheet,
+                          " (", unclassified$unclassified_cells, ")"), 10), collapse = "; ")
+      ))
+      # A recorded defect is honest but is still unread published data, so it is
+      # reported at every release until the parser is repaired.
+      defects <- DBI::dbGetQuery(con, paste(
+        "SELECT source_id, source_sheet, parser_defect_cells FROM table_reconciliation",
+        "WHERE parser_defect_cells > 0 ORDER BY parser_defect_cells DESC"
+      ))
+      if (nrow(defects)) insert_quality_flag(
+        con, release_id, "warning", "reconciliation_parser_defect", NA_character_,
+        paste0(
+          sum(defects$parser_defect_cells), " numeric source cell(s) across ", nrow(defects),
+          " worksheet(s) are published data a reviewer has recorded as unread by the current ",
+          "parser. Those worksheets cannot reach v_research_series: ",
+          paste(head(paste0(defects$source_id, "/", defects$source_sheet,
+                            " (", defects$parser_defect_cells, ")"), 10), collapse = "; ")
+        )
+      )
+    }
+  }
+
+  # Cross-release identity stability: every identifier the project has ever
+  # published must have a recorded outcome -- still current, superseded by a
+  # named successor, or explicitly retired. An identifier that simply stops
+  # resolving is what broke reproducibility in the first place.
+  if (database_object_exists(con, "series_id_migration") &&
+      database_object_exists(con, "v_series_id_resolution")) {
+    recorded <- scalar("SELECT count(*) AS n FROM series_id_migration")
+    if (recorded) {
+      unresolved <- scalar(paste(
+        "SELECT count(*) AS n FROM (",
+        "  SELECT DISTINCT old_series_id FROM series_id_migration",
+        "  WHERE old_series_id IS NOT NULL",
+        "  EXCEPT SELECT published_series_id FROM v_series_id_resolution)"
+      ))
+      if (unresolved) gate("superseded_identifier_unresolved", paste(
+        unresolved, "published series identifiers have no recorded outcome",
+        "(neither current, superseded nor retired)."
+      ))
+    }
+    # Every published identifier must land in exactly one cardinality class, and
+    # the scalar resolver must decline every ambiguous one. A resolver that
+    # returns an arbitrary successor for a split series is worse than no
+    # resolver, because research code cannot tell it happened.
+    if ("resolution_cardinality" %in% table_column_names(con, "v_series_id_resolution")) {
+      inconsistent <- scalar(paste(
+        "SELECT count(*) AS n FROM (SELECT published_series_id FROM v_series_id_resolution",
+        "GROUP BY 1 HAVING count(DISTINCT resolution_cardinality) > 1)"
+      ))
+      if (inconsistent) gate("identifier_cardinality_inconsistent", paste(
+        inconsistent, "published identifiers carry more than one resolution cardinality."
+      ))
+      # Asserted on the view, not through the macro. A DuckDB macro substitutes
+      # the caller's argument expression into its body, so calling it from the
+      # very view it reads would compare a column with itself and pass
+      # vacuously. The macro is exercised with literals in the test suite; here
+      # the underlying resolution is what has to be right.
+      leaked <- scalar(paste(
+        "SELECT count(*) AS n FROM v_series_id_scalar_resolution",
+        "WHERE resolution_cardinality <> 'one_to_one' AND resolved_series_id IS NOT NULL"
+      ))
+      if (leaked) gate("identifier_resolution_not_fail_closed", paste(
+        leaked, "ambiguous or retired identifiers resolve to a single series through",
+        "resolve_series_id(); the scalar resolver must decline rather than choose."
+      ))
+    }
+  }
+  # The audit's third P0 test: "no duplicated observation key after all joins".
+  # A mart is several joins deep into classification, review and reconciliation
+  # metadata, and every one of those is a chance to multiply an observation by a
+  # key nobody checked. Counting the grain after the joins is the only test that
+  # actually catches it, and it catches the *_all views too, since a defect there
+  # reaches the validated marts the moment a table is promoted.
+  mart_views <- DBI::dbGetQuery(con, paste(
+    "SELECT table_name FROM information_schema.tables",
+    "WHERE table_type = 'VIEW'",
+    "AND table_name LIKE 'v_mart\\_%' ESCAPE '\\' ORDER BY table_name"
+  ))$table_name
+  for (mart in mart_views) {
+    grain <- DBI::dbGetQuery(con, paste0(
+      "SELECT count(*) AS emitted, count(DISTINCT (series_id, period, vintage_id)) AS keys FROM ",
+      DBI::dbQuoteIdentifier(con, mart)
+    ))
+    if (grain$emitted[[1]] != grain$keys[[1]]) gate("mart_key_not_unique", paste0(
+      mart, " emits ", grain$emitted[[1]], " rows for ", grain$keys[[1]],
+      " distinct (series_id, period, vintage_id) keys; a join in the mart is multiplying observations."
+    ))
+  }
+  # A research mart must never carry a row its worksheet has not been validated
+  # for. The filter is in the view, so this asserts the view still says what it
+  # is named for rather than trusting that nobody edited it.
+  for (mart in grep("_all$", mart_views, value = TRUE, invert = TRUE)) {
+    leaked <- DBI::dbGetQuery(con, paste0(
+      "SELECT count(*) AS n FROM ", DBI::dbQuoteIdentifier(con, mart),
+      " WHERE review_status IS DISTINCT FROM 'validated'",
+      " OR reconciliation_status IS DISTINCT FROM 'balanced'"
+    ))$n[[1]]
+    if (leaked) gate("mart_exposes_unvalidated_rows", paste0(
+      leaked, " row(s) in ", mart, " come from a worksheet that is not validated or does not ",
+      "reconcile to its source cells."
+    ))
+  }
+  validate_referential_integrity(con, release_id)
+  invisible(TRUE)
+}
+
+# The audit asks for foreign keys "where the DuckDB workflow permits, plus
+# release-blocking anti-join tests". Declared foreign keys are the wrong tool
+# here: every curated table is rewritten with DELETE-then-append on each run, so
+# a declared constraint would reject the pipeline's own normal operation midway
+# through a release. The anti-join tests give the same guarantee at the point
+# where it matters -- the end of the run, on the finished release -- without
+# constraining how the release is assembled.
+validate_referential_integrity <- function(con, release_id) {
+  relations <- list(
+    list("map_series_concept", "series_id", "dim_series", "series_id"),
+    list("map_series_concept", "concept_id", "dim_concept", "concept_id"),
+    list("documented_series_snapshot", "series_id", "dim_series", "series_id"),
+    list("series_revisions", "series_id", "dim_series", "series_id"),
+    list("fact_series_events", "vintage_id", "source_files", "vintage_id"),
+    list("release_sources", "vintage_id", "source_files", "vintage_id"),
+    list("report_sheet_vintages", "sheet_version_id", "report_sheet_versions", "sheet_version_id"),
+    list("report_cell_values", "sheet_version_id", "report_sheet_versions", "sheet_version_id"),
+    list("table_reconciliation", "vintage_id", "source_files", "vintage_id"),
+    list("map_canonical_series", "canonical_series_id", "canonical_series", "canonical_series_id")
+  )
+  for (relation in relations) {
+    child <- relation[[1]]; child_key <- relation[[2]]
+    parent <- relation[[3]]; parent_key <- relation[[4]]
+    if (!database_object_exists(con, child) || !database_object_exists(con, parent)) next
+    orphans <- DBI::dbGetQuery(con, paste0(
+      "SELECT count(*) AS n FROM ", DBI::dbQuoteIdentifier(con, child), " c",
+      " WHERE c.", child_key, " IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ",
+      DBI::dbQuoteIdentifier(con, parent), " p WHERE p.", parent_key, " = c.", child_key, ")"
+    ))$n[[1]]
+    if (orphans) insert_quality_flag(
+      con, release_id, "error", "referential_integrity_violated", NA_character_,
+      paste0(orphans, " rows in ", child, ".", child_key, " have no matching ",
+             parent, ".", parent_key, ".")
+    )
+  }
+  # Natural keys that the audit tested by hand and found unique. Enforcing them
+  # here means a parser regression that starts duplicating a grain fails the
+  # release instead of being discovered by the next auditor.
+  natural_keys <- list(
+    list("documented_series_snapshot", c("vintage_id", "series_id", "period")),
+    list("table_reconciliation", c("vintage_id", "source_sheet")),
+    list("report_cell_values", c("sheet_version_id", "row_id", "column_id"))
+  )
+  for (entry in natural_keys) {
+    table_name <- entry[[1]]; key_columns <- entry[[2]]
+    if (!database_object_exists(con, table_name)) next
+    duplicates <- DBI::dbGetQuery(con, paste0(
+      "SELECT count(*) AS n FROM (SELECT 1 FROM ", DBI::dbQuoteIdentifier(con, table_name),
+      " GROUP BY ", paste(key_columns, collapse = ", "), " HAVING count(*) > 1)"
+    ))$n[[1]]
+    if (duplicates) insert_quality_flag(
+      con, release_id, "error", "natural_key_violated", NA_character_,
+      paste0(duplicates, " duplicated (", paste(key_columns, collapse = ", "),
+             ") keys in ", table_name, ".")
+    )
+  }
+  invisible(TRUE)
+}
+
+# --- The published interface ------------------------------------------------
+# The audit's P0: 74 of 74 views and all three macros raised
+# "Table with name dim_series does not exist" from a fresh default connection,
+# because schema 21 moved the tables while every stored body still named them
+# bare. The pipeline never saw it -- it sets a search path on its own connections
+# -- and neither did the suite, which reached every view through a helper that
+# does the same. Two gates, because they fail differently:
+#
+#   the lint    reads the stored SQL back and rejects a bare reference. It
+#               catches a defect the moment it is written, and it names the
+#               object and the reference rather than a symptom.
+#   the gate    executes every object on a connection with nothing configured.
+#               It is the only check that reproduces what a researcher does, and
+#               it would have caught this on the day it shipped.
+#
+# Both are release-blocking. Neither trusts the other: a view can lint clean and
+# still fail to execute, and a view can execute on this machine's search path
+# and still be unqualified.
+
+# Anything after FROM or JOIN that names a project object without a schema. The
+# search is the same shape as qualify_project_sql()'s rewrite, deliberately: if
+# the two ever disagree, the lint is what fails the release.
+stored_sql_unqualified_references <- function(sql, object_names) {
+  candidates <- setdiff(object_names, sql_cte_names(sql))
+  found <- vapply(candidates, function(object) grepl(
+    paste0("(\\b(?:FROM|JOIN)\\s+)(\"?)", object, "\\2\\b(?!\\s*\\.)"), sql, perl = TRUE
+  ), logical(1))
+  candidates[found]
+}
+
+validate_stored_object_qualification <- function(con, release_id) {
+  object_names <- names(project_object_schemas(con))
+  if (!length(object_names)) return(invisible(FALSE))
+  stored <- rbind(
+    DBI::dbGetQuery(con, paste(
+      "SELECT schema_name || '.' || view_name AS object_name, 'view' AS object_type, sql AS body",
+      "FROM duckdb_views() WHERE NOT internal"
+    )),
+    DBI::dbGetQuery(con, paste(
+      "SELECT schema_name || '.' || function_name AS object_name, 'macro' AS object_type,",
+      "macro_definition AS body FROM duckdb_functions() WHERE NOT internal AND macro_definition IS NOT NULL"
+    ))
+  )
+  offenders <- list()
+  for (i in seq_len(nrow(stored))) {
+    bare <- stored_sql_unqualified_references(stored$body[[i]], object_names)
+    if (length(bare)) offenders[[length(offenders) + 1L]] <- paste0(
+      stored$object_name[[i]], " (", stored$object_type[[i]], ") -> ", paste(bare, collapse = ", ")
+    )
+  }
+  if (!length(offenders)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "unqualified_object_dependency", NA_character_,
+    paste0(
+      length(offenders), " stored object(s) reference a project object without a schema and will ",
+      "fail from a default connection. Create them through create_project_view()/",
+      "create_project_macro(): ", paste(head(offenders, 10), collapse = " | ")
+    )
+  )
+  invisible(FALSE)
+}
+
+AGGREGATE_IDENTITY_COLUMNS <- c(
+  "source_id", "source_sheet", "identity_label", "total_column", "component_columns",
+  "tolerance", "basis", "evidence", "reviewed_by", "reviewed_at"
+)
+
+# The audit's P1: "Add per-source aggregation identities only where the publisher
+# defines them." A publisher states an identity in a footnote -- SIPAP_12 row 64,
+# "(I): El total de operaciones SPI se compone de D+E+F+G+H" -- or in the block
+# header itself, and it is stated over *columns*, which is also the only stable
+# way to name it: labels change with a parser repair, worksheet columns do not.
+read_aggregate_identities <- function(root) {
+  path <- file.path(root, "config", "aggregate_identities.csv")
+  empty <- tibble::tibble(
+    identity_id = character(), source_id = character(), source_sheet = character(),
+    identity_label = character(), total_column = integer(), component_columns = character(),
+    tolerance = double(), basis = character(), evidence = character(),
+    reviewed_by = character(), reviewed_at = as.Date(character())
+  )
+  if (!file.exists(path)) return(empty)
+  rules <- readr::read_csv(
+    path, col_types = readr::cols(.default = readr::col_character()), trim_ws = FALSE
+  )
+  if (!identical(names(rules), AGGREGATE_IDENTITY_COLUMNS)) stop(
+    "Aggregate-identity guard: config/aggregate_identities.csv columns changed or are reordered.",
+    call. = FALSE
+  )
+  if (!nrow(rules)) return(empty)
+  for (field in setdiff(AGGREGATE_IDENTITY_COLUMNS, "source_sheet")) {
+    rules[[field]] <- trimws(rules[[field]])
+    if (any(is.na(rules[[field]]) | !nzchar(rules[[field]]))) stop(
+      "Aggregate-identity guard: ", field, " is required on every row.", call. = FALSE
+    )
+  }
+  if (any(rules$reviewed_by == "unreviewed")) stop(
+    "Aggregate-identity guard: an identity is a claim about what the publisher states and needs a ",
+    "named reviewer or '", RECONCILIATION_LAYOUT_REVIEWER, "'.", call. = FALSE
+  )
+  total <- suppressWarnings(as.integer(rules$total_column))
+  tolerance <- suppressWarnings(as.numeric(rules$tolerance))
+  reviewed_at <- suppressWarnings(lubridate::ymd(rules$reviewed_at, quiet = TRUE))
+  if (any(is.na(total)) || any(is.na(tolerance)) || any(is.na(reviewed_at))) stop(
+    "Aggregate-identity guard: total_column, tolerance and reviewed_at must be a whole number, ",
+    "a number and a YYYY-MM-DD date.", call. = FALSE
+  )
+  components <- strsplit(rules$component_columns, "|", fixed = TRUE)
+  if (any(vapply(components, length, integer(1)) < 2L)) stop(
+    "Aggregate-identity guard: an identity needs at least two component columns, separated by '|'.",
+    call. = FALSE
+  )
+  rows <- tibble::tibble(
+    source_id = rules$source_id, source_sheet = rules$source_sheet,
+    identity_label = rules$identity_label, total_column = total,
+    component_columns = rules$component_columns, tolerance = tolerance,
+    basis = rules$basis, evidence = rules$evidence,
+    reviewed_by = rules$reviewed_by, reviewed_at = reviewed_at
+  )
+  rows$identity_id <- paste0("identity:", substr(vapply(
+    paste(rows$source_id, rows$source_sheet, rows$identity_label, sep = "|"),
+    function(key) digest::digest(key, algo = "sha256", serialize = FALSE), character(1)
+  ), 1L, 24L))
+  if (anyDuplicated(rows$identity_id)) stop(
+    "Aggregate-identity guard: two rows name the same source, sheet and identity.", call. = FALSE
+  )
+  rows[c("identity_id", setdiff(names(rows), "identity_id"))]
+}
+
+validate_published_identities <- function(con, release_id, root) {
+  if (!database_object_exists(con, "documented_series_snapshot")) return(invisible(FALSE))
+  identities <- read_aggregate_identities(root)
+  if (database_object_exists(con, "aggregate_identities")) {
+    DBI::dbExecute(con, "DELETE FROM aggregate_identities")
+    if (nrow(identities)) DBI::dbWriteTable(con, "aggregate_identities", identities, append = TRUE)
+  }
+  if (!nrow(identities)) return(invisible(TRUE))
+  breaches <- list()
+  incomplete <- list()
+  unchecked <- character()
+  for (i in seq_len(nrow(identities))) {
+    row <- identities[i, ]
+    components <- as.integer(strsplit(row$component_columns, "|", fixed = TRUE)[[1]])
+    # Completeness and equality are separate questions, and coalescing an absent
+    # component to zero answered neither. A component that is not published is
+    # not a component that is zero: filling it in makes an identity with a
+    # missing term arithmetically pass, which is the failure mode a component
+    # check exists to catch. So the presence of every declared component is
+    # counted first, and the residual is measured only where they are all there.
+    measured <- DBI::dbGetQuery(con, paste0(
+      "WITH v AS (SELECT period, source_column, value FROM ",
+      project_qualified_name("documented_series_snapshot"),
+      " WHERE source_id = ", sql_string(row$source_id),
+      " AND source_sheet = ", sql_string(row$source_sheet), ")",
+      " SELECT count(*) AS periods,",
+      " count(*) FILTER (WHERE present < ", length(components), ") AS incomplete,",
+      " count(*) FILTER (WHERE present = ", length(components),
+      "   AND abs(total - components) > ", row$tolerance, ") AS breaches,",
+      " max(abs(total - components)) FILTER (WHERE present = ", length(components),
+      "   ) AS worst FROM (",
+      "   SELECT period, max(value) FILTER (WHERE source_column = ", row$total_column, ") AS total,",
+      "     ", paste(sprintf(
+        "coalesce(max(value) FILTER (WHERE source_column = %d), 0)", components
+      ), collapse = " + "), " AS components,",
+      "     ", paste(sprintf(
+        "CASE WHEN max(value) FILTER (WHERE source_column = %d) IS NULL THEN 0 ELSE 1 END",
+        components
+      ), collapse = " + "), " AS present",
+      "   FROM v GROUP BY 1) x WHERE total IS NOT NULL"
+    ))
+    if (!measured$periods[[1]]) {
+      unchecked <- c(unchecked, paste0(row$source_id, "/", row$source_sheet, " ", row$identity_label))
+      next
+    }
+    if (measured$breaches[[1]]) breaches[[length(breaches) + 1L]] <- paste0(
+      row$source_id, "/", row$source_sheet, " ", row$identity_label, ": ",
+      measured$breaches[[1]], " of ", measured$periods[[1]],
+      " period(s) break it, worst ", format(measured$worst[[1]], scientific = FALSE)
+    )
+    if (measured$incomplete[[1]]) incomplete[[length(incomplete) + 1L]] <- paste0(
+      row$source_id, "/", row$source_sheet, " ", row$identity_label, ": ",
+      measured$incomplete[[1]], " of ", measured$periods[[1]],
+      " period(s) publish the total without every component"
+    )
+  }
+  if (length(breaches)) insert_quality_flag(
+    con, release_id, "error", "published_identity_broken", NA_character_,
+    paste0(
+      length(breaches), " identity(ies) the publisher states do not hold in what was parsed. ",
+      "Either the parser is reading the wrong columns or the source has changed shape: ",
+      paste(head(breaches, 5), collapse = " | ")
+    )
+  )
+  # A period that publishes the total without every component is not a broken
+  # identity -- there is nothing to compare -- but it is not a passing one
+  # either, and treating a missing term as a zero is what let it look like one.
+  if (length(incomplete)) insert_quality_flag(
+    con, release_id, "warning", "published_identity_incomplete", NA_character_,
+    paste0(
+      length(incomplete), " identity(ies) have period(s) where the publisher gives the total but ",
+      "not every component, so the equality cannot be tested there: ",
+      paste(head(incomplete, 5), collapse = " | ")
+    )
+  )
+  # An identity that matches no period is describing a worksheet that no longer
+  # looks like that, exactly as an unused reconciliation rule is.
+  if (length(unchecked)) insert_quality_flag(
+    con, release_id, "warning", "published_identity_unchecked", NA_character_,
+    paste0(
+      length(unchecked), " identity(ies) in config/aggregate_identities.csv match no parsed period. ",
+      "Check the source, sheet and columns: ", paste(head(unchecked, 5), collapse = "; ")
+    )
+  )
+  invisible(!length(breaches))
+}
+
+# The audit's F-13, as much of it as a sheet-level record can carry.
+#
+# Every number this project reads is a cached formula result: readxl cannot
+# calculate, so a workbook shipped without recalculating stores whatever was last
+# computed, and nothing downstream can tell. Hidden rows and columns are the
+# mirror image -- the parser cannot say whether a value it read, or skipped, was
+# visible to the publisher's own reader.
+#
+# Neither is a defect on its own. What matters is the *change*: a sheet that was
+# 30% formulas and is now 2%, or that has begun hiding a block of rows, has
+# changed behaviour between vintages in a way no cell comparison reveals. With
+# one vintage per source this reports the state; with two it reports the drift.
+#
+# The state is only worth reporting if it has a consequence, so the hidden ranges
+# are joined back to the parsed observations. They do: the annex hides most of
+# CUADRO 31 and nearly all of Cuadro 21 a, and the parser reads those rows and
+# publishes them. That is not evidence of an error -- a publisher who hides a
+# historical block is usually still standing behind it -- but a researcher is
+# entitled to know that a number they are citing is one the publisher's own
+# reader does not see.
+hidden_row_observations <- function(con) {
+  empty <- tibble(
+    source_id = character(), sheet_name = character(),
+    hidden_row_observations = numeric(), hidden_row_series = numeric()
+  )
+  if (!database_object_exists(con, "documented_series_snapshot")) return(empty)
+  DBI::dbGetQuery(con, paste(
+    "WITH packed AS (",
+    "  SELECT source_id, sheet_name, vintage_id, unnest(string_split(hidden_rows, ';')) AS span",
+    "  FROM", project_qualified_name("source_sheets"), "WHERE hidden_rows IS NOT NULL),",
+    "spans AS (",
+    "  SELECT source_id, sheet_name, vintage_id,",
+    "         TRY_CAST(split_part(span, '-', 1) AS BIGINT) AS row_from,",
+    "         TRY_CAST(CASE WHEN span LIKE '%-%' THEN split_part(span, '-', 2)",
+    "                       ELSE span END AS BIGINT) AS row_to",
+    "  FROM packed)",
+    "SELECT s.source_id, s.sheet_name,",
+    "       count(*) AS hidden_row_observations,",
+    "       count(DISTINCT o.series_id) AS hidden_row_series",
+    "FROM spans s",
+    "JOIN", project_qualified_name("documented_series_snapshot"), "o",
+    "  ON o.vintage_id = s.vintage_id AND o.source_sheet = s.sheet_name",
+    " AND o.source_row BETWEEN s.row_from AND s.row_to",
+    "GROUP BY 1, 2"
+  ))
+}
+
+validate_workbook_behaviour <- function(con, release_id, root) {
+  if (!database_object_exists(con, "source_sheets")) return(invisible(FALSE))
+  columns <- table_column_names(con, "source_sheets")
+  if (!all(c("formula_cells", "hidden_rows") %in% columns)) return(invisible(FALSE))
+  state <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id, sheet_name, vintage_id, coalesce(formula_cells, 0) AS formula_cells,",
+    "hidden_rows, hidden_columns FROM", project_qualified_name("source_sheets")
+  ))
+  if (!nrow(state) || is.null(root)) return(invisible(TRUE))
+  published <- hidden_row_observations(con)
+  state <- dplyr::left_join(state, published, by = c("source_id", "sheet_name"))
+  state$hidden_row_observations <- dplyr::coalesce(state$hidden_row_observations, 0)
+  state$hidden_row_series <- dplyr::coalesce(state$hidden_row_series, 0)
+  readr::write_csv(
+    state[order(-state$hidden_row_observations, -state$formula_cells), , drop = FALSE],
+    file.path(root, "outputs", "workbook_behaviour_latest.csv")
+  )
+  formula_heavy <- state[state$formula_cells > 0, , drop = FALSE]
+  hidden <- state[!is.na(state$hidden_rows) | !is.na(state$hidden_columns), , drop = FALSE]
+  read_from_hidden <- hidden[hidden$hidden_row_observations > 0, , drop = FALSE]
+  read_from_hidden <- read_from_hidden[
+    order(-read_from_hidden$hidden_row_observations), , drop = FALSE]
+  if (nrow(formula_heavy) || nrow(hidden)) insert_quality_flag(
+    con, release_id, "warning", "workbook_cached_formulas_and_hidden_state", NA_character_,
+    paste0(
+      format(sum(formula_heavy$formula_cells), big.mark = ","), " cell(s) across ",
+      nrow(formula_heavy), " worksheet(s) hold a cached formula result rather than a typed value, ",
+      "and ", nrow(hidden), " worksheet(s) hide rows or columns. Neither is a defect, and neither ",
+      "can be seen from the cell values: whether the publisher recalculated before shipping, and ",
+      "whether a hidden row was meant to be read, are questions for the publisher. ",
+      if (nrow(read_from_hidden)) paste0(
+        format(sum(read_from_hidden$hidden_row_observations), big.mark = ","),
+        " published observation(s) across ", nrow(read_from_hidden),
+        " worksheet(s) come from rows the publisher hid: ",
+        paste(head(paste0(
+          read_from_hidden$source_id, "/", read_from_hidden$sheet_name, " (",
+          format(read_from_hidden$hidden_row_observations, big.mark = "", trim = TRUE), ")"
+        ), 5), collapse = "; "), ". "
+      ) else "No published observation sits on a hidden row. ",
+      "See outputs/workbook_behaviour_latest.csv."
+    )
+  )
+  # The drift test, which needs a second vintage of the same worksheet to say
+  # anything and is written now so that it does when one arrives.
+  drift <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id, sheet_name, count(DISTINCT formula_cells) AS formula_states,",
+    "count(DISTINCT coalesce(hidden_rows, '')) AS hidden_row_states",
+    "FROM", project_qualified_name("source_sheets"), "GROUP BY 1, 2",
+    "HAVING count(DISTINCT vintage_id) > 1",
+    "   AND (count(DISTINCT formula_cells) > 1 OR count(DISTINCT coalesce(hidden_rows, '')) > 1)"
+  ))
+  if (nrow(drift)) insert_quality_flag(
+    con, release_id, "warning", "workbook_behaviour_changed", NA_character_,
+    paste0(
+      nrow(drift), " worksheet(s) changed their formula or hidden-row structure between vintages, ",
+      "which a value comparison cannot show: ",
+      paste(head(paste0(drift$source_id, "/", drift$sheet_name), 8), collapse = "; ")
+    )
+  )
+  invisible(TRUE)
+}
+
+# The audit's F-08, as the condition on promotion rather than as a count.
+#
+# Unit, scale, frequency, stock/flow, nominal/real, adjustment and timing are not
+# metadata niceties: without them a transformation is a guess that looks like
+# arithmetic. Deflating a series nobody has marked nominal, summing a stock,
+# annualising a rate, comparing a seasonally adjusted series with an original one
+# -- each is a technically valid query and an economically invalid answer.
+#
+# The gate is written now and passes vacuously, because nothing is promoted yet.
+# That is the point: it is what makes the first promotion safe, and writing it
+# after something has been promoted would be writing it too late.
+RESEARCH_ELIGIBILITY_FIELDS <- c(
+  "unit_code", "scale_multiplier", "frequency", "stock_flow", "nominal_real",
+  "seasonal_adjustment"
+)
+
+validate_research_eligibility_metadata <- function(con, release_id) {
+  if (!database_object_exists(con, "v_research_series")) return(invisible(FALSE))
+  columns <- table_column_names(con, "dim_series")
+  fields <- intersect(RESEARCH_ELIGIBILITY_FIELDS, columns)
+  if (!length(fields)) return(invisible(FALSE))
+  predicate <- paste(vapply(fields, function(field) paste0(
+    "d.", DBI::dbQuoteIdentifier(con, field), " IS NULL OR CAST(d.",
+    DBI::dbQuoteIdentifier(con, field), " AS VARCHAR) IN ('not_reviewed', 'UNRESOLVED_SOURCE_UNITS')"
+  ), character(1)), collapse = " OR ")
+  ineligible <- DBI::dbGetQuery(con, paste0(
+    "SELECT d.source_id, count(*) AS series FROM marts.v_research_series r",
+    " JOIN ", project_qualified_name("dim_series"), " d ON d.series_id = r.series_id",
+    " WHERE ", predicate, " GROUP BY 1 ORDER BY series DESC"
+  ))
+  if (!nrow(ineligible)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "research_series_metadata_incomplete", NA_character_,
+    paste0(
+      sum(ineligible$series), " series reach the research surface without every field a ",
+      "transformation depends on (", paste(fields, collapse = ", "),
+      "). A series whose stock/flow or nominal/real status nobody has established cannot be ",
+      "aggregated or deflated safely, however valid the SQL looks: ",
+      paste0(ineligible$source_id, " (", ineligible$series, ")", collapse = "; ")
+    )
+  )
+  invisible(FALSE)
+}
+
+# The audit's F-05. A value dated after the vintage that published it is not an
+# outcome, and the general current-value interface used to present it as one.
+#
+# The rows are kept there by explicit decision -- v_series_latest answers what the
+# publisher currently says for a series and period, and a published projection is
+# part of that answer -- so the control here is that the distinction is always
+# carried and always counted. The gate is an error if the column disappears,
+# because that is the failure that makes the rest invisible again, and a warning
+# reporting how many rows a naive query would pick up.
+validate_observation_status_exposure <- function(con, release_id) {
+  if (!database_object_exists(con, "v_series_latest")) return(invisible(FALSE))
+  exposed <- "observation_status" %in% table_column_names(con, "v_series_latest")
+  if (!exposed) {
+    insert_quality_flag(
+      con, release_id, "error", "observation_status_not_exposed", NA_character_,
+      paste(
+        "main.v_series_latest does not carry observation_status, so a projection is",
+        "indistinguishable from a realized observation in the general current-value interface."
+      )
+    )
+    return(invisible(FALSE))
+  }
+  # The research default must contain none of them. Since schema 30 that is the
+  # contract rather than an instruction to remember, so a projection reaching
+  # v_series_latest is a defect and not a warning.
+  leaked <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM main.v_series_latest WHERE observation_status <> 'observed'"
+  ))$n[[1]]
+  if (leaked) {
+    insert_quality_flag(
+      con, release_id, "error", "projections_in_realized_view", NA_character_,
+      paste(
+        leaked, "observation(s) dated after the vintage that published them are visible through",
+        "main.v_series_latest, which is contracted to hold realized observations only.",
+        "main.v_publisher_statement_latest is where a published projection belongs."
+      )
+    )
+    return(invisible(FALSE))
+  }
+  if (!database_object_exists(con, "v_publisher_statement_latest")) return(invisible(TRUE))
+  projections <- DBI::dbGetQuery(con, paste(
+    "SELECT d.source_id, count(*) AS n, count(DISTINCT l.series_id) AS series,",
+    "max(l.period) AS furthest",
+    "FROM main.v_publisher_statement_latest l JOIN", project_qualified_name("dim_series"), "d",
+    "USING (series_id) WHERE l.observation_status <> 'observed' GROUP BY 1 ORDER BY 2 DESC"
+  ))
+  if (!nrow(projections)) return(invisible(TRUE))
+  # Reported, not warned about as a risk: the risk was the name, and the name is
+  # fixed. What is left is a fact a researcher should know about the source.
+  insert_quality_flag(
+    con, release_id, "warning", "publisher_statement_contains_projections", NA_character_,
+    paste0(
+      sum(projections$n), " observation(s) across ", sum(projections$series),
+      " series in main.v_publisher_statement_latest are dated after the vintage that published ",
+      "them. That view is the publisher's current statement and holds them by design; ",
+      "main.v_series_latest excludes them and marts.v_series_projections is the complement. ",
+      "By source: ",
+      paste0(
+        projections$source_id, " (", projections$n, ", to ", projections$furthest, ")",
+        collapse = "; "
+      )
+    )
+  )
+  invisible(TRUE)
+}
+
+# The other half of the audit's F-10, and the half a unique index cannot give:
+# a required field that is null. Asserted for every declared key at every
+# release, so the claim the documentation makes about a table's grain is a claim
+# the release has actually tested.
+# Which direct-panel records repeat every dimension the database models. Not a
+# failure -- the physical key proves they are distinct published rows -- but the
+# reason those tables must not be aggregated until someone identifies what the
+# publisher is varying between them.
+write_direct_panel_duplicate_worklist <- function(con, root) {
+  if (is.null(root)) return(invisible(NULL))
+  panels <- names(direct_panel_natural_keys(con))
+  rows <- list()
+  for (table_name in panels) {
+    columns <- table_column_names(con, table_name)
+    dimensions <- setdiff(columns, c(
+      "source_row", "release_id", "publication_date", "source_file", "first_ingested_at"
+    ))
+    measures <- grep("^(saldo|monto|importe|cantidad|total|valor)", dimensions, value = TRUE)
+    dimensions <- setdiff(dimensions, measures)
+    if (length(dimensions) < 3L) next
+    quoted <- paste(vapply(
+      dimensions, function(x) as.character(DBI::dbQuoteIdentifier(con, x)), character(1)
+    ), collapse = ", ")
+    found <- tryCatch(DBI::dbGetQuery(con, paste0(
+      "SELECT ", sql_string(table_name), " AS table_name, count(*) AS duplicate_groups,",
+      " sum(rows_in_group) AS rows_affected FROM (SELECT count(*) AS rows_in_group FROM ",
+      project_qualified_name(table_name), " GROUP BY ", quoted, " HAVING count(*) > 1)"
+    )), error = function(e) NULL)
+    if (!is.null(found) && nrow(found) && !is.na(found$rows_affected[[1]])) {
+      found$dimensions <- paste(dimensions, collapse = ", ")
+      rows[[table_name]] <- found
+    }
+  }
+  report <- dplyr::bind_rows(rows)
+  readr::write_csv(report, file.path(root, "outputs", "direct_panel_duplicate_keys.csv"))
+  invisible(report)
+}
+
+validate_declared_natural_keys <- function(con, release_id, root = NULL) {
+  failures <- character()
+  # Since schema 27 the direct panels declare a physical key too -- one database
+  # row per worksheet row -- so they are asserted here alongside the staging
+  # snapshots rather than only having their provenance columns checked.
+  all_declared <- c(STAGING_NATURAL_KEYS, direct_panel_natural_keys(con))
+  for (table_name in names(all_declared)) {
+    if (!database_object_exists(con, table_name)) next
+    columns <- table_column_names(con, table_name)
+    declared <- all_declared[[table_name]]
+    key <- intersect(declared$key, columns)
+    if (!length(key)) next
+    qualified <- project_qualified_name(table_name)
+    quoted <- paste(vapply(
+      key, function(x) as.character(DBI::dbQuoteIdentifier(con, x)), character(1)
+    ), collapse = ", ")
+    duplicates <- DBI::dbGetQuery(con, paste0(
+      "SELECT count(*) AS n FROM (SELECT 1 FROM ", qualified,
+      " GROUP BY ", quoted, " HAVING count(*) > 1)"
+    ))$n[[1]]
+    if (duplicates) failures <- c(failures, paste0(
+      table_name, ": ", duplicates, " duplicated (", paste(key, collapse = ", "), ")"
+    ))
+    required <- intersect(declared$required, columns)
+    if (!length(required)) next
+    predicate <- paste(vapply(required, function(column) paste0(
+      as.character(DBI::dbQuoteIdentifier(con, column)), " IS NULL"
+    ), character(1)), collapse = " OR ")
+    incomplete <- DBI::dbGetQuery(con, paste0(
+      "SELECT count(*) AS n FROM ", qualified, " WHERE ", predicate
+    ))$n[[1]]
+    if (incomplete) failures <- c(failures, paste0(
+      table_name, ": ", incomplete, " row(s) with a null required field (",
+      paste(required, collapse = ", "), ")"
+    ))
+  }
+  # The physical key says one database row is one worksheet row. It does not say
+  # the publisher's own dimensions identify a record, and on several panels they
+  # do not: 399 rows of raw_banks_canales_person repeat a vintage, date, entity,
+  # classification and description, some carrying different totals, and
+  # raw_banks_inhab splits INHAB and REHAB into complementary rows that share
+  # every declared dimension. Those are the publisher varying something this
+  # database does not model yet. Guessing the missing dimension would be worse
+  # than naming the gap, so they are reported and the tables stay unaggregatable.
+  write_direct_panel_duplicate_worklist(con, root)
+  # The audit asks for the same gate on "every staging *and direct* table". The
+  # direct bank and finance panels keep the publisher's own columns, and their
+  # grain is source-specific -- date by entity by account, or by item, or by
+  # currency, depending on the worksheet. Declaring a key for each would be this
+  # project asserting a grain the publisher has not, which is the mistake the
+  # rest of the register exists to avoid. What every direct row must carry is its
+  # provenance, and that is checkable without a domain claim.
+  direct <- DBI::dbGetQuery(con, paste(
+    "SELECT table_schema, table_name FROM information_schema.tables",
+    "WHERE table_type = 'BASE TABLE' AND table_name LIKE 'raw\\_%' ESCAPE '\\'"
+  ))
+  for (i in seq_len(nrow(direct))) {
+    qualified <- paste0(
+      DBI::dbQuoteIdentifier(con, direct$table_schema[[i]]), ".",
+      DBI::dbQuoteIdentifier(con, direct$table_name[[i]])
+    )
+    columns <- table_column_names(con, direct$table_name[[i]])
+    required <- intersect(c("vintage_id", "source_id", "source_sheet"), columns)
+    if (!length(required)) next
+    predicate <- paste(vapply(required, function(column) paste0(
+      as.character(DBI::dbQuoteIdentifier(con, column)), " IS NULL"
+    ), character(1)), collapse = " OR ")
+    incomplete <- DBI::dbGetQuery(con, paste0(
+      "SELECT count(*) AS n FROM ", qualified, " WHERE ", predicate
+    ))$n[[1]]
+    if (incomplete) failures <- c(failures, paste0(
+      direct$table_name[[i]], ": ", incomplete, " row(s) with no vintage, source or worksheet"
+    ))
+  }
+  if (!length(failures)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "declared_natural_key_violated", NA_character_,
+    paste0(
+      length(failures), " table(s) violate the natural key or required fields they declare: ",
+      paste(head(failures, 6), collapse = "; ")
+    )
+  )
+  invisible(FALSE)
+}
+
+# The audit's F-12, as a gate. An expected period with no observation is reported
+# with the reason it is absent; `unread_source_cell` is the one that matters,
+# because it names a workbook cell that holds a number the parser did not read.
+validate_observation_missingness <- function(con, release_id) {
+  if (!database_object_exists(con, "observation_missingness")) return(invisible(FALSE))
+  counts <- DBI::dbGetQuery(con, paste(
+    "SELECT reason, count(*) AS periods, count(DISTINCT series_id) AS series FROM",
+    project_qualified_name("observation_missingness"), "GROUP BY 1 ORDER BY periods DESC"
+  ))
+  if (!nrow(counts)) return(invisible(TRUE))
+  unknown <- setdiff(counts$reason, OBSERVATION_MISSINGNESS_REASONS)
+  if (length(unknown)) insert_quality_flag(
+    con, release_id, "error", "missingness_reason_unsupported", NA_character_,
+    paste("Unsupported missingness reason(s):", paste(unknown, collapse = "; "))
+  )
+  # A token the publisher writes that nobody has recorded the meaning of is the
+  # one absence that must be named at every release: `s/m` sat in 18,416 cells
+  # being counted as blanks, and no gate said so because the classifier had never
+  # looked at the text. Reported with the tokens themselves, so the answer is a
+  # line in config/source_value_tokens.csv rather than an investigation.
+  unregistered <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id, source_sheet, source_token, count(*) AS periods FROM",
+    project_qualified_name("observation_missingness"),
+    "WHERE reason = 'source_token_unreviewed' GROUP BY 1, 2, 3 ORDER BY periods DESC"
+  ))
+  if (nrow(unregistered)) insert_quality_flag(
+    con, release_id, "warning", "source_token_unreviewed", NA_character_,
+    paste0(
+      format(sum(unregistered$periods), big.mark = ","), " expected observation(s) are absent ",
+      "because the cell holds text whose meaning is not recorded in ",
+      "config/source_value_tokens.csv, so no worksheet they touch can be promoted. Tokens: ",
+      paste(head(paste0(
+        "'", unregistered$source_token, "' in ", unregistered$source_id, "/",
+        unregistered$source_sheet, " (", format(unregistered$periods, big.mark = ","), ")"
+      ), 8), collapse = "; ")
+    )
+  )
+  unread <- counts[counts$reason == "unread_source_cell", , drop = FALSE]
+  if (nrow(unread)) insert_quality_flag(
+    con, release_id, "warning", "missingness_unread_source_cell", NA_character_,
+    paste0(
+      format(unread$periods[[1]], big.mark = ","), " expected observation(s) across ",
+      format(unread$series[[1]], big.mark = ","), " series are absent while the source cell at ",
+      "their coordinate holds a number. See outputs/observation_missingness_latest.csv."
+    )
+  )
+  insert_quality_flag(
+    con, release_id, "warning", "observation_missingness_recorded", NA_character_,
+    paste0(
+      "Expected-period absence is recorded with a reason for ",
+      format(sum(counts$periods), big.mark = ","), " period(s): ",
+      paste0(counts$reason, " ", format(counts$periods, big.mark = ","), collapse = "; "),
+      ". A validated worksheet may not carry unreviewed or unread absence."
+    )
+  )
+  invisible(TRUE)
+}
+
+# The audit's F-14, as a gate. Incomplete acquisition evidence is a warning while
+# a source is provisional -- it is operator work, not a parser outcome -- and an
+# error the moment someone claims a worksheet of that source is validated, since
+# a research product nobody can re-acquire is not reproducible.
+validate_source_provenance <- function(con, release_id, root) {
+  if (!database_object_exists(con, "source_provenance")) return(invisible(FALSE))
+  status <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id, vintage_id, official_url, release_identifier, retrieved_at, retrieval_method",
+    "FROM", project_qualified_name("source_provenance")
+  ))
+  if (!nrow(status)) return(invisible(TRUE))
+  incomplete <- status[
+    is.na(status$official_url) | is.na(status$release_identifier) |
+      is.na(status$retrieved_at) | is.na(status$retrieval_method), , drop = FALSE
+  ]
+  if (!is.null(root)) readr::write_csv(
+    status, file.path(root, "outputs", "source_provenance_status.csv")
+  )
+  if (!nrow(incomplete)) return(invisible(TRUE))
+  validated_sources <- if (database_object_exists(con, "table_status")) {
+    DBI::dbGetQuery(con, paste(
+      "SELECT DISTINCT source_id FROM", project_qualified_name("table_status"),
+      "WHERE status = 'validated'"
+    ))$source_id
+  } else character()
+  blocking <- intersect(incomplete$source_id, validated_sources)
+  insert_quality_flag(
+    con, release_id, if (length(blocking)) "error" else "warning",
+    "source_provenance_incomplete", NA_character_,
+    paste0(
+      nrow(incomplete), " source vintage(s) have no official URL, release identifier, retrieval ",
+      "timestamp or retrieval method in config/source_vintages.csv, so they cannot be independently ",
+      "re-acquired. ",
+      if (length(blocking)) paste0(
+        "This blocks the release because ", paste(blocking, collapse = ", "),
+        " carr", if (length(blocking) == 1L) "ies" else "y", " a validated worksheet. "
+      ) else "",
+      "See outputs/source_provenance_status.csv."
+    )
+  )
+  invisible(!length(blocking))
+}
+
+# The audit's R6-01, and the second time this lint has been rebuilt.
+#
+# Version one named two objects and matched the mart family; the audit found
+# thirty-four published views with no release join at all. Version two replaced
+# the list with naming rules -- v_latest_*, v_*_latest*, everything in marts --
+# and the audit found the deeper problem: a rule over *names* cannot decide which
+# objects are research interfaces, and a test for the *word* "releases" cannot
+# decide whether one filters.
+#
+# Both halves failed concretely. `v_series_observations` reads the whole fact
+# table and LEFT JOINs accepted releases only to label a column, so a row
+# belonging to no accepted release survives with a null label -- and the body
+# contains the word, so the lint passed it, and passed `v_series_projections`
+# built on it, and `v_canonical_observations` built on that. Meanwhile
+# `v_fx_operations_annual` and `v_series_catalogue` matched no naming rule at
+# all, and neither did thirty-five other public objects.
+#
+# So neither question is inferred any more. What an object is *for* is declared
+# by a person in config/public_view_contract.csv; whether it filters is decided
+# by descent to a relation that actually restricts, not by a substring.
+PUBLIC_VIEW_SCOPES <- c("current", "all", "history", "reference", "diagnostic")
+
+# Which objects carry the release boundary in their own body is declared in the
+# same register, not hard-coded here. A `current` object must either carry it or
+# read something that does.
+#
+# Declaring it is a reviewed act with a name against it, and forgetting to
+# declare a new filtering view makes the lint *fail* rather than pass -- the
+# object's dependants stop descending to anything. That is the property the two
+# previous versions of this lint lacked: a list you forget to extend used to mean
+# an unchecked view, and now it means a blocked release.
+filtered_base_relations <- function(contract) {
+  if (is.null(contract) || !"carries_release_boundary" %in% names(contract)) return(character())
+  contract$object_id[isTRUE_vector(contract$carries_release_boundary)]
+}
+
+isTRUE_vector <- function(x) !is.na(x) & as.logical(x)
+
+read_public_view_contract <- function(root) {
+  if (is.null(root)) return(NULL)
+  path <- file.path(root, "config", "public_view_contract.csv")
+  if (!file.exists(path)) return(NULL)
+  contract <- readr::read_csv(path, show_col_types = FALSE)
+  required <- c("schema_name", "object_name", "object_type", "public_scope",
+               "carries_release_boundary", "reason", "reviewed_by")
+  missing_columns <- setdiff(required, names(contract))
+  if (length(missing_columns)) stop(
+    "config/public_view_contract.csv is missing: ", paste(missing_columns, collapse = ", "),
+    call. = FALSE
+  )
+  bad_scope <- setdiff(unique(contract$public_scope), PUBLIC_VIEW_SCOPES)
+  if (length(bad_scope)) stop(
+    "config/public_view_contract.csv declares unknown public_scope value(s): ",
+    paste(bad_scope, collapse = ", "), ". Allowed: ",
+    paste(PUBLIC_VIEW_SCOPES, collapse = ", "), call. = FALSE
+  )
+  unreviewed <- contract$object_name[
+    is.na(contract$reviewed_by) | !nzchar(trimws(contract$reviewed_by))
+  ]
+  if (length(unreviewed)) stop(
+    "config/public_view_contract.csv leaves reviewed_by empty for: ",
+    paste(head(unreviewed, 5), collapse = ", "),
+    ". What an object is published for is a decision, and a decision has an author.",
+    call. = FALSE
+  )
+  contract$object_id <- paste0(contract$schema_name, ".", contract$object_name)
+  contract
+}
+
+# Does this object descend to a relation that actually restricts vintages?
+#
+# The predicate this replaces was `grepl("releases", body)`. It returned TRUE for
+# a view whose only mention of releases was a LEFT JOIN populating a label, which
+# is how an entirely unfiltered observation view -- and everything built on it --
+# was certified as filtered. Mentioning the boundary is not respecting it.
+#
+# The rule now is descent: an object is filtered if it *is* a declared filtered
+# base relation, or if it reads one. Reaching a base relation only through its
+# `_all` twin does not count, which is what the twins are for.
+release_filtered_object <- function(name, stored, carriers, seen = character()) {
+  if (name %in% carriers) return(TRUE)
+  if (name %in% seen) return(FALSE)
+  body <- stored$body[stored$object_name == name]
+  if (!length(body)) return(FALSE)
+  body <- body[[1]]
+  dependencies <- setdiff(
+    stored$object_name[vapply(
+      stored$object_name, function(candidate) grepl(candidate, body, fixed = TRUE), logical(1)
+    )],
+    name
+  )
+  # A name that is a strict prefix of another matches the longer one's SQL, so
+  # `v_series_latest` looks like a dependency of anything reading
+  # `v_series_latest_all`. Descending through the `_all` twin would then certify
+  # the diagnostic path as filtered, so twins are never followed.
+  dependencies <- grep("_all$", dependencies, value = TRUE, invert = TRUE)
+  any(vapply(
+    dependencies,
+    function(dependency) release_filtered_object(dependency, stored, carriers, c(seen, name)),
+    logical(1)
+  ))
+}
+
+# Every declared filtered base relation must earn the name: its own body has to
+# restrict vintages to the active data release. Without this the descent test
+# would be circular -- a list of relations asserted to filter, and a rule that
+# trusts the list.
+validate_filtered_base_relations <- function(con, release_id, stored, carriers) {
+  failures <- character()
+  for (name in carriers) {
+    body <- stored$body[stored$object_name == name]
+    if (!length(body)) next
+    restricts <- grepl("active_data_release", body[[1]], fixed = TRUE)
+    if (!restricts) failures <- c(failures, name)
+  }
+  if (!length(failures)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "filtered_base_relation_unrestricted", NA_character_,
+    paste0(
+      length(failures), " relation(s) declared as filtered bases do not restrict vintages to the ",
+      "active data release, so every current view descending from them is unfiltered: ",
+      paste(failures, collapse = ", ")
+    )
+  )
+  invisible(FALSE)
+}
+
+validate_published_release_filter <- function(con, release_id, root = NULL) {
+  if (!database_object_exists(con, "releases")) return(invisible(FALSE))
+  stored <- rbind(
+    DBI::dbGetQuery(con, paste(
+      "SELECT schema_name || '.' || view_name AS object_name, sql AS body",
+      "FROM duckdb_views() WHERE NOT internal"
+    )),
+    DBI::dbGetQuery(con, paste(
+      "SELECT schema_name || '.' || function_name AS object_name, macro_definition AS body",
+      "FROM duckdb_functions() WHERE NOT internal AND macro_definition IS NOT NULL"
+    ))
+  )
+  contract <- read_public_view_contract(root)
+  carriers <- filtered_base_relations(contract)
+  validate_filtered_base_relations(con, release_id, stored, carriers)
+  problems <- character()
+  if (is.null(contract)) {
+    problems <- c(problems, "config/public_view_contract.csv is missing, so no object declares what it publishes")
+    required <- character()
+  } else {
+    published <- grep("^(main|marts)\\.", stored$object_name, value = TRUE)
+    # An object nobody has classified is the failure this register exists to
+    # catch: a view added without anyone saying whether researchers should read
+    # it. Undeclared is not the same as diagnostic, and must not default to it.
+    undeclared <- setdiff(published, contract$object_id)
+    if (length(undeclared)) problems <- c(problems, paste0(
+      length(undeclared), " published object(s) declare no public_scope in ",
+      "config/public_view_contract.csv: ", paste(head(sort(undeclared), 8), collapse = ", ")
+    ))
+    stale <- setdiff(contract$object_id, stored$object_name)
+    if (length(stale)) problems <- c(problems, paste0(
+      length(stale), " object(s) in config/public_view_contract.csv no longer exist: ",
+      paste(head(sort(stale), 8), collapse = ", ")
+    ))
+    required <- contract$object_id[contract$public_scope == "current"]
+    required <- intersect(required, stored$object_name)
+  }
+  unfiltered <- required[!vapply(
+    required, function(name) release_filtered_object(name, stored, carriers), logical(1)
+  )]
+  if (length(unfiltered)) problems <- c(problems, paste0(
+    length(unfiltered), " object(s) declared `current` do not descend from a filtered base ",
+    "relation: ", paste(sort(unfiltered), collapse = ", ")
+  ))
+  visible_blocked <- DBI::dbGetQuery(con, paste0(
+    "SELECT count(*) AS n FROM main.v_series_latest l WHERE l.vintage_id NOT IN (",
+    accepted_release_vintages_sql(), ")"
+  ))$n[[1]]
+  if (visible_blocked) problems <- c(problems, paste(
+    visible_blocked, "observation(s) are visible through v_series_latest whose vintage belongs to",
+    "no accepted release"
+  ))
+  if (!length(problems)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "blocked_release_visible", NA_character_,
+    paste0(
+      "The published interface does not isolate accepted releases: ",
+      paste(problems, collapse = "; ")
+    )
+  )
+  invisible(FALSE)
+}
+
+# A second connection to the same file inherits none of this session's settings,
+# so its search path is empty -- which is precisely the condition to test under.
+verify_fresh_connection_interface <- function(con, release_id, db_path) {
+  if (is.null(db_path) || !nzchar(db_path) || !file.exists(db_path)) return(invisible(FALSE))
+  fresh <- try(DBI::dbConnect(duckdb::duckdb(), db_path), silent = TRUE)
+  if (inherits(fresh, "try-error")) return(invisible(FALSE))
+  on.exit(try(DBI::dbDisconnect(fresh, shutdown = FALSE), silent = TRUE), add = TRUE)
+  configured <- DBI::dbGetQuery(fresh, "SELECT current_setting('search_path') AS s")$s[[1]]
+  failures <- character()
+  if (nzchar(trimws(configured))) failures <- c(failures, paste0(
+    "the test connection carried a search path (", configured, ") and proves nothing"
+  ))
+  views <- DBI::dbGetQuery(fresh, paste(
+    "SELECT schema_name, view_name FROM duckdb_views() WHERE NOT internal",
+    "ORDER BY schema_name, view_name"
+  ))
+  for (i in seq_len(nrow(views))) {
+    object <- paste0(views$schema_name[[i]], ".", views$view_name[[i]])
+    # LIMIT 0 binds the whole query; COUNT(*) makes it run. A view can pass the
+    # first and fail the second on a dependency only reached at execution.
+    for (form in c("SELECT * FROM %s LIMIT 0", "SELECT count(*) FROM %s")) {
+      outcome <- try(DBI::dbGetQuery(fresh, sprintf(
+        form, paste0("\"", views$schema_name[[i]], "\".\"", views$view_name[[i]], "\"")
+      )), silent = TRUE)
+      if (inherits(outcome, "try-error")) {
+        failures <- c(failures, paste0(object, ": ", trimws(gsub("\\s+", " ", conditionMessage(attr(outcome, "condition"))))))
+        break
+      }
+    }
+  }
+  # The macros are called with literals rather than a column, because the whole
+  # point of the resolver's lookup_id naming is that a bare column argument would
+  # substitute into the body. A literal is what a caller actually writes.
+  macro_calls <- c(
+    resolve_series_id = "SELECT resolve_series_id('smoke:not-a-series') AS resolved",
+    resolve_series_ids = "SELECT * FROM resolve_series_ids('smoke:not-a-series')",
+    series_as_of_date = "SELECT count(*) AS n FROM series_as_of_date(DATE '1900-01-01')"
+  )
+  for (macro in names(macro_calls)) {
+    outcome <- try(DBI::dbGetQuery(fresh, macro_calls[[macro]]), silent = TRUE)
+    if (inherits(outcome, "try-error")) failures <- c(failures, paste0(
+      macro, "(): ", trimws(gsub("\\s+", " ", conditionMessage(attr(outcome, "condition"))))
+    ))
+  }
+  if (!length(failures)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "fresh_connection_object_failed", NA_character_,
+    paste0(
+      length(failures), " of ", nrow(views) + length(macro_calls),
+      " published object(s) fail from a connection with default settings, which is every ",
+      "connection this project does not open itself: ", paste(head(failures, 8), collapse = " | ")
+    )
+  )
+  invisible(FALSE)
+}
+
+# --- Numbers written into prose -----------------------------------------------
+# The audit's P1: the financial_indicators status note still said "1,636
+# positional-lane series" for a source whose live count is zero, months after the
+# repair that removed them. validate_governance_drift() did not catch it and was
+# right not to: it polices the closed-vocabulary parser_claim and deliberately
+# never pattern-matches the note, because a check that guesses at prose fires on
+# notes that mention a defect in order to deny it.
+#
+# The fix keeps that principle and narrows the target. A *number* followed by one
+# of the phrases this project actually uses to make a quantitative claim is not
+# prose, it is an assertion with a live counterpart, and it is checked against it.
+# Everything else in the note stays free text and stays unread. Adding a phrase
+# here is how a new kind of claim becomes checkable.
+GOVERNANCE_NOTE_CLAIMS <- list(
+  unread_cells = list(
+    pattern = "([0-9][0-9,.]*)\\s+published source cell",
+    describe = "unread published source cells"
+  ),
+  positional_lanes = list(
+    pattern = "([0-9][0-9,.]*)\\s+positional[- ]lane series",
+    describe = "positional-lane series identities"
+  )
+)
+
+governance_note_claimed_number <- function(note, pattern) {
+  match <- stringr::str_match(note, pattern)
+  if (is.na(match[, 1])) return(NA_real_)
+  suppressWarnings(as.numeric(gsub("[,.]", "", match[, 2])))
+}
+
+validate_governance_note_counts <- function(con, release_id) {
+  if (!database_object_exists(con, "table_status")) return(invisible(FALSE))
+  status <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id, source_sheet, note FROM", project_qualified_name("table_status"),
+    "WHERE note IS NOT NULL AND note <> ''"
+  ))
+  if (!nrow(status)) return(invisible(TRUE))
+  defects <- if (database_object_exists(con, "table_reconciliation") &&
+                 "parser_defect_cells" %in% table_column_names(con, "table_reconciliation")) {
+    DBI::dbGetQuery(con, paste(
+      "SELECT source_id, source_sheet, sum(parser_defect_cells) AS cells",
+      "FROM", project_qualified_name("table_reconciliation"), "GROUP BY 1, 2"
+    ))
+  } else NULL
+  lanes <- if (database_object_exists(con, "dim_series")) {
+    DBI::dbGetQuery(con, paste(
+      "SELECT d.source_id, coalesce(n.source_sheet, '*') AS source_sheet, count(*) AS lanes",
+      "FROM", project_qualified_name("dim_series"), "d",
+      "LEFT JOIN (SELECT DISTINCT series_id, source_sheet FROM",
+      project_qualified_name("documented_series_snapshot"), ") n USING (series_id)",
+      "WHERE d.identity_stability = 'positional_lane' GROUP BY 1, 2"
+    ))
+  } else NULL
+  # A worksheet row speaks for its worksheet; a '*' row speaks for the source, so
+  # its number is the source total.
+  live_total <- function(frame, column, source_id, source_sheet) {
+    if (is.null(frame) || !nrow(frame)) return(0)
+    rows <- frame[frame$source_id == source_id, , drop = FALSE]
+    if (!identical(source_sheet, "*")) rows <- rows[rows$source_sheet == source_sheet, , drop = FALSE]
+    sum(as.numeric(rows[[column]]), na.rm = TRUE)
+  }
+  stale <- character()
+  for (i in seq_len(nrow(status))) {
+    for (claim in names(GOVERNANCE_NOTE_CLAIMS)) {
+      rule <- GOVERNANCE_NOTE_CLAIMS[[claim]]
+      claimed <- governance_note_claimed_number(status$note[[i]], rule$pattern)
+      if (is.na(claimed)) next
+      actual <- if (identical(claim, "unread_cells")) {
+        live_total(defects, "cells", status$source_id[[i]], status$source_sheet[[i]])
+      } else {
+        live_total(lanes, "lanes", status$source_id[[i]], status$source_sheet[[i]])
+      }
+      if (!isTRUE(all.equal(claimed, actual))) stale <- c(stale, paste0(
+        status$source_id[[i]], " / ", status$source_sheet[[i]], ": the note claims ",
+        format(claimed, big.mark = ",", scientific = FALSE), " ", rule$describe,
+        "; this release measures ", format(actual, big.mark = ",", scientific = FALSE)
+      ))
+    }
+  }
+  if (!length(stale)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "governance_note_stale_count", NA_character_,
+    paste0(
+      length(stale), " table_status note(s) state a number this release contradicts. ",
+      "Correct config/table_status.csv: ", paste(head(stale, 6), collapse = " | ")
+    )
+  )
+  invisible(FALSE)
+}
+
+# --- Measure against unit -----------------------------------------------------
+# The audit's P1: 456 rate/spread-labelled series carry non-rate unit codes, so
+# "automated transformations can silently be nonsensical". Nothing checked this;
+# the existing unit guards test internal consistency within a vintage and the
+# plausibility of a scale, never whether the unit agrees with what the series is.
+#
+# The check runs off the derived measure dimension rather than off the label,
+# because the label is what was ambiguous in the first place. A rate must carry a
+# rate-compatible unit; an outstanding amount must carry a currency; a count must
+# be counted.
+SEMANTIC_MEASURE_UNITS <- list(
+  rate = c("PERCENT", "PERCENT_PER_ANNUM", "BASIS_POINTS", "PROPORTION", "RATIO"),
+  outstanding_amount = c("PYG", "USD", "EUR", "UNRESOLVED_SOURCE_UNITS"),
+  new_business_volume = c("PYG", "USD", "EUR", "UNRESOLVED_SOURCE_UNITS"),
+  transaction_count = c("COUNT"),
+  index_or_statistic = c("INDEX", "INDEX_POINTS", "PROPORTION", "RATIO")
+)
+
+validate_semantic_contradictions <- function(con, release_id) {
+  if (!database_object_exists(con, "series_dimension")) return(invisible(FALSE))
+  if (!database_object_exists(con, "dim_series")) return(invisible(FALSE))
+  measured <- DBI::dbGetQuery(con, paste(
+    "SELECT x.value AS measure, d.unit_code, count(*) AS series,",
+    "min(d.series_id) AS example",
+    "FROM", project_qualified_name("series_dimension"), "x",
+    "JOIN", project_qualified_name("dim_series"), "d USING (series_id)",
+    "WHERE x.dimension = 'measure' GROUP BY 1, 2"
+  ))
+  if (!nrow(measured)) return(invisible(TRUE))
+  offending <- character(); total <- 0L
+  for (i in seq_len(nrow(measured))) {
+    allowed <- SEMANTIC_MEASURE_UNITS[[measured$measure[[i]]]]
+    if (is.null(allowed)) next
+    unit <- measured$unit_code[[i]]
+    if (!is.na(unit) && unit %in% allowed) next
+    total <- total + measured$series[[i]]
+    offending <- c(offending, paste0(
+      measured$measure[[i]], " with unit ", if (is.na(unit)) "NULL" else unit, ": ",
+      measured$series[[i]], " series (e.g. ", measured$example[[i]], ")"
+    ))
+  }
+  if (!length(offending)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "semantic_contradiction", NA_character_,
+    paste0(
+      total, " series carry a unit their derived measure contradicts, so an automated ",
+      "transformation over them would be meaningless: ", paste(head(offending, 8), collapse = " | ")
+    )
+  )
+  invisible(FALSE)
+}
+
+# The audit's P1 test: "every nonempty numeric source block is inside a reviewed
+# parser region or explicitly out of scope". Reported rather than gated -- see
+# write_source_region_report() for why -- but reported every release, so the
+# number cannot quietly grow while every worksheet reads "balanced".
+validate_source_region_completeness <- function(con, release_id) {
+  if (!database_object_exists(con, "source_region_classification")) return(invisible(FALSE))
+  outside <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id, source_sheet, classification, count(*) AS cells FROM",
+    project_qualified_name("source_region_classification"), "GROUP BY 1, 2, 3"
+  ))
+  if (!nrow(outside)) return(invisible(TRUE))
+  # Unreviewed is a worklist, not a release failure: nobody classifies tens of
+  # thousands of cells in one sitting, and a gate nobody can pass is a gate that
+  # gets switched off. It does stop promotion to validated --
+  # unreconciled_table_families() enforces that -- which is where an unexamined
+  # region would become a correctness claim.
+  unreviewed <- outside[outside$classification == "unreviewed", , drop = FALSE]
+  if (nrow(unreviewed)) insert_quality_flag(
+    con, release_id, "warning", "source_region_unreviewed", NA_character_,
+    paste0(
+      format(sum(unreviewed$cells), big.mark = ","), " published numeric cell(s) across ",
+      nrow(unreviewed), " worksheet(s) sit outside every parser region and have no rule in ",
+      "config/source_region_rules.csv saying what they are, so no worksheet they touch can be ",
+      "promoted to validated. See outputs/source_region_review_worklist.csv. Largest: ",
+      paste(utils::head(paste0(
+        unreviewed$source_id, "/", unreviewed$source_sheet, " (",
+        format(unreviewed$cells, big.mark = ","), ")"
+      ), 5), collapse = "; ")
+    )
+  )
+  # A reviewer has looked at these and said they are published data the parser
+  # does not read. That is the honest answer and it is reported at every release
+  # until the parser is repaired, exactly as a recorded in-region defect is.
+  unread <- outside[outside$classification %in% SOURCE_REGION_DEFECT_CLASSIFICATIONS, , drop = FALSE]
+  if (nrow(unread)) insert_quality_flag(
+    con, release_id, "warning", "source_region_data_not_ingested", NA_character_,
+    paste0(
+      format(sum(unread$cells), big.mark = ","), " published numeric cell(s) across ", nrow(unread),
+      " worksheet(s) are reviewed as data that no parser region reaches. Those worksheets cannot ",
+      "reach v_research_series: ",
+      paste(utils::head(paste0(
+        unread$source_id, "/", unread$source_sheet, " (", format(unread$cells, big.mark = ","), ")"
+      ), 10), collapse = "; ")
+    )
+  )
+  invisible(TRUE)
+}
+
+# The audit's P1 test: "status notes and parser claims must match current
+# reconciliation and parser version". Checked in both directions, because the two
+# failures are different and only one of them is the one that already happened.
+validate_governance_drift <- function(con, release_id) {
+  if (!database_object_exists(con, "table_status") ||
+      !database_object_exists(con, "table_reconciliation")) return(invisible(FALSE))
+  if (!"parser_defect_cells" %in% table_column_names(con, "table_reconciliation")) {
+    return(invisible(FALSE))
+  }
+  if (!"parser_claim" %in% table_column_names(con, "table_status")) return(invisible(FALSE))
+
+  # A claim is checked at the scope it was written at. A worksheet row speaks
+  # for that worksheet; a '*' row speaks for the source, so it claims that
+  # *somewhere* in the source the parser misreads something, and is stale only
+  # when no worksheet of that source does. Checking a source-level claim against
+  # each worksheet separately would flag every clean sheet in a source that has
+  # one bad one, which is noise, not drift.
+  # A '*' row speaks only for the worksheets that have no row of their own.
+  # Without that, naming one bad sheet explicitly would leave the source-level
+  # row contradicting itself: it would still be measured against the sheet it
+  # just delegated.
+  claims <- DBI::dbGetQuery(con, paste(
+    "WITH scope AS (",
+    "  SELECT t.source_id, t.source_sheet, t.parser_claim,",
+    "    CASE WHEN t.source_sheet = '*' THEN 1 ELSE 0 END AS is_wildcard",
+    "  FROM table_status t WHERE t.parser_claim IS NOT NULL",
+    "), delegated AS (",
+    "  SELECT source_id, source_sheet FROM scope WHERE is_wildcard = 0",
+    "), in_scope AS (",
+    "  SELECT s.source_id, s.source_sheet AS claim_sheet, s.parser_claim, s.is_wildcard,",
+    "         r.cell_reuse, r.unclassified_cells, r.parser_defect_cells, r.unmapped_in_region",
+    "  FROM scope s",
+    "  JOIN table_reconciliation r ON r.source_id = s.source_id",
+    "  LEFT JOIN delegated d ON d.source_id = r.source_id AND d.source_sheet = r.source_sheet",
+    "  WHERE r.source_sheet = s.source_sheet",
+    "     OR (s.is_wildcard = 1 AND d.source_sheet IS NULL)",
+    ")",
+    "SELECT source_id, claim_sheet AS source_sheet, parser_claim, is_wildcard,",
+    "  count(*) AS worksheets, sum(cell_reuse) AS cell_reuse,",
+    "  sum(unclassified_cells) AS unclassified_cells,",
+    "  sum(parser_defect_cells) AS parser_defect_cells,",
+    "  sum(unmapped_in_region) AS unmapped_in_region",
+    "FROM in_scope GROUP BY 1, 2, 3, 4"
+  ))
+  # A source or worksheet this release did not measure cannot contradict
+  # anything; say nothing about it rather than guessing.
+  claims <- claims[claims$worksheets > 0, , drop = FALSE]
+  if (!nrow(claims)) return(invisible(FALSE))
+
+  # Direction one: the row still claims a defect this release's accounting says
+  # is gone. This is the failure the audit found -- eight trade notes describing
+  # a period-axis bug that schema 14 had already fixed.
+  stale <- claims[
+    (claims$parser_claim == "unread_cells" & claims$unmapped_in_region == 0) |
+      (claims$parser_claim == "cell_reuse" & claims$cell_reuse == 0), , drop = FALSE
+  ]
+  if (nrow(stale)) insert_quality_flag(
+    con, release_id, "error", "table_status_claim_stale", NA_character_,
+    paste0(
+      nrow(stale), " table_status row(s) claim a parser defect that this release's reconciliation ",
+      "reports as resolved. Correct parser_claim in config/table_status.csv: ",
+      paste(head(paste0(stale$source_id, "/", stale$source_sheet,
+                        " (claims ", stale$parser_claim, ")"), 10), collapse = "; ")
+    )
+  )
+
+  # Direction two: the accounting reports a live defect and the row claims the
+  # parser reads the worksheet completely.
+  silent <- claims[
+    claims$parser_claim == "none" &
+      (claims$parser_defect_cells > 0 | claims$unclassified_cells > 0 | claims$cell_reuse > 0),
+    , drop = FALSE
+  ]
+  if (nrow(silent)) insert_quality_flag(
+    con, release_id, "error", "table_status_claim_silent_on_defect", NA_character_,
+    paste0(
+      nrow(silent), " table_status row(s) claim the parser reads their worksheets completely ",
+      "while the reconciliation reports unread, unclassified or reused source cells: ",
+      paste(head(paste0(silent$source_id, "/", silent$source_sheet), 10), collapse = "; ")
+    )
+  )
+  invisible(TRUE)
+}
+
+validate_database <- function(con, manifest, release_id, root, db_path = NULL) {
   required <- c("source_files", "source_sheets", "report_sheet_versions", "report_sheet_vintages",
                 "report_cell_values", "report_cells", "dim_series", "fact_series_events",
                 "quality_flags", "dim_entity", "dim_currency", "dim_statement_item",
@@ -451,7 +2043,8 @@ validate_database <- function(con, manifest, release_id, root) {
                 "documented_table_catalog", "documented_series_snapshot", "dim_payment_participant",
                 "dim_exchange_item", "documented_sheet_drift", "documented_series_continuity",
                 "dim_concept", "map_series_concept", "bond_curve_snapshot", "securities_transactions_snapshot",
-                "table_status")
+                "table_status", "series_id_migration", "source_alias", "continuity_map",
+                "table_reconciliation", "v_series_id_resolution")
   for (tbl in required) if (!database_object_exists(con, tbl)) insert_quality_flag(
     con, release_id, "error", "missing_table", NA_character_, paste("Expected table not created:", tbl)
   )
@@ -524,9 +2117,75 @@ validate_database <- function(con, manifest, release_id, root) {
       paste(quarantined, "series belong to tables marked quarantined or needs_remodeling and are excluded from v_research_series.")
     )
   }
+  # The audit's P2 test: the documented migration paths and the schema version
+  # must be checked against the registry, not maintained beside it. Three
+  # statements about the same migrations had already drifted apart in
+  # OPERATIONS.md before anyone noticed.
+  if (!is.null(root) && database_object_exists(con, "schema_version")) {
+    runbook <- file.path(root, "docs", "SCHEMA_MIGRATIONS.md")
+    current <- DBI::dbGetQuery(con, "SELECT max(version) AS n FROM schema_version")$n[[1]]
+    stale <- if (!file.exists(runbook)) {
+      "docs/SCHEMA_MIGRATIONS.md has not been generated"
+    } else {
+      lines <- readLines(runbook, warn = FALSE)
+      text <- paste(lines, collapse = "\n")
+      documented <- as.integer(sub("^\\|\\s*([0-9]+)\\s*\\|.*$", "\\1", grep(
+        "^\\|\\s*[0-9]+\\s*\\|", lines, value = TRUE
+      )))
+      missing <- setdiff(
+        DBI::dbGetQuery(con, "SELECT version FROM schema_version")$version, documented
+      )
+      if (!grepl(paste0("schema ", current, "\\*\\*"), text)) {
+        paste0("docs/SCHEMA_MIGRATIONS.md does not name schema ", current)
+      } else if (length(missing)) {
+        paste0(
+          "docs/SCHEMA_MIGRATIONS.md omits applied schema version(s) ",
+          paste(missing, collapse = ", ")
+        )
+      } else NULL
+    }
+    if (!is.null(stale)) insert_quality_flag(
+      con, release_id, "error", "migration_runbook_stale", NA_character_,
+      paste0(stale, ". It is generated by write_migration_runbook() from SCHEMA_MIGRATIONS.")
+    )
+  }
+  # Every table belongs to a storage layer. One that does not is not broken --
+  # it stays in main and works -- but nobody has said what it is for, and the
+  # layers exist precisely so that question has an answer.
+  unassigned <- DBI::dbGetQuery(con, paste(
+    "SELECT table_name FROM duckdb_tables()",
+    "WHERE schema_name = 'main' AND NOT internal ORDER BY table_name"
+  ))$table_name
+  if (length(unassigned)) insert_quality_flag(
+    con, release_id, "warning", "storage_layer_unassigned", NA_character_,
+    paste0(
+      length(unassigned), " table(s) are not assigned to a storage layer and remain in main. ",
+      "Add them to PROJECT_TABLE_SCHEMA: ", paste(head(unassigned, 10), collapse = "; ")
+    )
+  )
+  validate_governance_drift(con, release_id)
+  validate_governance_note_counts(con, release_id)
+  validate_semantic_contradictions(con, release_id)
+  validate_source_region_completeness(con, release_id)
+  validate_published_identities(con, release_id, root)
+  validate_source_provenance(con, release_id, root)
+  validate_observation_missingness(con, release_id)
+  validate_declared_natural_keys(con, release_id, root)
+  validate_observation_status_exposure(con, release_id)
+  validate_research_eligibility_metadata(con, release_id)
+  validate_workbook_behaviour(con, release_id, root)
+  validate_canonical_membership_agreement(con, release_id)
+  # The published interface, checked before the release gate reads the flags.
+  validate_stored_object_qualification(con, release_id)
+  validate_published_release_filter(con, release_id, root)
+  verify_fresh_connection_interface(con, release_id, db_path)
+  validate_release_gate(con, release_id)
+  # The unfiltered twins: this report is about how completely the panels mapped
+  # to the reference dimensions, which is an ingestion measure and must not go to
+  # zero merely because the release under construction has not been accepted yet.
   view_names <- unlist(lapply(c("banks", "financial"), function(source_id) paste0(
     "v_", source_id, "_", c("eeff", "ratios", "carteras", "credito_sector", "credito_actividad"),
-    "_documented"
+    "_documented_all"
   )))
   documented_coverage <- list()
   for (view_name in view_names) if (database_object_exists(con, view_name)) {
@@ -578,7 +2237,23 @@ validate_database <- function(con, manifest, release_id, root) {
     paste(vapply(manifest$vintage_id, sql_string, character(1)), collapse = ","), ") GROUP BY 1,2 ORDER BY 1"
   ))
   readr::write_csv(coverage, file.path(root, "outputs", "semantic_coverage_latest.csv"))
-  flags <- DBI::dbGetQuery(con, paste0("SELECT * FROM quality_flags WHERE release_id = ", sql_string(release_id), " ORDER BY severity, source_id"))
+  invisible(TRUE)
+}
+
+# The flag report, written by the pipeline *after* the statistical screens.
+#
+# It used to be written here, at the end of validation -- and the gap and
+# discontinuity screens run after validation, so the file an auditor opens was
+# missing exactly the two checks that had not been performed when it was written:
+# 33 rows in the CSV against 35 in the database. The audit's R6-11. A report that
+# does not describe the database it sits beside is worse than no report, because
+# it is read as if it did.
+write_quality_flag_report <- function(con, release_id, root) {
+  if (is.null(root)) return(invisible(NULL))
+  flags <- DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM quality_flags WHERE ", attempt_flags_predicate(con, release_id),
+    " ORDER BY severity, source_id"
+  ))
   readr::write_csv(flags, file.path(root, "outputs", "quality_flags_latest.csv"))
   invisible(flags)
 }
@@ -591,11 +2266,19 @@ write_update_report <- function(con, release_id, root) {
   mapping_path <- file.path(root, "outputs", "documented_financial_coverage_latest.csv")
   mappings <- if (file.exists(mapping_path)) readr::read_csv(mapping_path, show_col_types = FALSE) else tibble()
   flags <- DBI::dbGetQuery(con, paste0(
-    "SELECT severity, source_id, check_name, detail FROM quality_flags WHERE release_id = ", sql_string(release_id), " ORDER BY severity, source_id"
+    "SELECT severity, source_id, check_name, detail FROM quality_flags WHERE ",
+    attempt_flags_predicate(con, release_id), " ORDER BY severity, source_id"
   ))
+  # Scoped by attempt, not by release. A report headed "this update" was reading
+  # every timing ever recorded for the bundle -- 488 rows across eight attempts
+  # where the run it described had 55 -- so the same stage appeared repeatedly
+  # with the durations of runs that were not this one. The audit's R6-11.
+  attempt_id <- current_attempt_id(con, release_id)
   timings <- DBI::dbGetQuery(con, paste0(
-    "SELECT source_id, stage, elapsed_seconds FROM ingestion_stage_timings WHERE release_id = ",
-    sql_string(release_id), " ORDER BY source_id, stage"
+    "SELECT source_id, stage, elapsed_seconds FROM ingestion_stage_timings WHERE ",
+    if (is.na(attempt_id)) paste0("release_id = ", sql_string(release_id))
+    else paste0("attempt_id = ", sql_string(attempt_id)),
+    " ORDER BY source_id, stage"
   ))
   source_lines <- if (nrow(sources)) vapply(seq_len(nrow(sources)), function(i) sprintf(
     "- **%s** — `%s`; vintage `%s`; publication date `%s` (%s); status `%s`",

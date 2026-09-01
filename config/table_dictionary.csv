@@ -63,3 +63,10 @@ v_securities_daily_activity,view,date-currency-instrument-market-operation-venue
 v_latest_raw_*,view,current source row,Latest valid raw vintage within each source,dynamic view
 v_banks_*_documented,view,current bank panel row,Raw bank fields enriched with verified semantic dimensions,dynamic view
 v_financial_*_documented,view,current finance-company panel row,Raw finance-company fields enriched with verified semantic dimensions,dynamic view
+series_id_migration,governance,series identity mapping between two releases,Old-to-new series identity map with match method and evidence; the record that keeps prior research code reproducible,replaced for each recorded release pair
+source_alias,governance,series alias,Superseded and source-specific identifiers resolving to a current series,rebuilt from the migration chain
+continuity_map,governance,reviewed series continuity decision,Reviewed links between source fragments and a continuing series with overlap rule and evidence,reviewed configuration
+table_reconciliation,quality,source worksheet and vintage,Numeric source cells reconciled against accepted observations and reviewed exclusions per worksheet,replaced for each deterministic release run
+v_series_id_resolution,view,published series identifier,Resolves any identifier ever published to its current series or an explicit retirement,derived view
+v_series_migration_summary,view,release pair and relationship,Counts of identity mappings by release pair relationship and match method,derived view
+v_table_reconciliation,view,source worksheet and vintage,Reconciliation outcome joined to the review status of the worksheet,derived view

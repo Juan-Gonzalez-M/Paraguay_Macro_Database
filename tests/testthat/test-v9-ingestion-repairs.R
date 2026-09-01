@@ -186,7 +186,7 @@ testthat::test_that("a discovery failure is persisted without losing the next so
   )
   db_path <- file.path(root, "database", "isolation.duckdb")
   testthat::expect_no_error(run_manifest_pipeline(root, tibble::tibble(), manifest, db_path = db_path))
-  con <- DBI::dbConnect(duckdb::duckdb(), db_path)
+  con <- connect_project_database(db_path)
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
   statuses <- DBI::dbGetQuery(con, "SELECT source_id, ingestion_status FROM source_files")
   testthat::expect_identical(

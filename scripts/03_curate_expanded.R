@@ -385,7 +385,17 @@ documented_parse_compensatory_sales <- function(raw, source_sheet) {
     if (!nrow(candidates)) next
     year_label <- text[max(candidates[, "row"]), month_col]
     year <- as.integer(stringr::str_extract(year_label, "20[0-9]{2}"))
-    component_cols <- seq.int(month_col + 1L, min(ncol(text), month_col + 2L))
+    # The block is three columns wide: two components and their published total.
+    # This used to test only the two components for activity while the reading
+    # loop below consumed all three, so a month the publisher reported as a zero
+    # total with both components left blank never became an active row and its
+    # total was never visited. That silently dropped the five published zero
+    # totals on Agosto-Diciembre 2025 -- reconciliation recorded them as a
+    # parser_defect rather than as data. Deciding activity over the same columns
+    # the loop reads is the whole fix.
+    block_cols <- seq.int(month_col + 1L, min(ncol(text), month_col + 3L))
+    component_cols <- if (length(block_cols) == 3L) block_cols[1:2] else block_cols
+    total_cols <- setdiff(block_cols, component_cols)
     # Each year header owns exactly the rows up to the next year header in the
     # same column. Without this bound the block ran to the last numeric row of
     # the sheet, re-reading every later year block under this block's year: 474
@@ -394,9 +404,33 @@ documented_parse_compensatory_sales <- function(raw, source_sheet) {
     block_end <- if (length(following_years)) min(following_years) - 1L else nrow(text)
     if (block_end <= month_row) next
     possible_rows <- seq.int(month_row + 1L, block_end)
-    active_rows <- possible_rows[rowSums(!is.na(numbers[possible_rows, component_cols, drop = FALSE])) > 0L]
+    active_rows <- possible_rows[rowSums(!is.na(numbers[possible_rows, block_cols, drop = FALSE])) > 0L]
     if (!length(active_rows)) next
-    last_active_row <- max(active_rows)
+    # The current-year block is a template for the whole calendar year, and the
+    # months that have not happened yet are still in it: in the 2026 block both
+    # component cells of Agosto to Diciembre are empty while the Total column
+    # holds a cached zero from its own '=+G+H' formula. Reading those as
+    # observations invented five monthly totals for months the publisher had not
+    # reported, and -- because the vintage's publication date fell back to the
+    # maximum period in the content -- moved the whole source's availability to
+    # 2026-12-31 while source_files still said 2026-07-31. That is the audit's
+    # F-01, and its 422 divergent facts.
+    #
+    # A trailing row is a template row when its components are blank *and* its
+    # total is zero. Both halves matter. A published zero total sitting between
+    # two reported months is still data and is still read, which is what the
+    # schema-23 repair exists for; and a trailing month the publisher reports as
+    # a single non-zero total is data too, and is also still read. Only the
+    # empty-and-zero tail is dropped.
+    template_tail <- rev(cumprod(rev(vapply(possible_rows, function(r) {
+      components_blank <- all(is.na(numbers[r, component_cols]))
+      totals <- numbers[r, total_cols]
+      total_zero <- length(total_cols) > 0L && all(is.na(totals) | totals == 0)
+      as.integer(components_blank && total_zero)
+    }, integer(1))))) > 0L
+    reported_rows <- setdiff(active_rows, possible_rows[template_tail])
+    if (!length(reported_rows)) next
+    last_active_row <- max(reported_rows)
     block_months <- documented_month_number(text[seq.int(month_row + 1L, last_active_row), month_col])
     if (sum(!is.na(block_months)) > 12L) stop(
       "Compensatory-sales guard: year block ", year, " spans ", sum(!is.na(block_months)),
@@ -404,12 +438,12 @@ documented_parse_compensatory_sales <- function(raw, source_sheet) {
     )
     for (r in seq.int(month_row + 1L, last_active_row)) {
       month <- documented_month_number(text[r, month_col]); if (is.na(month)) next
-      components <- numbers[r, seq.int(month_col + 1L, min(ncol(text), month_col + 3L))]
+      components <- numbers[r, block_cols]
       if (length(components) == 3L && all(!is.na(components)) &&
           abs(components[[1]] + components[[2]] - components[[3]]) > 1e-8) stop(
         "Compensatory-sales subtotal guard failed for ", year, "-", month, ".", call. = FALSE
       )
-      for (j in seq.int(month_col + 1L, min(ncol(text), month_col + 3L))) {
+      for (j in block_cols) {
         measure <- text[month_row, j]; value <- numbers[r, j]
         if (documented_blank(measure) || is.na(value)) next
         k <- k + 1L
@@ -467,8 +501,9 @@ curate_bond_curves_csv <- function(con, item, release_id, root, publication_date
       any(snapshot$par_rate < -0.5 | snapshot$par_rate > 2, na.rm = TRUE)) stop(
     "Bond-curve range guard failed for maturity, discount factor or rates.", call. = FALSE
   )
-  publication_date <- max(snapshot$period); snapshot$publication_date <- publication_date
-  set_source_publication_date(con, item$vintage_id, publication_date)
+  set_source_publication_date(con, item$vintage_id, max(snapshot$period))
+  publication_date <- settled_publication_date(con, item$vintage_id, max(snapshot$period))
+  snapshot$publication_date <- publication_date
   update_archive_manifest_date(root, item$source_id, item$sha256, publication_date)
   DBI::dbExecute(con, paste0("DELETE FROM bond_curve_snapshot WHERE vintage_id = ", sql_string(item$vintage_id)))
   DBI::dbWriteTable(con, "bond_curve_snapshot", snapshot, append = TRUE)
@@ -528,8 +563,9 @@ curate_securities_trades_csv <- function(con, item, release_id, root, publicatio
           is.na(snapshot$instrument) | !nzchar(trimws(snapshot$instrument)))) stop(
     "Securities-trades semantic guard: currency or instrument is missing.", call. = FALSE
   )
-  publication_date <- max(snapshot$operation_date); snapshot$publication_date <- publication_date
-  set_source_publication_date(con, item$vintage_id, publication_date)
+  set_source_publication_date(con, item$vintage_id, max(snapshot$operation_date))
+  publication_date <- settled_publication_date(con, item$vintage_id, max(snapshot$operation_date))
+  snapshot$publication_date <- publication_date
   update_archive_manifest_date(root, item$source_id, item$sha256, publication_date)
   DBI::dbExecute(con, paste0("DELETE FROM securities_transactions_snapshot WHERE vintage_id = ", sql_string(item$vintage_id)))
   DBI::dbWriteTable(con, "securities_transactions_snapshot", snapshot, append = TRUE)
@@ -538,20 +574,27 @@ curate_securities_trades_csv <- function(con, item, release_id, root, publicatio
 }
 
 create_market_views <- function(con) {
-  DBI::dbExecute(con, paste(
-    "CREATE OR REPLACE VIEW v_bond_curves_latest AS SELECT b.* FROM bond_curve_snapshot b JOIN",
-    "(SELECT source_id, vintage_id FROM (SELECT source_id, vintage_id, row_number() OVER",
-    "(PARTITION BY source_id ORDER BY publication_date DESC NULLS LAST, first_ingested_at DESC) rn FROM source_files",
-    "WHERE source_id = 'corporate_bond_curves' AND ingestion_status = 'completed') WHERE rn = 1) f USING (vintage_id)"
+  # 'ingestion_status = completed' asks whether a vintage loaded. Whether it may
+  # be published is a different question and has a different answer: a source
+  # commits inside its own transaction, before the release-wide validation has
+  # run at all. Both market views asked the first question and presented the
+  # answer as the second, so a staged or blocked bond/securities vintage was
+  # current here while the generic series path correctly hid it.
+  latest_accepted_vintage <- function(source_id) paste(
+    "(SELECT vintage_id FROM (SELECT vintage_id, row_number() OVER",
+    "(PARTITION BY source_id ORDER BY publication_date DESC NULLS LAST, first_ingested_at DESC) rn",
+    "FROM source_files WHERE source_id =", sql_string(source_id),
+    "AND vintage_id IN (", accepted_release_vintages_sql(), ")) WHERE rn = 1) f USING (vintage_id)"
+  )
+  create_project_view(con, "v_bond_curves_latest", paste(
+    "SELECT b.* FROM bond_curve_snapshot b JOIN", latest_accepted_vintage("corporate_bond_curves")
   ))
-  DBI::dbExecute(con, paste(
-    "CREATE OR REPLACE VIEW v_securities_transactions_latest AS SELECT t.* FROM securities_transactions_snapshot t JOIN",
-    "(SELECT source_id, vintage_id FROM (SELECT source_id, vintage_id, row_number() OVER",
-    "(PARTITION BY source_id ORDER BY publication_date DESC NULLS LAST, first_ingested_at DESC) rn FROM source_files",
-    "WHERE source_id = 'securities_trades' AND ingestion_status = 'completed') WHERE rn = 1) f USING (vintage_id)"
+  create_project_view(con, "v_securities_transactions_latest", paste(
+    "SELECT t.* FROM securities_transactions_snapshot t JOIN",
+    latest_accepted_vintage("securities_trades")
   ))
-  DBI::dbExecute(con, paste(
-    "CREATE OR REPLACE VIEW v_securities_daily_activity AS SELECT operation_date, currency, instrument, market,",
+  create_project_view(con, "v_securities_daily_activity", paste(
+    "SELECT operation_date, currency, instrument, market,",
     "operation_type, trading_venue, count(*) AS transactions, sum(local_currency_volume) AS local_currency_volume",
     "FROM v_securities_transactions_latest GROUP BY 1,2,3,4,5,6"
   ))

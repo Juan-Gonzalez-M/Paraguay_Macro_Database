@@ -12,7 +12,7 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
   db_path <- file.path(smoke_root, "database", "smoke.duckdb")
   result <- run_manifest_pipeline(smoke_root, registry, resolved$manifest, resolved$issues, db_path)
   testthat::expect_false(result$status == "completed_with_errors")
-  con <- DBI::dbConnect(duckdb::duckdb(), db_path, read_only = TRUE)
+  con <- connect_project_database(db_path, read_only = TRUE)
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
   failed <- DBI::dbGetQuery(con, "SELECT * FROM source_files WHERE ingestion_status <> 'completed'")
   testthat::expect_equal(nrow(failed), 0)
@@ -131,18 +131,38 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
   )
   # The credit survey's quarter axis runs across columns; no series may be left
   # holding a single observation because the slot pinned its period. 2,539
-  # before the repair, 5 after. The five that remain are a different and much
-  # smaller defect, logged as R52: a question-header row that carries a stray
-  # zero fails the "header rows have no values" test in
-  # documented_parse_credit_sheet(), so the next question header is read as a
-  # response under the previous question. Exact, not a maximum, so any drift in
-  # either direction is caught.
+  # before the repair, then 5, now none. The last five came from R52: nine
+  # question-header rows carry a stray numeric in a period column, so the
+  # "header rows have no values" test rejected them, the header was consumed as
+  # a response of the previous question, and every response row of the block
+  # that followed inherited the wrong question. Exact, not a maximum, so drift
+  # in either direction is caught.
   testthat::expect_equal(
     DBI::dbGetQuery(con, paste0(
       "SELECT COUNT(*) n FROM (SELECT series_id FROM documented_series_snapshot ",
       "WHERE source_id = 'credit_survey' GROUP BY 1 HAVING COUNT(*) = 1)"
     ))$n[[1]],
-    5L
+    0L
+  )
+  # Every credit-survey identity is now semantic: no question/response pair is
+  # disambiguated by worksheet row, which is what mis-attribution looked like.
+  testthat::expect_equal(audit_series_count("credit_survey"), 312L)
+  testthat::expect_equal(
+    DBI::dbGetQuery(con, paste0(
+      "SELECT COUNT(*) n FROM dim_series WHERE source_id = 'credit_survey' ",
+      "AND identity_stability <> 'semantic'"
+    ))$n[[1]],
+    0L
+  )
+  # Ganaderia's answers must be published under Ganaderia. Row 100 is the first
+  # response row of the 10,2 block, immediately after the header at row 99 that
+  # the old test rejected.
+  testthat::expect_match(
+    DBI::dbGetQuery(con, paste0(
+      "SELECT DISTINCT question FROM documented_series_snapshot ",
+      "WHERE source_id = 'credit_survey' AND source_sheet = '%' AND source_row = 100"
+    ))$question[[1]],
+    "^10,2 - Ganader"
   )
   # The worksheet slug inside series_id must be a pure function of the sheet
   # name. It used to be uniquified by position (Datos, Datos_2, ... Datos_26),

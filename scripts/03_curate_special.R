@@ -3,7 +3,7 @@ slug <- function(x) janitor::make_clean_names(normalize_label(x))
 append_snapshot <- function(con, table_name, data, vintage_id) {
   if (table_has_vintage(con, table_name, vintage_id)) return(invisible(FALSE))
   if (DBI::dbExistsTable(con, table_name)) DBI::dbWriteTable(con, table_name, data, append = TRUE)
-  else DBI::dbWriteTable(con, table_name, data, overwrite = TRUE)
+  else write_table_in_storage_layer(con, table_name, data)
   invisible(TRUE)
 }
 
@@ -33,6 +33,28 @@ ensure_series_dimension <- function(con, series_meta) {
   if (exists("sync_source_specific_concepts", mode = "function")) sync_source_specific_concepts(con)
 }
 
+# The fact table is keyed on surrogate integers, so every row written to it has
+# to carry them. They are looked up rather than generated here: assign_surrogate_keys()
+# owns assignment, and a key invented at write time would not be the one the
+# dimension already holds.
+attach_surrogate_keys <- function(con, events) {
+  if (!nrow(events)) return(events)
+  columns <- table_column_names(con, "fact_series_events")
+  if (!all(c("series_sk", "vintage_sk") %in% columns)) return(events)
+  assign_surrogate_keys(con)
+  series_keys <- DBI::dbGetQuery(con, "SELECT series_id, series_sk FROM dim_series")
+  vintage_keys <- DBI::dbGetQuery(con, "SELECT vintage_id, vintage_sk FROM source_files")
+  events <- events %>%
+    left_join(series_keys, by = "series_id") %>%
+    left_join(vintage_keys, by = "vintage_id")
+  unresolved <- sum(is.na(events$series_sk) | is.na(events$vintage_sk))
+  if (unresolved) stop(
+    "Fact grain guard: ", unresolved, " observation(s) reference a series or vintage that has ",
+    "no surrogate key.", call. = FALSE
+  )
+  events[intersect(columns, names(events))]
+}
+
 write_sparse_series <- function(con, observations, series_meta, item, publication_date) {
   ensure_series_dimension(con, series_meta)
   existing_vintage <- DBI::dbGetQuery(con, paste0(
@@ -50,7 +72,11 @@ write_sparse_series <- function(con, observations, series_meta, item, publicatio
   if (length(ids)) {
     id_sql <- paste(vapply(ids, sql_string, character(1)), collapse = ",")
     previous <- DBI::dbGetQuery(con, paste0(
-      "SELECT series_id, period, value AS previous_value, vintage_id AS previous_vintage_id FROM v_series_latest WHERE series_id IN (", id_sql, ")"
+      # The unfiltered twin: a revision is measured against what the database
+      # already holds for the series, and during ingestion this release has not
+      # been accepted yet. Reading the published view here would make every
+      # observation of a not-yet-accepted release look new.
+      "SELECT series_id, period, value AS previous_value, vintage_id AS previous_vintage_id FROM v_series_latest_all WHERE series_id IN (", id_sql, ")"
     )) %>% mutate(period = as.Date(period))
   }
   compared <- observations %>% left_join(previous, by = c("series_id", "period")) %>%
@@ -70,7 +96,9 @@ write_sparse_series <- function(con, observations, series_meta, item, publicatio
       is_deleted = TRUE, source_file = item$source_file
     )
   events <- bind_rows(changed_events, removed)
-  if (nrow(events)) DBI::dbWriteTable(con, "fact_series_events", events, append = TRUE)
+  if (nrow(events)) DBI::dbWriteTable(
+    con, "fact_series_events", attach_surrogate_keys(con, events), append = TRUE
+  )
   changed_revisions <- compared %>% filter(changed, !is.na(previous_vintage_id)) %>% transmute(
     revision_id = vapply(paste(series_id, period, previous_vintage_id, item$vintage_id, sep = "|"), digest::digest, character(1), algo = "sha256", serialize = FALSE),
     series_id, period, previous_value, new_value = value, previous_vintage_id,
@@ -289,7 +317,7 @@ fx_parser <- function(con, item, dimensions, release_id, root, publication_date)
     risky <- discarded_df %>% filter(reason == "unrecognized_period_with_values")
     if (nrow(risky)) stop("FX parser found unrecognized period rows containing values; see discarded_rows.", call. = FALSE)
   }
-  DBI::dbExecute(con, "CREATE OR REPLACE VIEW v_fx_operations_annual AS SELECT * FROM fx_operations_snapshot WHERE frequency = 'annual'")
+  create_fx_operations_annual_views(con)
   meta <- snapshot %>% distinct(series_id, sector, operation, frequency, hierarchy_level, parent_series_id, is_total) %>% transmute(
     series_id, source_id = "fx_operations", label = paste(sector, operation, frequency, sep = " — "),
     unit = "USD", scale = "millions", frequency, currency = "USD", index_base = NA_character_, hierarchy_level,

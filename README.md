@@ -1,21 +1,43 @@
-# Paraguay macroeconomic database — governed pilot v11
+# Paraguay macroeconomic database — governed pilot v29
 
 ## About this project
 
 Paraguay's central bank (BCP), insurance regulator (Superintendencia de Seguros), financial system regulator (Superintendencia de Bancos) and stock exchange (Bolsa de Valores de Asunción) each publish their statistical bulletins as standalone Excel/CSV workbooks — bank and finance-company financial statements, exchange-house balance sheets, payment-system activity, the economic annex, credit surveys, FX operations, bond curves, securities trades and more. Each publication has its own layout, is revised monthly or quarterly, and none of them are designed to be queried together.
 
-This project turns those 22 official sources into a single governed, versioned DuckDB database that can be queried with plain SQL. It is an R-only, local pipeline — no Python, no external services, no manual spreadsheet wrangling. Every value keeps a traceable path back to its source file, worksheet, row and column, and every database build is content-addressed and deterministic: re-running the pipeline against unchanged inputs reproduces the exact same release.
+This project turns those 22 official sources into a single governed, versioned DuckDB database that can be queried with plain SQL. It is an R-only, local pipeline — no Python, no external services, no manual spreadsheet wrangling. Every value keeps a traceable path back to its source file and worksheet, and every database build is content-addressed and deterministic: re-running the pipeline against unchanged inputs reproduces the exact same release.
+
+How far that trace goes depends on the source family, and the difference matters when you need to check a number against the workbook:
+
+- **Documented series** (the economic annex, payments, exchange houses, the credit survey, direct investment, the insurance annex, daily BCP FX, exchange rates, bancarisation and financial indicators, the interbank market, LRM auctions, compensatory FX sales and short-term liquidity) carry `source_row` and `source_column` on every observation, in the worksheet's own A1 coordinates.
+- **Corporate bond curves and securities trades** carry `source_row` of the delimited file they were read from.
+- **ICC, EVE and FX operations** carry the source file and worksheet but not a cell coordinate; their position has to be reconstructed from the parser's rules.
+- **Bank and finance-company panels** carry the source file, worksheet and `source_row`, and keep every published column. Their institution and currency codes are stored as the text the publisher wrote, not as numbers.
 
 What this buys a researcher or analyst working with Paraguayan macro/financial data:
 
 - **One queryable history instead of dozens of spreadsheets.** All 22 sources share a common provenance, vintage and quality-flag model, so a single SQL query can span sources that would otherwise require manually reconciling incompatible Excel layouts every month.
 - **Point-in-time correctness.** Because every observation is tied to the publication vintage that produced it, you can ask "what did this series look like as of a past release," not just "what does it look like now" — essential for reproducing prior analysis or auditing a revision.
-- **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `completed_with_errors` should not be trusted until reviewed.
+- **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `release_blocked` produced error-severity flags, is never published through the research views, and stops the caller with a nonzero status.
 - **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
 
-The sections below cover the quick start, the monthly replacement workflow, the full changelog of correctness fixes by version, the data model, and example queries.
+The schema is at version 29. Five external technical audits have been worked through since v11; `CHANGELOG.md` records what each version changed and `docs/SCHEMA_MIGRATIONS.md` is regenerated from the migration registry on every run, so it describes the database in front of you rather than the one it was written against.
 
-Version 11 makes schema initialization and migration distinct operations and fixes the remaining Annex year-axis ambiguity. A fresh database now installs the current schema without executing historical invalidations; legacy databases still migrate through guarded, version-specific steps. Annotated publisher years such as `2012 1/` are recognized, while a year axis must form a coherent ordered sequence before it can outrank ordinary numeric cells.
+## What the three interfaces promise
+
+Three access paths answer three different questions, and using the wrong one is the easiest way to get a technically valid, economically wrong answer.
+
+| Interface | Question it answers | What it guarantees |
+| --- | --- | --- |
+| `v_series_latest`, `series_latest()`, `v_*_latest`, `v_latest_raw_*` | "What does the publisher say now?" | The newest **accepted** vintage of each series. A staged or blocked release is invisible here; the `_all` twins exist for ingestion diagnostics and are not a research interface. |
+| `series_as_of_date(d)` | "What did the database say on date `d`?" | Point-in-time: only vintages available on or before `d`, ranked by the operator-recorded `available_at` where one exists and by publication date otherwise. |
+| `marts.v_research_series` and the validated marts | "What has an economist signed off on?" | Only series carrying a complete research-eligibility record — unit, scale, frequency, stock/flow, nominal/real and seasonal adjustment. **This is currently 0 rows by design**: no series has been through that review yet. |
+
+Two consequences a researcher has to act on:
+
+- **`v_series_latest` contains published projections.** 343 observations across 186 series are dated after the vintage that published them — the annex publishes forecast years to 2028, and FX operations to end-2026. They carry `observation_status = 'after_publication'` and are reachable on their own through `marts.v_series_projections`. An estimation sample must either filter `observation_status = 'observed'` or read `v_series_latest_observed`, which does it for you. The default keeps them because they are what the publisher published; it is not a look-ahead-safe default.
+- **`latest` is not `validated`.** Everything outside the marts is the publisher's number with its provenance attached, not a reviewed economic series. Units, stock/flow and comparability across sources have not been adjudicated.
+
+The sections below cover the quick start, the monthly replacement workflow, the full changelog of correctness fixes by version, the data model, and example queries.
 
 ## Quick start
 
@@ -43,8 +65,12 @@ source("run_update.R")
 - `outputs/documented_series_continuity_latest.csv`
 - `outputs/report_storage_latest.csv`
 - `outputs/ingestion_stage_timings_latest.csv`
+- `outputs/observation_missingness_latest.csv` — every expected observation the publisher did not supply, and why
+- `outputs/workbook_behaviour_latest.csv` — cached formulas and hidden rows per worksheet, with the observations read from hidden rows
 
-The database is written to `database/paraguay_macro_pilot.duckdb`. Do not accept a run whose report says `completed_with_errors`.
+Four further files are worklists for a reviewer rather than release diagnostics, and do not change between runs unless the evidence does: `outputs/canonical_core_candidates.csv`, `outputs/duplicate_series_candidates.csv`, `outputs/direct_panel_duplicate_keys.csv` and `outputs/source_region_review_worklist.csv`.
+
+The database is written to `database/paraguay_macro_pilot.duckdb`. Do not accept a run whose report says `release_blocked`: the release is left unaccepted, so `v_series_latest`, `series_as_of_date()` and every mart return nothing until the errors are resolved and the run repeats.
 
 ## Monthly replacement workflow
 
@@ -59,6 +85,10 @@ input/current/bank_reference/Referencias_bancos_financieras.xlsx
 ```
 
 Replace it only when an official reviewed reference version changes. Its fifteen named Excel tables are identified primarily by worksheet and exact column signature; Excel’s autogenerated display name is used only to resolve an otherwise ambiguous match.
+
+## What v12–v29 repaired
+
+Five external technical audits, worked through band by band. **`CHANGELOG.md` is the record**, newest first, with the measured effect of each change; `revisiones/` holds the per-audit notes, including what was declined and why. The sections below stop at v11 and are kept as written.
 
 ## What v11 repairs
 
@@ -245,12 +275,14 @@ The full smoke test copies the real pilot inputs to a temporary directory, build
 For a database created by pilot v1:
 
 ```r
-source("scripts/upgrade_v1_to_v11.R")
+source("scripts/upgrade_v1_to_v12.R")
 ```
 
-The script backs up and retires the v1 database before rebuilding. The older upgrade filenames remain as compatibility aliases.
+The script backs up and retires the v1 database before rebuilding. The lower-numbered `upgrade_v1_to_v*.R` filenames remain as compatibility stubs that source it.
 
-An existing v2–v10 database upgrades automatically when `run_update.R` is executed. From v10, only the Annex is reingested because its year-axis selection changed. Earlier databases also receive their applicable historical repairs. Existing full-copy `report_cells` data remains available through the compatibility view.
+**`docs/SCHEMA_MIGRATIONS.md` is the authority on this, and it is generated from the migration registry on every run.** Naming a version here is how this section drifted before: it said `upgrade_v1_to_v11.R` while the runbook said `v12`. Read the generated file for the entry point, the per-version table of what each step changed, and which sources each step re-ingests.
+
+Any database at an earlier applied schema upgrades automatically when `run_update.R` is executed; `initialize_database()` walks every step it is missing, in order, and re-ingests only the sources whose registry entry says so. Existing full-copy `report_cells` data remains available through the compatibility view.
 
 To reconstruct a separate database from archived content:
 
@@ -270,7 +302,9 @@ This creates `database/paraguay_macro_rebuilt_from_archive.duckdb` and never ove
 - `docs/OPERATIONS.md`: replacement procedure, acceptance checklist and recovery.
 - `docs/FEEDBACK_IMPLEMENTATION.md`: both review rounds, item by item.
 - `docs/VERIFICATION.md`: verified workbook facts, test targets and environment limitation.
+- `docs/SCHEMA_MIGRATIONS.md`: generated from the migration registry on every run — which version the database is at, what each step changed, and which sources it re-ingested.
 - `docs/AUDITORIA_REGRESIONES.md`: reconstructed R1–R35 status and acceptance gates.
+- `revisiones/REVISION_AUDITORIA_5_P0_P1_P2.md`: the fifth external audit, finding by finding — what was implemented, what was declined and why. The four earlier rounds sit beside it.
 - `docs/REVISION_V11_BOOTSTRAP_AND_YEAR_AXIS.md`: direct mapping from the v10 execution report to v11 fixes.
 - `docs/REVISION_V10_RUNTIME_REPAIRS.md`: direct mapping from the v9 runtime report to v10 fixes.
 - `config/table_dictionary.csv`: machine-readable database object catalogue.

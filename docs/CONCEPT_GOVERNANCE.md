@@ -24,7 +24,7 @@ Edit `config/concept_mappings.csv`. Each row must contain:
 
 Run `source("run_update.R")` after editing. The guard rejects unknown series, duplicate mappings, incomplete review metadata, and `equivalent` groups whose unit, scale or frequency differ.
 
-The production mapping file intentionally remains empty until an authorized reviewer supplies evidence. The test suite exercises the complete reviewed-mapping path with two synthetic, same-contract series in a temporary configuration; no test identity or equivalence is written to the production database.
+The production mapping file carries three reviewed rows for `concept:interbank_repo_rate_pyg` (one `aggregate`, two `component`); everything else stays source-specific until an authorized reviewer supplies evidence. The canonical layer added in schema 14 (`config/canonical_series.csv`, `config/methodology_regimes.csv`) is empty for the same reason: a canonical series is an economic claim, and its identifiers are assigned by a reviewer rather than derived from a parsed `series_id`, so that a future parser repair cannot move them. The test suite exercises the complete reviewed-mapping path with two synthetic, same-contract series in a temporary configuration; no test identity or equivalence is written to the production database.
 
 ## Recommended GDP/activity workflow
 
