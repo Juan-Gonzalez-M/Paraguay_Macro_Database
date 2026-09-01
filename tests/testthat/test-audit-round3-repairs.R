@@ -283,10 +283,15 @@ testthat::test_that("no status note states a count this release contradicts", {
 
 testthat::test_that("the release itself raises no error-severity flag", {
   con <- round3_production()
+  # By attempt, not by release. Since schema 30 a failed attempt's flags are
+  # retained rather than deleted when the bundle is re-run -- that is the point of
+  # keeping them -- so "did the release produce errors" is a question about the
+  # attempt that produced the published build, not about every attempt that ever
+  # shared the source bundle.
   errors <- DBI::dbGetQuery(con, paste(
     "SELECT check_name, detail FROM audit.quality_flags",
-    "WHERE severity = 'error' AND release_id = (",
-    "  SELECT release_id FROM audit.ingestion_runs ORDER BY executed_at DESC LIMIT 1)"
+    "WHERE severity = 'error' AND attempt_id = (",
+    "  SELECT attempt_id FROM audit.ingestion_run_attempts ORDER BY started_at DESC LIMIT 1)"
   ))
   testthat::expect_identical(nrow(errors), 0L, info = paste(errors$check_name, collapse = "; "))
 })

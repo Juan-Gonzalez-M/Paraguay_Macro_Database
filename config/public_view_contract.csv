@@ -96,6 +96,7 @@ marts,v_mart_national_accounts_activity,view,current,TRUE,Validated domain mart.
 marts,v_mart_prices,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
 marts,v_mart_reserves_fx,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
 marts,v_mart_trade,view,current,TRUE,Validated domain mart. Empty until a worksheet is economically reviewed.,juan.manuel.gonzalez,2026-08-31
+marts,v_observation_source_behaviour,view,current,TRUE,"Per-observation workbook provenance: whether the value was read from a row the publisher hid, and how many formulas its worksheet carries.",juan.manuel.gonzalez,2026-08-31
 marts,v_research_series,view,current,FALSE,The reviewed research surface. Empty by design until series pass economic review.,juan.manuel.gonzalez,2026-08-31
 marts,v_series_missingness,view,current,TRUE,"Expected periods with no observation, and the reason, for accepted vintages.",juan.manuel.gonzalez,2026-08-31
 marts,v_series_projections,view,current,FALSE,The after-publication rows on their own.,juan.manuel.gonzalez,2026-08-31

@@ -1476,6 +1476,68 @@ validate_observation_missingness <- function(con, release_id) {
 # a source is provisional -- it is operator work, not a parser outcome -- and an
 # error the moment someone claims a worksheet of that source is validated, since
 # a research product nobody can re-acquire is not reproducible.
+# The audit's test 7: "assert exactly one active data-product release, while
+# historical accepted releases remain immutable".
+#
+# The pointer is what publishes, so the invariants about it are the ones a
+# researcher's whole view of the database rests on: there is exactly one, it names
+# a decision that exists, and that decision is an acceptance. Any of the three
+# failing means the published surface is not what anybody thinks it is.
+#
+# `promote_data_release()` maintains all three by construction. This is here for
+# the case it exists for -- somebody editing the table by hand -- and because an
+# invariant nothing checks is a comment.
+validate_active_data_release <- function(con, release_id) {
+  if (!database_object_exists(con, "active_data_release")) return(invisible(FALSE))
+  # A first build has nothing published yet, and that is not a defect: validation
+  # runs before the decision, so on a fresh database the pointer is legitimately
+  # empty at this moment. Asserting otherwise would make the database
+  # unbootstrappable -- the gate would block the release that was about to create
+  # the first product. The invariant applies once something has been accepted.
+  ever_accepted <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM", project_qualified_name("data_releases"),
+    "WHERE status = 'accepted'"
+  ))$n[[1]]
+  if (!ever_accepted) return(invisible(TRUE))
+  active <- DBI::dbGetQuery(con, paste(
+    "SELECT a.data_release_id, a.source_bundle_id, d.status",
+    "FROM", project_qualified_name("active_data_release"), "a",
+    "LEFT JOIN", project_qualified_name("data_releases"), "d USING (data_release_id)"
+  ))
+  problems <- character()
+  if (nrow(active) != 1L) problems <- c(problems, paste0(
+    "there are ", nrow(active), " active data releases and there must be exactly one"
+  ))
+  if (nrow(active) == 1L) {
+    if (is.na(active$status[[1]])) problems <- c(problems, paste0(
+      "the active pointer names ", active$data_release_id[[1]],
+      ", which has no recorded decision"
+    ))
+    else if (!identical(active$status[[1]], "accepted")) problems <- c(problems, paste0(
+      "the active pointer names a product decided '", active$status[[1]], "'"
+    ))
+  }
+  # Every accepted decision must still name a bundle whose vintages exist, or the
+  # published set is empty for a reason nobody would look for.
+  orphaned <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM", project_qualified_name("active_data_release"), "a",
+    "WHERE NOT EXISTS (SELECT 1 FROM", project_qualified_name("release_sources"), "rs",
+    "                  WHERE rs.release_id = a.source_bundle_id)"
+  ))$n[[1]]
+  if (orphaned) problems <- c(problems, paste(
+    "the active pointer names a source bundle with no linked vintages"
+  ))
+  if (!length(problems)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "active_data_release_invalid", NA_character_,
+    paste0(
+      "Publication resolves through audit.active_data_release, and it is not in a state that can ",
+      "publish anything coherently: ", paste(problems, collapse = "; ")
+    )
+  )
+  invisible(FALSE)
+}
+
 # The audit's test 6: "compare every *_latest.csv count and distinct check list to
 # the live latest attempt after all phases finish".
 #
@@ -1796,6 +1858,28 @@ validate_published_release_filter <- function(con, release_id, root = NULL) {
 # so its search path is empty -- which is precisely the condition to test under.
 verify_fresh_connection_interface <- function(con, release_id, db_path) {
   if (is.null(db_path) || !nzchar(db_path) || !file.exists(db_path)) return(invisible(FALSE))
+  # Never open a second connection while this one holds a transaction.
+  #
+  # A second connection to a DuckDB file whose writer has an open transaction does
+  # not fail -- it waits, and a release that waits forever tells the operator
+  # nothing at all. A hang is the worst failure mode there is, because there is no
+  # message to read and no line to look at.
+  #
+  # Reaching here with a transaction open is itself a defect, so it is reported as
+  # one rather than worked around. Diagnosis beats deadlock.
+  if (project_transaction_open(con)) {
+    insert_quality_flag(
+      con, release_id, "error", "release_transaction_left_open", NA_character_,
+      paste(
+        "A transaction was still open on the pipeline's connection when the fresh-connection",
+        "interface check was reached. The check is skipped rather than run, because a second",
+        "connection to a DuckDB file with an open writer waits rather than failing, and the",
+        "release would hang with nothing to diagnose. Find the phase that opened a transaction",
+        "and did not close it."
+      )
+    )
+    return(invisible(FALSE))
+  }
   fresh <- try(DBI::dbConnect(duckdb::duckdb(), db_path), silent = TRUE)
   if (inherits(fresh, "try-error")) return(invisible(FALSE))
   on.exit(try(DBI::dbDisconnect(fresh, shutdown = FALSE), silent = TRUE), add = TRUE)
@@ -2265,6 +2349,7 @@ validate_database <- function(con, manifest, release_id, root, db_path = NULL) {
   validate_direct_panel_aggregation_safety(con, release_id)
   # The published interface, checked before the release gate reads the flags.
   validate_stored_object_qualification(con, release_id)
+  validate_active_data_release(con, release_id)
   validate_published_release_filter(con, release_id, root)
   verify_fresh_connection_interface(con, release_id, db_path)
   validate_release_gate(con, release_id)

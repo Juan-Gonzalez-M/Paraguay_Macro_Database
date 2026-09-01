@@ -20,13 +20,46 @@ series_latest <- function(con, series_id = NULL) {
   DBI::dbGetQuery(con, paste0("SELECT * FROM main.v_series_latest", where, " ORDER BY series_id, period"))
 }
 
+# Delegates to the stored macro rather than reimplementing the query.
+#
+# This function used to rank `canonical.fact_series_events` directly, which made
+# it the one published read path with **no release boundary at all** -- it would
+# have returned a staged or blocked vintage, and every projection, to anyone using
+# the documented helper. Neither the release lint nor the public-view contract was
+# looking at it, because it is an R function rather than a stored object: the same
+# class of gap as the audit's R6-01, one layer further out.
+#
+# It also answered a different question from the macro of the same name. This
+# ranked by `publication_date`; `series_as_of_date()` ranks by `available_at`,
+# which takes the operator's recorded acquisition time over the publication date
+# over first ingestion. Two implementations of "as of" is itself the defect --
+# whichever is right, they cannot both be.
 series_as_of <- function(con, cutoff_date, series_id = NULL) {
   cutoff <- as.character(as.Date(cutoff_date))
-  series_filter <- if (is.null(series_id)) "" else paste0(" AND series_id = ", sql_string(series_id))
+  series_filter <- if (is.null(series_id)) "" else paste0(" WHERE series_id = ", sql_string(series_id))
   DBI::dbGetQuery(con, paste0(
-    "WITH ranked AS (SELECT *, row_number() OVER (PARTITION BY series_id, period ORDER BY publication_date DESC NULLS LAST, vintage_id DESC) AS rn FROM canonical.fact_series_events WHERE publication_date <= ",
-    sql_string(cutoff), series_filter,
-    ") SELECT series_id, period, value, vintage_id, publication_date, source_file FROM ranked WHERE rn = 1 AND NOT is_deleted ORDER BY series_id, period"
+    "SELECT * FROM main.series_as_of_date(DATE ", sql_string(cutoff), ")",
+    series_filter, " ORDER BY series_id, period"
+  ))
+}
+
+# The publisher's statement as of a date, projections included. Named so that
+# asking for it is deliberate.
+series_statement_as_of <- function(con, cutoff_date, series_id = NULL) {
+  cutoff <- as.character(as.Date(cutoff_date))
+  series_filter <- if (is.null(series_id)) "" else paste0(" WHERE series_id = ", sql_string(series_id))
+  DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM main.series_statement_as_of_date(DATE ", sql_string(cutoff), ")",
+    series_filter, " ORDER BY series_id, period"
+  ))
+}
+
+# What the publisher currently says, projections included -- the twin of
+# series_latest(), which is realized observations only.
+series_publisher_statement <- function(con, series_id = NULL) {
+  where <- if (is.null(series_id)) "" else paste0(" WHERE series_id = ", sql_string(series_id))
+  DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM main.v_publisher_statement_latest", where, " ORDER BY series_id, period"
   ))
 }
 

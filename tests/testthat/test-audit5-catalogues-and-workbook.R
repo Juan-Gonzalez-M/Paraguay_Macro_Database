@@ -25,9 +25,16 @@ testthat::test_that("the release filter is required of every published interface
       "FROM duckdb_functions() WHERE NOT internal AND macro_definition IS NOT NULL"
     ))
   )
-  required <- published_release_filtered_objects(stored$object_name)
+  # Scope comes from the declared contract since schema 30, not from a naming
+  # rule: a rule over names cannot decide which objects are research interfaces.
+  contract <- read_public_view_contract(project_test_root)
+  testthat::skip_if(is.null(contract), "no public view contract")
+  carriers <- filtered_base_relations(contract)
+  required <- intersect(
+    contract$object_id[contract$public_scope == "current"], stored$object_name
+  )
 
-  # Every marts view that is not an _all twin is in scope, whatever it is called.
+  # Every marts view that is not an _all twin is declared current.
   marts <- grep("^marts\\.", stored$object_name, value = TRUE)
   testthat::expect_setequal(
     grep("_all$", marts, value = TRUE, invert = TRUE),
@@ -44,7 +51,7 @@ testthat::test_that("the release filter is required of every published interface
   testthat::expect_length(grep("_all$", required, value = TRUE), 0L)
 
   unfiltered <- required[!vapply(
-    required, function(name) release_filtered_object(name, stored), logical(1)
+    required, function(name) release_filtered_object(name, stored, carriers), logical(1)
   )]
   testthat::expect_equal(unfiltered, character())
 })

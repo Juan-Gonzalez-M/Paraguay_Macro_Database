@@ -1,23 +1,23 @@
 source_id,source_label,publisher,source_format,input_folder,file_pattern,allow_multiple,selection_rule,ingest_mode,semantic_status,required
-bank_reference,Referencias Bancos y Financieras,Banco Central del Paraguay,xlsx,input/current/bank_reference,"\.(xlsx|xlsm)$",FALSE,newest_mtime,reference,reference_dimension,TRUE
-banks,Boletín Bancos,Banco Central del Paraguay,xlsx,input/current/banks,"\.(xlsx|xlsm)$",FALSE,newest_mtime,direct,documented_panel,TRUE
-financial,Boletín Financieras,Banco Central del Paraguay,xlsx,input/current/financial,"\.(xlsx|xlsm)$",FALSE,newest_mtime,direct,documented_panel,TRUE
-exchange_houses,Boletín Casas de Cambio,Banco Central del Paraguay,xlsm,input/current/exchange_houses,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-economic_annex,Anexo Estadístico del Informe Económico,Banco Central del Paraguay,xlsx,input/current/economic_annex,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-payments,Boletín Estadístico de Sistemas de Pago,Banco Central del Paraguay,xlsx,input/current/payments,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-eve,Encuesta de Variables Económicas,Banco Central del Paraguay,xlsx,input/current/eve,"\.(xlsx|xlsm)$",FALSE,newest_mtime,eve,curated,TRUE
-icc,Índice de Confianza del Consumidor,Banco Central del Paraguay,xlsx,input/current/icc,"\.(xlsx|xlsm)$",FALSE,newest_mtime,icc,curated,TRUE
-credit_survey,Situación General del Crédito,Banco Central del Paraguay,xlsx,input/current/credit_survey,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-fx_operations,Histórico Operaciones Cambiarias,Banco Central del Paraguay,xlsx,input/current/fx_operations,"\.(xlsx|xlsm)$",FALSE,newest_mtime,fx_operations,curated,TRUE
-liquidity_facility,Administración de Liquidez de Corto Plazo,Banco Central del Paraguay,xlsx,input/current/liquidity_facility,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-direct_investment,Inversión Directa 1995-2024,Banco Central del Paraguay,xlsx,input/current/direct_investment,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-insurance_annex,Anexo Estadístico de Seguros,Superintendencia de Seguros - BCP,xlsx,input/current/insurance_annex,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-bcp_fx_daily,Compra y Venta de Divisas del BCP,Banco Central del Paraguay,xlsx,input/current/bcp_fx_daily,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-exchange_rates,Cotizaciones de Monedas,Banco Central del Paraguay,xlsx,input/current/exchange_rates,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-corporate_bond_curves,Curvas de Bonos Corporativos,Bolsa de Valores de Asunción,csv,input/current/corporate_bond_curves,"\.csv$",FALSE,newest_mtime,long_csv,curated_long_format,TRUE
-banking_indicators,Indicadores de Bancarización,Banco Central del Paraguay,xlsx,input/current/banking_indicators,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-financial_indicators,Indicadores Financieros,Banco Central del Paraguay,xlsx,input/current/financial_indicators,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-interbank_market,Mercado Interbancario,Banco Central del Paraguay,xlsx,input/current/interbank_market,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-securities_trades,Negociaciones Bursátiles,Bolsa de Valores de Asunción,csv,input/current/securities_trades,"\.csv$",FALSE,newest_mtime,long_csv,curated_long_format,TRUE
-lrm_auctions,Subastas de LRM,Banco Central del Paraguay,xlsx,input/current/lrm_auctions,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
-compensatory_fx_sales,Ventas Compensatorias y Complementarias,Banco Central del Paraguay,xlsx,input/current/compensatory_fx_sales,"\.(xlsx|xlsm)$",FALSE,newest_mtime,semantic_table,documented_series,TRUE
+bank_reference,Referencias Bancos y Financieras,Banco Central del Paraguay,xlsx,input/current/bank_reference,\.(xlsx|xlsm)$,FALSE,manifest,reference,reference_dimension,TRUE
+banks,Boletín Bancos,Banco Central del Paraguay,xlsx,input/current/banks,\.(xlsx|xlsm)$,FALSE,manifest,direct,documented_panel,TRUE
+financial,Boletín Financieras,Banco Central del Paraguay,xlsx,input/current/financial,\.(xlsx|xlsm)$,FALSE,manifest,direct,documented_panel,TRUE
+exchange_houses,Boletín Casas de Cambio,Banco Central del Paraguay,xlsm,input/current/exchange_houses,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+economic_annex,Anexo Estadístico del Informe Económico,Banco Central del Paraguay,xlsx,input/current/economic_annex,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+payments,Boletín Estadístico de Sistemas de Pago,Banco Central del Paraguay,xlsx,input/current/payments,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+eve,Encuesta de Variables Económicas,Banco Central del Paraguay,xlsx,input/current/eve,\.(xlsx|xlsm)$,FALSE,manifest,eve,curated,TRUE
+icc,Índice de Confianza del Consumidor,Banco Central del Paraguay,xlsx,input/current/icc,\.(xlsx|xlsm)$,FALSE,manifest,icc,curated,TRUE
+credit_survey,Situación General del Crédito,Banco Central del Paraguay,xlsx,input/current/credit_survey,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+fx_operations,Histórico Operaciones Cambiarias,Banco Central del Paraguay,xlsx,input/current/fx_operations,\.(xlsx|xlsm)$,FALSE,manifest,fx_operations,curated,TRUE
+liquidity_facility,Administración de Liquidez de Corto Plazo,Banco Central del Paraguay,xlsx,input/current/liquidity_facility,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+direct_investment,Inversión Directa 1995-2024,Banco Central del Paraguay,xlsx,input/current/direct_investment,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+insurance_annex,Anexo Estadístico de Seguros,Superintendencia de Seguros - BCP,xlsx,input/current/insurance_annex,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+bcp_fx_daily,Compra y Venta de Divisas del BCP,Banco Central del Paraguay,xlsx,input/current/bcp_fx_daily,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+exchange_rates,Cotizaciones de Monedas,Banco Central del Paraguay,xlsx,input/current/exchange_rates,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+corporate_bond_curves,Curvas de Bonos Corporativos,Bolsa de Valores de Asunción,csv,input/current/corporate_bond_curves,\.csv$,FALSE,manifest,long_csv,curated_long_format,TRUE
+banking_indicators,Indicadores de Bancarización,Banco Central del Paraguay,xlsx,input/current/banking_indicators,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+financial_indicators,Indicadores Financieros,Banco Central del Paraguay,xlsx,input/current/financial_indicators,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+interbank_market,Mercado Interbancario,Banco Central del Paraguay,xlsx,input/current/interbank_market,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+securities_trades,Negociaciones Bursátiles,Bolsa de Valores de Asunción,csv,input/current/securities_trades,\.csv$,FALSE,manifest,long_csv,curated_long_format,TRUE
+lrm_auctions,Subastas de LRM,Banco Central del Paraguay,xlsx,input/current/lrm_auctions,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
+compensatory_fx_sales,Ventas Compensatorias y Complementarias,Banco Central del Paraguay,xlsx,input/current/compensatory_fx_sales,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE

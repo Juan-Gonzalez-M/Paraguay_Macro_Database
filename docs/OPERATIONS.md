@@ -64,6 +64,8 @@ Each domain mart is published twice and the names mean different things:
 
 Catalogues are published per series grain: `marts.v_catalogue_scalar_series` is the macroeconomic surface, and `v_catalogue_event`, `v_catalogue_curve_panel` and `v_catalogue_entity_panel` hold auction tenders, curve nodes and per-institution statement lines. Quote the scalar count when asked how many macroeconomic series this database holds; the others are complete and queryable but are not series about the economy.
 
+Grain is declared in `config/source_grains.csv`, one row per source under the `*` wildcard and, since schema 32, optional rows per worksheet that override it. Add a worksheet row when one workbook mixes structures — direct investment is the case in the file: the source is `scalar_series`, and its `Cuadro 5` and `Cuadro 7` are foreign direct investment stocks by country, which is an entity panel. Every registered source still needs its `*` row; a missing one stops the run.
+
 ## Defect states, and what "balanced" covers
 
 A worksheet's reconciliation status is derived, not configured:
@@ -95,13 +97,23 @@ Work the queue from `outputs/source_region_review_worklist.csv`, add a rule with
 
 ## Accepting or blocking a release
 
-A release enters the database `staged` and leaves it `accepted` or `blocked`. Since schema 27 **every** published interface — `v_series_latest`, `series_as_of_date()`, the seventeen `v_latest_raw_*` direct panels, the documented family, both market views and every `marts.*` view — shows only vintages belonging to an accepted release, so a run that ends `release_blocked` publishes nothing at all. The sources have committed, the diagnostics are complete, and the data is simply not visible through any research interface until the run repeats without error-severity flags.
+Since schema 30 a run decides a **product**, not a source bundle, and publishing is a pointer.
 
 ```sql
-SELECT release_id, status, decided_at, error_count, warning_count FROM audit.releases;
+-- what is published right now, and what decided it
+SELECT a.data_release_id, a.promoted_at, d.status, d.schema_version, d.error_count, d.warning_count
+FROM audit.active_data_release a JOIN audit.data_releases d USING (data_release_id);
+
+-- every decision ever recorded, none of which can be rewritten
+SELECT data_release_id, source_bundle_id, status, decided_at, decided_by FROM audit.data_releases
+ORDER BY decided_at DESC;
 ```
 
-Every filtered view has an unfiltered `_all` twin. Use those to inspect a staged or blocked release; do not use them for research output. Re-running a bundle does **not** un-accept an already-accepted release: the accepted release stays readable while the next one builds, and promotion is a single terminal `UPDATE` at the end.
+**A failed run no longer withdraws the database it failed to replace.** This is the change to understand: a `release_id` hashes only the source files, so re-running the same bundle with broken code used to set that shared row to `blocked` and empty every research view. Now a blocked build records its own verdict and never touches the pointer. The previously published build stays published while you read the flags and repeat the run.
+
+Every published interface — `v_series_latest`, `series_as_of_date()`, the seventeen `v_latest_raw_*` direct panels, the documented family, both market views and every `marts.*` view — resolves through that pointer. Each has an unfiltered `_all` twin; use those to inspect an unpublished build, never for research output.
+
+What each object publishes is declared in `config/public_view_contract.csv`. **Adding a view without a row there blocks the release** — deliberately, because a view nobody has classified is one nobody has decided researchers should read. Set `public_scope` (`current`, `all`, `history`, `reference`, `diagnostic`), say why in a sentence, and put your name on it. If the view carries the release boundary in its own body rather than reading something that does, set `carries_release_boundary` to `TRUE`; the release verifies that claim against the stored SQL.
 
 Nothing here is meant to be edited by hand. If you must override a decision, update `audit.releases.status` and record who did it in `decided_by` — the change takes effect immediately, because every published view joins through that table rather than being rebuilt from it.
 
@@ -251,6 +263,40 @@ Published totals and components coexist without reviewed parent-child keys. Filt
 
 The CSV header, minimum row count, date range, transaction key or required currencies changed. Confirm delimiter/encoding and obtain the complete official file before changing `config/long_csv_contracts.csv`.
 
+### `blocked_release_visible`
+
+An error, and read the detail: it covers three different failures.
+
+**"declare no public_scope"** — a view was added without a row in `config/public_view_contract.csv`. Add one saying what it is for, with your name. This is the common case and takes a minute.
+
+**"do not descend from a filtered base relation"** — a view declared `current` neither carries the release boundary nor reads anything that does. Either point it at a filtered relation, or, if it filters in its own body, set `carries_release_boundary` to `TRUE` in the register.
+
+**"observation(s) are visible … whose vintage belongs to no accepted release"** — the row test failed, which means data really is leaking. Do not publish.
+
+### `release_transaction_left_open`
+
+An error, and a bug in the pipeline rather than in the data. A phase opened a transaction and did not close it, and the release reached the fresh-connection interface check with it still open. The check is skipped deliberately: a second connection to a DuckDB file whose writer holds a transaction **waits** rather than failing, so running it would hang the release with nothing to read. Find the phase; every transaction in the project goes through `project_begin_transaction()` / `with_project_transaction()`, so a bare `DBI::dbBegin()` is the first thing to look for.
+
+### `projections_in_realized_view`
+
+An error. `v_series_latest` is contracted to hold realized observations only, and an observation dated after the vintage that published it reached it. Either the filter was removed or a publication date moved. `v_publisher_statement_latest` is where a published projection belongs.
+
+### `report_disagrees_with_database`
+
+A generated `*_latest.csv` does not match the database beside it — almost always because a check now runs after the report is written. Move the report write later; a file that looks authoritative and is stale misleads more than no file.
+
+### `canonical_membership_incomparable`
+
+A declared canonical alias differs from its primary in unit, scale or frequency, or shares no period with it and has therefore never actually been tested against it. Declaring a membership asserts the members are the same economic quantity; fix the declaration or the metadata before publishing.
+
+### `direct_panel_in_aggregate_mart`
+
+A mart reads a bank or finance-company panel while 411 groups of rows in those panels repeat every dimension the database models. Aggregating them double-counts by an amount nobody can bound. See `outputs/direct_panel_duplicate_keys.csv`; the missing dimension has to come from the publisher's documentation.
+
+### `manifest_selection_unresolved`
+
+Two or more candidate files sit in one source folder and none matches a recorded SHA-256. Remove the file you are replacing, or record the intended one's hash in `config/source_vintages.csv`. Since schema 32 this stops the run instead of guessing by modification time.
+
 ### `source_token_unreviewed`
 
 The publisher wrote something other than a number in a cell, and nobody has said what it means. Find it in `outputs/observation_missingness_latest.csv` — the `source_token` column carries the exact text — open the worksheet, and add a row to `config/source_value_tokens.csv` giving the token a status (`no_movement`, `not_available`, `suppressed`, `formula_error`), its meaning, the evidence you read it from, **your name** and the date. `layout_verified` is rejected here: what a publisher means by a token is not a claim about layout, and only a person can make it. Until it is registered the token blocks promotion to `validated` but not the release.
@@ -271,11 +317,12 @@ The second is the one to act on. A worksheet changed its formula count or its hi
 
 ### Update remains unexpectedly slow
 
-Sort `outputs/ingestion_stage_timings_latest.csv` by `elapsed_seconds`. `source_discovery_and_metadata` isolates workbook/XML inventory, `ingestion_and_curation` includes the single-pass sheet read plus raw/semantic persistence, and `source_validation` isolates guards. Rows with no `source_id` are the release-wide phases — reconciliation, region classification, the expected grid, missingness, semantics, canonical, marts and validation — which are timed since schema 29; `observation_missingness` is normally the slowest of them. Timings are keyed by `attempt_id` and appended, so compare the current attempt against the previous ones rather than against a remembered number. If an unchanged file is fully curated, check `source_files.ingestion_status`: completed content-identical vintages should take the `reuse_and_validation` path. Do not delete the DuckDB database for routine monthly updates, because that deliberately forces a full rebuild.
+Sort `outputs/ingestion_stage_timings_latest.csv` by `elapsed_seconds`. `source_discovery_and_metadata` isolates workbook/XML inventory, `ingestion_and_curation` includes the single-pass sheet read plus raw/semantic persistence, and `source_validation` isolates guards. Rows with no `source_id` are the release-wide phases — reconciliation, region classification, the expected grid, missingness, semantics, canonical, marts and validation — which are timed since schema 29; `observation_missingness` used to be the slowest of them by a wide margin and since schema 32 is skipped entirely when the stored expected grid carries the same `build_id` as this run — 19s to 0.03s on a build where nothing changed. If it is taking 19 seconds, something in the code, configuration, environment or sources *did* change, which is the answer to why the run is slow rather than a problem with it. Timings are keyed by `attempt_id` and appended, so compare the current attempt against the previous ones rather than against a remembered number. If an unchanged file is fully curated, check `source_files.ingestion_status`: completed content-identical vintages should take the `reuse_and_validation` path. Do not delete the DuckDB database for routine monthly updates, because that deliberately forces a full rebuild.
 
 ## Acceptance checklist
 
-- Run status is not `release_blocked`, and `audit.releases` records the release as `accepted`.
+- Run status is not `release_blocked`, and **`audit.active_data_release` names this build**. A blocked run leaves the previous build published; that is correct behaviour, and it also means "the database still works" is not evidence that this run succeeded. Check the pointer, not the views.
+- `outputs/quality_flags_latest.csv` row count equals `audit.quality_flags` for this attempt. The release checks this itself, but it is the file you are about to read.
 - Every required source vintage has status `completed`.
 - All structure checks passed.
 - All semantic dates are plausible.

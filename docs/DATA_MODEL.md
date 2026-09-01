@@ -11,13 +11,13 @@
 
 `source_files` has one row per distinct source content. `release_sources` is the many-to-many bridge between deterministic update bundles and source vintages. `source_sheets` records both Excel’s declared dimensions and XML-derived first/last meaningful cells; `reference_table_loads` records named semantic tables.
 
-`ingestion_stage_timings` has grain `release × source vintage × stage`. It is operational telemetry only: elapsed time never enters a content, vintage, release or series identity. Re-running the same deterministic release replaces its timing rows while preserving statistical history.
+`ingestion_stage_timings` has grain `attempt × source vintage × stage`. It is operational telemetry only: elapsed time never enters a content, vintage, release or series identity. It is appended, never replaced, so the record of how long previous runs took survives the next one.
 
 ## Statistical series
 
 Curated snapshot tables retain a complete publication by `vintage_id`. `fact_series_events` is sparse: a row is added only when a series-period value appears, changes, or disappears from a later full-history publication. Disappearances are tombstones (`is_deleted = TRUE`). `series_revisions` records the corresponding old and new values.
 
-`v_series_latest` selects the newest event and suppresses tombstones. `series_as_of()` performs the same resolution after a publication-date cutoff.
+`v_series_latest` selects the newest event of a published vintage, suppresses tombstones, and since schema 30 returns **realized observations only**; `v_publisher_statement_latest` is the same with the publisher's projections included. `series_as_of_date()` performs the same resolution after an availability cutoff, with `series_statement_as_of_date()` as its projection-inclusive twin.
 
 `dim_concept` is deliberately separate from `dim_series`. `map_series_concept` records whether a relationship is merely the generated source identity or a reviewed mapping supported by evidence. `v_series_concept_catalogue` exposes the audit trail; `v_concept_latest` never aggregates mapped series automatically.
 
@@ -75,11 +75,54 @@ Every numeric cell outside every parser region resolves to one rule in `config/s
 
 A source commits and is marked `completed` one at a time, before the release-wide validation has run. That is deliberate — it is what keeps one broken workbook from stopping the diagnosis of the next — but it means "this vintage loaded" has never meant "this vintage may be published". Since schema 24 those are different facts. `releases` gives a release a lifecycle: it enters `staged` when the run begins and leaves `accepted` or `blocked` when the release gate has counted the flags.
 
-Since schema 27 that boundary is on **every** published interface, not only the generic series path: the seventeen `v_latest_raw_*` direct panels, the documented family (`v_documented_series_latest_snapshot` and the annex, payments, exchange-house and credit-survey views built on it), both market views (`v_bond_curves_latest`, `v_securities_transactions_latest`), `v_series_latest`, the `series_as_of_date()` macro and every `marts.*` view restrict themselves to vintages belonging to an accepted release, **in SQL**. The release filter sits *inside* each ranking subquery, so a view returns the newest vintage a researcher may see rather than nothing at all when a newer one is still staged. Accepting or blocking a release is one atomic `UPDATE` — no view is rebuilt, and there is no window in which a release that ends blocked is readable through a research interface.
+Since schema 27 that boundary is on **every** published interface, not only the generic series path: the seventeen `v_latest_raw_*` direct panels, the documented family (`v_documented_series_latest_snapshot` and the annex, payments, exchange-house and credit-survey views built on it), both market views (`v_bond_curves_latest`, `v_securities_transactions_latest`), `v_series_latest`, the `series_as_of_date()` macro and every `marts.*` view restrict themselves to publishable vintages, **in SQL**. The release filter sits *inside* each ranking subquery, so a view returns the newest vintage a researcher may see rather than nothing at all when a newer one is still staged.
+
+## Source bundle, build, data release
+
+Since schema 30 there are three identities, because one identifier was being asked to mean three things.
+
+| Identity | What it hashes | What it means |
+| --- | --- | --- |
+| `release_id` (source bundle) | every source file's SHA-256 | "these input files" |
+| `build_id` | the release, the Git commit and dirty flag, the schema version, and digests of `config/`, `scripts/` and `renv.lock` | "this code, on those files" |
+| `data_release_id` | the two above, as a decided product | "this database" |
+
+`release_id` hashes the sources and nothing else, which makes it deterministic and makes it the wrong thing to publish from: the same bundle had **fourteen attempts spanning schemas 26 to 29**, with materially different observations, and `audit.releases` kept only the latest status for the one row they shared. One of those attempts ended blocked. Because every published view joined `releases.status = 'accepted'`, **a failed rebuild withdrew the entire published database** — not the data it produced, the data it failed to replace.
+
+So publication is now two things that used to be one mutable `UPDATE`:
+
+- **`audit.data_releases`** records one decision per product, **inserted once and never rewritten**. Re-deciding the same product identically is a no-op; re-deciding it differently is an error, because a different verdict from the same code, configuration and sources means one of them is not what it claims to be.
+- **`audit.active_data_release`** is a single-row pointer, swapped in one transaction and **only by a build that was accepted**. A blocked build records its verdict and stops. `accepted_release_vintages_sql()` resolves through the pointer, so publishing is one row changing and no view is rebuilt.
+
+The release-wide phases run inside **one transaction** (schema 30). Without it the pointer would be theatre: a build that died halfway had already deleted and half-rebuilt reconciliation, region classification, semantics, the expected grid and the missingness table underneath a release still marked accepted, so the published database was a mixture of two builds. DuckDB rolls DDL and DML back together, so a failure now leaves the previous build's derived tables untouched. Units that manage their own atomicity call `with_project_transaction()`, which joins an outer transaction rather than opening a second one — DuckDB has no nested transactions, and probing for one by attempting a `BEGIN` aborts the transaction being probed, so depth is tracked per connection instead.
+
+**Every transaction in the project goes through that register**, including the explicit one the per-source ingestion opens across a `tryCatch` boundary: `project_begin_transaction()`, `project_commit_transaction()`, `project_rollback_transaction()`. A bare `DBI::dbBegin()` would leave the register saying nothing is open, so the first unit inside that asked for a transaction would try to open a second — and the failed `BEGIN` would abort the source's own transaction, reporting a transaction error from code that never wrote one. That path only runs on a full ingest, which is why it has to be tested by building a database from the real workbooks rather than by reusing vintages.
+
+**What this does not give you.** Facts are not versioned per build. The guarantee is that a failed build cannot withdraw or corrupt the published one — not that any past build's output can be reconstructed from the database. Reconstructing an arbitrary past product would need a fact namespace per build, which is a much larger change and is not attempted. `audit.data_releases` preserves the decisions; the data under a superseded decision is gone.
 
 Every filtered view has an unfiltered `_all` twin. Those exist for diagnostics and for the ingestion path, which compares a new vintage against what the database already holds and must see a release that has not been accepted yet. **An `_all` view is not a research interface.**
 
-`blocked_release_visible` checks both halves: that no visible row belongs to an unaccepted release, and that the stored SQL of every published interface still joins through `releases`. The second is the real guarantee — a view rewritten without the join would publish a blocked release while every row test kept passing. The lint follows view dependencies transitively, so a view whose own SQL names no release but reads a filtered view is recognised as filtered, and one that reads an `_all` twin is not.
+## What is published, declared rather than inferred
+
+`config/public_view_contract.csv` gives every view and macro in `main` and `marts` a `public_scope`, with a reason and a reviewer:
+
+| Scope | Meaning |
+| --- | --- |
+| `current` | Publishes observations from the active data release. Must descend restrictively from a filtered base relation. |
+| `all` | The unfiltered twin of a `current` object. Sees staged and blocked builds; exists for the ingestion path and for diagnosis. **Not a research interface.** |
+| `history` | All vintages, deliberately. |
+| `reference` | Describes series, dimensions or review status. Carries no observation and therefore no release boundary. |
+| `diagnostic` | Evidence about how the database was built — cells, reconciliation, provenance, identity migration. |
+
+**An object absent from the register blocks the release.** That is the point: a view added without anyone saying whether researchers should read it is the failure the register exists to catch, and "undeclared" must not quietly default to "diagnostic".
+
+The lint that checks all this has been rebuilt twice, and the reason is worth recording. Version one named two objects and matched the mart family; an audit found thirty-four published views with no release join at all. Version two replaced the list with naming rules — and the third audit found the deeper problem: **a rule over names cannot decide which objects are research interfaces, and a test for the word `releases` cannot decide whether one filters.**
+
+Both failed concretely. `v_series_observations` read the whole fact table and `LEFT JOIN`ed accepted releases only to populate a label, so a row belonging to no accepted release survived with a null column — and the body contained the word, so the lint passed it, and everything built on it. Meanwhile `v_fx_operations_annual` and `v_series_catalogue` matched no naming rule, and neither did thirty-five other public objects.
+
+Neither question is inferred any more. Scope is declared. Filtering is decided by **descent**: an object qualifies if it carries the boundary in its own body — declared per object as `carries_release_boundary`, and verified against the stored SQL — or if it reads something that does. An `_all` twin is never followed. Forgetting to declare a new filtering view makes the lint *fail*, not pass.
+
+`blocked_release_visible` reports any of it. The row invariant is checked too, but the structural test is the real guarantee: a view rewritten without the filter would publish a blocked build while every row test kept passing, because during a normal run the unpublishable rows do not exist yet. That is why the acceptance test for this is adversarial — `tests/testthat/test-audit6-release-isolation.R` builds a database that genuinely holds a vintage nobody may see, asks every `current` object for it, and asserts the `_all` twins *do* return it so the test cannot pass vacuously.
 
 ## Measurement semantics
 
@@ -101,7 +144,19 @@ The operational consequence, stated plainly because the mechanism looks complete
 - **No real-time claim should be made from this database** — no forecast evaluation, no nowcasting backtest, no monetary-policy event study that depends on what was knowable on a date — until `official_release_date` and `retrieved_at` are recorded in `config/source_vintages.csv` and every new vintage is retained beside its predecessor.
 - `publication_date_inferred_from_content` and `publication_date_source_contradicts_content` report both conditions at every release.
 
-`observation_status` separates an observation dated on or before the vintage that published it (`observed`) from one dated after it (`after_publication`) — a published projection. **`v_series_latest` and `series_as_of_date()` expose the column and keep both.** That is a deliberate choice and not a look-ahead-safe default: 343 observations across 186 series in the current release are projections, the annex publishing forecast years to 2028 and FX operations to end-2026. They are what the publisher published, so the default interface shows them; an estimation sample must filter `observation_status = 'observed'`, read `v_series_latest_observed`, which does it, or take the projections deliberately from `marts.v_series_projections`. `current_view_contains_projections` reports the count at every release so the number cannot drift unnoticed.
+`observation_status` separates an observation dated on or before the vintage that published it (`observed`) from one dated after it (`after_publication`) — a published projection. 343 observations across 186 series are projections: the annex publishes forecast years to 2028 and FX operations to end-2026.
+
+Since schema 30 the **names match the contents**:
+
+| View | Contains |
+| --- | --- |
+| `v_series_latest` | realized observations only — the research default |
+| `v_publisher_statement_latest` | the publisher's full current statement, projections included |
+| `marts.v_series_projections` | the projections on their own |
+| `v_series_latest_observed` | deprecated alias of `v_series_latest` |
+| `series_as_of_date(d)` / `series_statement_as_of_date(d)` | the same split, point-in-time |
+
+Schema 27 kept the projections in `v_series_latest` and exposed the status beside them, reasoning that the view answers "what does the publisher currently say" and a projection is part of that answer. The reasoning was sound and the naming was not. `v_series_latest` is the obvious default, it is what every example query reaches for, and a researcher who never reads the column gets 2028 forecasts in an estimation sample: the safe-sounding name was the unsafe one. Nothing is hidden and nothing was lost — the full statement has a name that says what it is. A projection reaching `v_series_latest` is now an **error** (`projections_in_realized_view`), not a warning to remember.
 
 ## Canonical layer
 
@@ -113,9 +168,11 @@ The guards run whether or not anything is declared: `validate_canonical_membersh
 
 ## Series grain
 
-`series_grain`, declared per source in `config/source_grains.csv`, separates `scalar_series` from `event` (auction tenders, interbank operations, securities transactions), `curve_panel` (yield-curve nodes) and `entity_panel` (per-institution statement items). `v_catalogue_by_grain` reports counts by grain, because a catalogue that counts an auction tender as a macroeconomic series misrepresents economic breadth.
+`series_grain`, declared in `config/source_grains.csv` per source and (since schema 32) per worksheet, separates `scalar_series` from `event` (auction tenders, interbank operations, securities transactions), `curve_panel` (yield-curve nodes) and `entity_panel` (per-institution statement items). `v_catalogue_by_grain` reports counts by grain, because a catalogue that counts an auction tender as a macroeconomic series misrepresents economic breadth.
 
 Reporting the counts was not enough on its own: a single undifferentiated catalogue is still the thing a reader opens, and it still says that this database holds thousands of macroeconomic series when most of those identifiers are one auction or one curve node. Since schema 29 there is a catalogue **per grain** — `marts.v_catalogue_scalar_series`, `v_catalogue_event`, `v_catalogue_curve_panel`, `v_catalogue_entity_panel` — and the scalar one is the macroeconomic surface. The others are complete and queryable; they are simply not a count of series about the economy.
+
+Since schema 32 grain is declared **per worksheet as well as per source**, keyed `(source_id, source_sheet)` with `*` as the source-level rule. One grain for a whole workbook was too coarse and direct investment is the case: the source is `scalar_series`, and its `Cuadro 5` and `Cuadro 7` are foreign direct investment stocks by country — 73 and 34 country series, an entity panel wearing a scalar catalogue's clothes. Declaring them moved 214 identifiers out of the macro catalogue, which now holds 7,229.
 
 ## Workbook behaviour: cached formulas and hidden rows
 
@@ -128,6 +185,8 @@ Every number this project reads is a **cached formula result**. `readxl` does no
 Neither is a defect, and `workbook_cached_formulas_and_hidden_state` is a warning that says so. What it is really for is the **next** vintage: a worksheet that was 30% formulas and is now 2%, or that has begun hiding a block it used to show, has changed behaviour in a way no cell-by-cell comparison reveals. `workbook_behaviour_changed` fires when it does. `outputs/workbook_behaviour_latest.csv` carries the per-worksheet state, ordered by how many published observations sit on hidden rows.
 
 Both columns are read from the workbook rather than from a parsed value, so a vintage archived before schema 29 gains them from its own archived file without being re-parsed and without an observation moving.
+
+Since schema 32 the same facts are queryable **per observation** through `marts.v_observation_source_behaviour`: `from_hidden_row` and `sheet_formula_cells` beside each value's coordinate. Recording them per worksheet was the right grain for the drift test — a sheet that has begun hiding a block has changed behaviour — and the wrong grain for a researcher holding a number. "15,403 observations come from hidden rows" is a fact about the database; "is *this* value one of them" was a question you could only answer by unpacking a packed range yourself. The view derives it rather than storing it: the ranges are on the worksheet and the coordinate is on the observation, so the join is the answer, and copying a flag onto 1.2 million rows would only create something to keep in step.
 
 ## Documented complex-report model
 
@@ -315,13 +374,21 @@ erase. Since schema 28 the attempt row is written when the run **starts**, with 
 closed from an `on.exit()` handler. It used to be written at the end, which meant the one case where
 the record mattered most — a run that crashed — was the one case that left no record at all.
 
-Two release facts follow from this. First, `stage_release()` no longer deletes and re-inserts: an
-accepted release stays accepted while the next run builds, and promotion is a single terminal
-`UPDATE`. Re-running a bundle used to set an already-accepted release back to `staged`, which
-un-published the database for the duration of the run. Second, `source_files.first_ingested_release_id`
+Two release facts follow from this. First, `stage_release()` no longer deletes and re-inserts: a
+decided release is left alone while the next run builds. Re-running a bundle used to set an
+already-accepted release back to `staged`, which un-published the database for the duration of the
+run — schema 28 stopped that, and schema 30 removed the remaining half of it, where the *terminal*
+decision on a failed rebuild could still block the row every published view was reading. Second, `source_files.first_ingested_release_id`
 is named for what it is. It records the bundle a vintage *arrived in*, which is not the release a
 query is reading; that is derived through `release_sources`, so a vintage reused across five releases
 stops reporting the first one as the current one. `v_series_observations` carries both.
+
+`audit.quality_flags` carries the `attempt_id` that raised each flag and is no longer deleted by
+`release_id` when a run starts. Re-running a bundle used to erase the diagnostic evidence of the
+build that had been accepted, which is the half of the same defect that is about evidence rather than
+publication. A report about "this run" therefore scopes by attempt, not by release: the update report
+was carrying 696 timing rows from eight attempts that shared a bundle where the run it described had
+56.
 
 `audit.ingestion_stage_timings` is keyed by `attempt_id` and appended rather than replaced per
 release, so the history of how long a run took survives the next run. Since schema 29 it also times
@@ -385,6 +452,20 @@ The invariant to rely on is **grid = observed + explained**; a silent
 third category would be the ambiguity this exists to remove. `period_absent_from_axis`,
 `axis_position_ambiguous`, `unreviewed` and `source_token_unreviewed` block promotion to
 `validated`; a blank cell, and a token a reviewer has explained, are answers and do not.
+
+Since schema 30 both tables carry `vintage_id` and `build_id`. Without them the missingness a mart
+published was a global mutable snapshot that could not be release-filtered at all: `v_series_missingness`
+could only test whether the same `series_id` existed in accepted data, so a gap computed from a staged
+or blocked vintage stayed visible whenever that series also existed in published data — which, for a
+rebuild of the same bundle, is every series.
+
+The `build_id` earns its place twice. It is also what makes the phase skippable: rebuilding a
+2.4-million-row grid took 19 of the 36 seconds a reuse build spent, and since schema 32 the work is
+skipped when the stored grid was computed by **this same build identity**. That is a stronger guard
+than "did any source change", because `build_id` hashes the code and configuration too — editing the
+missingness logic, a token register or a frequency declaration changes it and forces a full rebuild.
+A guard on source changes alone would have kept a stale answer under new code, which is how schema 22
+first failed to land. Measured: 19.08s to 0.03s, with an identical 20,647 rows.
 
 `config/aggregate_identities.csv` carries the identities the publisher itself states — in a footnote,
 or in a block header — expressed over worksheet **columns**, because a parser repair moves labels and

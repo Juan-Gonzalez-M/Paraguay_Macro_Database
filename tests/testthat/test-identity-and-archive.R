@@ -54,7 +54,7 @@ testthat::test_that("sparse series retain changes and explicit removals", {
     vintage_id = c("test:first", "test:second")
   ), append = TRUE)
   stage_release(con, "release:test", 2L)
-  decide_release(con, "release:test", "accepted", 0L, 0L)
+  publish_test_release(con, "release:test", "accepted")
   latest <- DBI::dbGetQuery(con, "SELECT period, value FROM v_series_latest ORDER BY period")
   events <- DBI::dbGetQuery(con, "SELECT is_deleted FROM fact_series_events WHERE vintage_id = 'test:second'")
   testthat::expect_equal(nrow(latest), 1)

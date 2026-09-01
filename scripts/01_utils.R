@@ -121,6 +121,7 @@ PROJECT_TABLE_SCHEMA <- c(
   table_reconciliation = "audit", reconciliation_cell_rules = "audit",
   reconciliation_cell_classification = "audit",
   releases = "audit", data_releases = "audit", active_data_release = "audit",
+  distribution_artifacts = "audit",
   source_region_rules = "audit", source_region_classification = "audit",
   source_provenance = "raw", aggregate_identities = "audit",
   expected_observation_grid = "staging", observation_missingness = "staging",
@@ -180,12 +181,46 @@ project_connection_key <- function(con) {
   if (is.null(key) || !length(key) || !nzchar(key)) "default" else key[[1]]
 }
 
+project_transaction_open <- function(con) {
+  isTRUE(PROJECT_TRANSACTIONS[[project_connection_key(con)]])
+}
+
+# The explicit form, for the one place that cannot use a block: the per-source
+# ingestion opens its transaction, does work across a tryCatch boundary, and
+# commits or rolls back in different branches.
+#
+# It must go through here rather than calling DBI directly. A bare DBI::dbBegin()
+# leaves this register saying no transaction is open, so the first unit inside
+# that asks for one tries to open a second -- and in DuckDB that failed BEGIN
+# aborts the transaction it was asking about, taking the whole source down with a
+# message about a transaction nobody wrote.
+project_begin_transaction <- function(con) {
+  DBI::dbBegin(con)
+  assign(project_connection_key(con), TRUE, envir = PROJECT_TRANSACTIONS)
+  invisible(TRUE)
+}
+
+project_commit_transaction <- function(con) {
+  on.exit(assign(project_connection_key(con), FALSE, envir = PROJECT_TRANSACTIONS), add = TRUE)
+  DBI::dbCommit(con)
+  invisible(TRUE)
+}
+
+project_rollback_transaction <- function(con) {
+  on.exit(assign(project_connection_key(con), FALSE, envir = PROJECT_TRANSACTIONS), add = TRUE)
+  try(DBI::dbRollback(con), silent = TRUE)
+  invisible(TRUE)
+}
+
 with_project_transaction <- function(con, code) {
-  key <- project_connection_key(con)
-  if (isTRUE(PROJECT_TRANSACTIONS[[key]])) return(force(code))
-  assign(key, TRUE, envir = PROJECT_TRANSACTIONS)
-  on.exit(assign(key, FALSE, envir = PROJECT_TRANSACTIONS), add = TRUE)
-  DBI::dbWithTransaction(con, code)
+  if (project_transaction_open(con)) return(force(code))
+  project_begin_transaction(con)
+  committed <- FALSE
+  on.exit(if (!committed) project_rollback_transaction(con), add = TRUE)
+  result <- force(code)
+  project_commit_transaction(con)
+  committed <- TRUE
+  result
 }
 
 # The vintages a researcher is allowed to see: those bundled by the source bundle
@@ -911,6 +946,12 @@ build_identity_record <- function(root, release_id, schema_version = NA_integer_
     file.path(root, "run_update.R")
   ))
   environment_digest <- digest_files(file.path(root, "renv.lock"))
+  # The audit's R6-18. build_id names the code, configuration and inputs behind a
+  # database; nothing named the database file itself. So the commit that carries a
+  # rebuilt .duckdb -- necessarily made *after* the build that produced it -- read
+  # as a provenance mismatch, with the recorded build pointing at an earlier
+  # commit than HEAD. It is not a mismatch, and now it does not look like one:
+  # the artifact has an identity of its own, recorded beside the build.
   build_id <- paste0("build:", substr(digest::digest(paste(
     release_id, git$commit, isTRUE(git$dirty), schema_version,
     config_digest, code_digest, environment_digest, R.version.string, sep = "|"
@@ -1268,4 +1309,31 @@ write_table_in_storage_layer <- function(con, table_name, data) {
     return(DBI::dbWriteTable(con, table_name, data, overwrite = TRUE))
   }
   DBI::dbWriteTable(con, DBI::Id(schema = schema, table = table_name), data, overwrite = TRUE)
+}
+
+# The database file as a thing that gets copied and shared, recorded beside the
+# build that produced it. Written after the build identity, on a path this run
+# actually wrote, so the artifact_id is the state of the file at the moment the
+# run finished with it -- and a later commit of that same file is a fact about
+# git, not a discrepancy in the provenance.
+record_distribution_artifact <- function(con, db_path, build_id, data_release_id,
+                                         schema_version = NA_integer_) {
+  if (!database_object_exists(con, "distribution_artifacts")) return(invisible(FALSE))
+  if (is.null(db_path) || !nzchar(db_path) || !file.exists(db_path)) return(invisible(FALSE))
+  info <- file.info(db_path)
+  artifact_id <- paste0("artifact:", substr(digest::digest(
+    paste(build_id, data_release_id, basename(db_path), info$size, sep = "|"),
+    algo = "sha256", serialize = FALSE
+  ), 1, 24))
+  DBI::dbExecute(con, paste0(
+    "DELETE FROM ", project_qualified_name("distribution_artifacts"),
+    " WHERE artifact_id = ", sql_string(artifact_id)
+  ))
+  DBI::dbWriteTable(con, "distribution_artifacts", tibble(
+    artifact_id = artifact_id, build_id = build_id, data_release_id = data_release_id,
+    artifact_path = repository_uri(db_path, dirname(dirname(db_path))),
+    size_bytes = as.numeric(info$size), schema_version = as.integer(schema_version),
+    recorded_at = Sys.time()
+  ), append = TRUE)
+  invisible(artifact_id)
 }

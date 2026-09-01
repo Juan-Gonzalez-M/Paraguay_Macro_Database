@@ -120,7 +120,7 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
         update_archive_manifest_date(root, item$source_id, item$sha256, publication_date)
       }
       add_timing("source_discovery_and_metadata", discovery_started)
-      DBI::dbBegin(con)
+      project_begin_transaction(con)
       transaction_open <- TRUE
       ingestion_started <- proc.time()[["elapsed"]]
       if (item$ingest_mode == "semantic_table") {
@@ -158,12 +158,12 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
       create_documented_financial_views(con)
       validate_source(con, item, release_id, root)
       add_timing("source_validation", validation_started)
-      DBI::dbCommit(con)
+      project_commit_transaction(con)
       transaction_open <- FALSE
       mark_source_status(con, item$vintage_id, "completed")
       message("Loaded: ", item$source_id, " / ", item$source_file, " / ", item$vintage_id)
     }, error = function(e) {
-      if (isTRUE(transaction_open)) try(DBI::dbRollback(con), silent = TRUE)
+      if (isTRUE(transaction_open)) project_rollback_transaction(con)
       transaction_open <- FALSE
       if (inherits(e, "documented_continuity_error")) {
         DBI::dbExecute(con, paste0(
@@ -328,6 +328,7 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
   # The attempt row was opened before any work began; this closes it.
   close_ingestion_attempt(con, attempt_id, run_status, errors, warnings, build$build_id)
   attempt_closed <- TRUE
+  record_distribution_artifact(con, db_path, build$build_id, build$build_id, schema_version)
   # Every phase measured so far reaches the report; the ones after it cannot,
   # since a report cannot time its own writing.
   flush_release_timings()

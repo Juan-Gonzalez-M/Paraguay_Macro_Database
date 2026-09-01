@@ -1,5 +1,126 @@
 # Changelog
 
+## v32
+
+Sixth technical audit, roadmap item P2. Changes no observation.
+
+- **Grain is declared per worksheet as well as per source.** One grain for a whole workbook was too
+  coarse, and direct investment is the case: the source is `scalar_series` and its `Cuadro 5` and
+  `Cuadro 7` are foreign direct investment stocks by country — 73 and 34 country series, an entity
+  panel wearing a scalar catalogue's clothes. `config/source_grains.csv` is now keyed
+  `(source_id, source_sheet)` with `*` as the source-level rule. 214 identifiers left the macro
+  catalogue, which holds **7,229**.
+- **Workbook provenance per observation.** `marts.v_observation_source_behaviour` exposes
+  `from_hidden_row` and `sheet_formula_cells` beside each value's coordinate. Recording them per
+  worksheet was right for the drift test and wrong for a researcher holding a number: "15,403
+  observations come from hidden rows" is a fact about the database, and "is *this* value one of them"
+  was a question you could only answer by unpacking a packed range yourself. Derived, not stored.
+- **Every source selects by recorded hash.** All 22 move from `newest_mtime` to `manifest`. The
+  failure mode changes and it is worth knowing: with one candidate file the rule never fires, and
+  with two the run now **stops** and names the fix where it used to pick the newer modification time
+  and warn. Modification time is when a file reached this disk, not when the publisher released it.
+- **The database is a recorded distribution artifact.** `audit.distribution_artifacts` gives the
+  `.duckdb` file an identity, so the commit carrying a rebuilt database — necessarily later than the
+  build that produced it — stops reading as a provenance mismatch.
+- **The dominant phase is skipped when it cannot produce a different answer.** Rebuilding a
+  2.4-million-row expected grid took 19 of the 36 seconds of a reuse build. It is skipped when the
+  stored grid carries this same `build_id` — a stronger guard than "did any source change", because
+  `build_id` hashes the code and configuration too, so editing the missingness logic forces a full
+  rebuild. **19.08s → 0.03s**, with an identical 20,647 rows.
+
+Three defects in v30's own work, found while verifying this round rather than by the audit:
+
+- **The supported read interface bypassed the release boundary entirely.** `series_as_of()` in
+  `scripts/05_query_helpers.R` — the file the operations manual calls the supported read path —
+  ranked `canonical.fact_series_events` directly, with no release filter and no observation status.
+  Neither the lint nor the new public-view contract was looking at it, because both reason about
+  *stored objects* and this is an R function: the same class of gap as R6-01, one layer further out.
+  It also answered a different question from the stored macro of the same name, ranking by
+  publication date where `series_as_of_date()` ranks by `available_at`. It now delegates to the
+  macro, and a test asserts the whole helper file reads only published surfaces.
+- **A bare `DBI::dbBegin()` could abort the transaction it was inside.** The per-source ingestion
+  opens its transaction explicitly, across a `tryCatch` boundary, and did not register it — so the
+  first unit inside that asked for a transaction tried to open a second, and in DuckDB that failed
+  `BEGIN` aborts the transaction it was asking about. Only a full ingest takes that path, which is
+  why it took building a database from the real workbooks to find. Every transaction now goes
+  through the register.
+- **The fresh-connection check could hang instead of failing.** A second connection to a DuckDB file
+  whose writer holds an open transaction waits rather than erroring, so a leaked transaction turned a
+  release into a deadlock with nothing to read. It is now reported as
+  `release_transaction_left_open` and the check is skipped: diagnosis beats deadlock.
+
+## v31
+
+Sixth technical audit, roadmap item P1. Changes no observation.
+
+- **"Latest" files describe the latest run.** The flag CSV held 33 rows where the database held 35,
+  because it was written at the end of validation and the gap and discontinuity screens run after
+  validation. The update report, headed "this update", carried 696 timing rows from eight attempts
+  that shared a source bundle — the same stage over and over with durations from runs that were not
+  this one; it now carries the 56 this attempt measured. Flags are attributed to the attempt that
+  raised them and are no longer deleted by `release_id`, so re-running a bundle stops destroying the
+  accepted build's diagnostic evidence. The release compares each generated file against the
+  database beside it.
+- **The availability documentation was overstated, and it was ours.** `docs/DATA_MODEL.md` said
+  `available_at` "is never inferred from the reference period". True of the operator-recorded field,
+  false of the column: 12 of 22 publication dates derive from the content maximum, and `available_at`
+  falls back to the publication date. The section now states the fallback chain, that
+  `series_as_of_date('2020-12-31')` returns zero rows, and that no real-time claim should be made
+  from this database until provenance is recorded.
+- **Queues someone can pick up.** `outputs/source_provenance_worklist.csv` names per vintage which
+  acquisition fields are missing and what each costs, separating `available_at` — on which every
+  point-in-time claim depends — from the four that only affect re-acquisition.
+  `outputs/source_region_review_queue.csv` ranks the 6,522 unreviewed cells by the economic weight of
+  the worksheet rather than by cell count: sorted by volume the LRM auction year-sheets come first,
+  and nobody should review those before the price index.
+- **Two gates that pass vacuously, which is why they are written now.** A declared canonical
+  membership must be *comparable* as well as equal — aliases differing in unit, scale or frequency,
+  and aliases sharing no period with their primary and therefore never actually tested, block the
+  release. And a direct publisher panel reaching an aggregate mart blocks the release while 411
+  groups of rows repeat every dimension the database models.
+
+## v30
+
+Sixth technical audit, roadmap item P0. **Contains a breaking change to a published interface.**
+
+- **Publication is a pointer at an immutable decision, not a status on the source bundle.** A
+  `release_id` hashes the source files, so fourteen attempts across schemas 26–29 shared one, and the
+  single attempt among them that ended blocked set that shared row to `blocked`. Every published view
+  joined `releases.status = 'accepted'` — so **a failed rebuild withdrew the entire published
+  database**, not the data it produced but the data it failed to replace. `audit.data_releases` now
+  records one decision per product, inserted once and never rewritten;
+  `audit.active_data_release` is a one-row pointer only an accepted build moves.
+- **The release-wide phases run as one transaction.** Without it the pointer is theatre: a build that
+  died halfway had already half-rebuilt reconciliation, semantics, the expected grid and missingness
+  underneath a release still marked accepted. This needed a nesting-aware transaction helper, since
+  eight phases open their own and DuckDB has no nested transactions — and detecting the outer one by
+  attempting a `BEGIN` does not work, because the failed probe aborts the transaction it is probing.
+  **What this does not give:** facts are not versioned per build, so a past product cannot be
+  reconstructed from the database. Only the decisions are preserved.
+- **Every published object declares what it is for.** The release lint has been rebuilt twice and the
+  audit found the deeper problem: a rule over *names* cannot decide which objects are research
+  interfaces, and a test for the word `releases` cannot decide whether one filters.
+  `v_series_observations` read the whole fact table and `LEFT JOIN`ed accepted releases only to
+  populate a label — the body contained the word, so the lint passed it, and passed the projections
+  built on it, and the canonical views built on those. `v_fx_operations_annual` and
+  `v_series_catalogue` matched no naming rule, and neither did 35 other public objects.
+  `config/public_view_contract.csv` declares scope per object; an undeclared object blocks the
+  release; and filtering is decided by descent to a declared boundary-carrying relation, never
+  through an `_all` twin.
+- **Breaking: `v_series_latest` is realized observations only.** Schema 27 kept the 343 projections
+  there and exposed `observation_status` beside them. The reasoning was sound and the naming was not:
+  it is the obvious default, and a researcher who never reads the column gets 2028 forecasts in an
+  estimation sample. The publisher's full current statement is `v_publisher_statement_latest`;
+  `v_series_latest_observed` remains as an alias; a projection reaching the realized view is now an
+  **error**.
+- **The projection fan-out**, the same `DISTINCT`-sheet join found and fixed in the grain catalogues
+  one schema earlier and missed in this copy. And the expected grid and missingness carry the vintage
+  and build they were computed from, so a diagnostic published in a mart can be release-filtered
+  instead of matching on `series_id` and hoping.
+- The acceptance test is adversarial, not the lint: `test-audit6-release-isolation.R` builds a
+  database that genuinely holds a vintage nobody may see, asks every `current` interface for it, and
+  asserts the `_all` twins *do* return it so the test cannot pass vacuously.
+
 ## v29
 
 Fifth technical audit, roadmap item P2. Changes no observation.

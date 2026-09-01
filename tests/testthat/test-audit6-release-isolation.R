@@ -173,6 +173,35 @@ testthat::test_that("the current view is realized observations and the statement
   ))$n[[1]], 1L)
 })
 
+testthat::test_that("projections are unique per vintage, series and period", {
+  # The audit's test 5, and R6-10's regression. v_series_projections carried a
+  # LEFT JOIN on DISTINCT (series_id, source_sheet), so a series published across
+  # several worksheets was multiplied by the number of its sheets. Latent, because
+  # today's projections all sit on one sheet each -- so the fixture gives one
+  # series two sheets, which is what the production data does not currently do.
+  fixture <- isolation_fixture()
+  con <- fixture$con
+  DBI::dbExecute(con, paste(
+    "INSERT INTO staging.documented_series_snapshot (vintage_id, series_id, period,",
+    " source_id, source_sheet, value) VALUES",
+    "('fixture:published', 'fixture:series', DATE '2030-01-31', 'fixture', 'Hoja A', 2),",
+    "('fixture:published', 'fixture:series', DATE '2024-01-31', 'fixture', 'Hoja B', 1)"
+  ))
+  duplicated_keys <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM (SELECT vintage_id, series_id, period",
+    "FROM marts.v_series_projections GROUP BY 1, 2, 3 HAVING count(*) > 1)"
+  ))$n[[1]]
+  testthat::expect_equal(duplicated_keys, 0L)
+  # And it still equals the after-publication subset of the published surface.
+  testthat::expect_equal(
+    DBI::dbGetQuery(con, "SELECT count(*) AS n FROM marts.v_series_projections")$n[[1]],
+    DBI::dbGetQuery(con, paste(
+      "SELECT count(*) AS n FROM main.v_publisher_statement_latest",
+      "WHERE observation_status = 'after_publication'"
+    ))$n[[1]]
+  )
+})
+
 testthat::test_that("a decided data release is immutable and a failed build cannot un-publish", {
   # R6-02. This is the failure that actually happened: one attempt among fourteen
   # sharing a release_id ended blocked, and because publication was a mutable
@@ -219,6 +248,63 @@ testthat::test_that("a decided data release is immutable and a failed build cann
   active <- DBI::dbGetQuery(con, "SELECT * FROM audit.active_data_release")
   testthat::expect_equal(nrow(active), 1L)
   testthat::expect_equal(active$data_release_id, "build:rebuild_ok")
+})
+
+testthat::test_that("the active-release invariants are checked, not merely maintained", {
+  # The audit's test 7. promote_data_release() keeps all three by construction;
+  # this is for the case the gate exists for -- somebody editing the table -- and
+  # because an invariant nothing checks is a comment.
+  fixture <- isolation_fixture()
+  con <- fixture$con
+  testthat::expect_true(validate_active_data_release(con, "release:published"))
+
+  # Two active rows is not a state that can publish anything coherently.
+  DBI::dbWriteTable(con, "active_data_release", tibble::tibble(
+    singleton = FALSE, data_release_id = "build:withheld",
+    source_bundle_id = fixture$withheld, promoted_at = Sys.time(), promoted_by = "fixture"
+  ), append = TRUE)
+  testthat::expect_false(validate_active_data_release(con, "release:published"))
+  flag <- DBI::dbGetQuery(con, paste(
+    "SELECT detail FROM audit.quality_flags WHERE check_name = 'active_data_release_invalid'"
+  ))
+  testthat::expect_match(flag$detail[[1]], "exactly one")
+
+  # And a pointer at a product that was decided blocked must not pass either.
+  DBI::dbExecute(con, "DELETE FROM audit.active_data_release")
+  DBI::dbWriteTable(con, "active_data_release", tibble::tibble(
+    singleton = TRUE, data_release_id = "build:withheld",
+    source_bundle_id = fixture$withheld, promoted_at = Sys.time(), promoted_by = "fixture"
+  ), append = TRUE)
+  testthat::expect_false(validate_active_data_release(con, "release:published"))
+})
+
+testthat::test_that("the supported read interface goes through the published surface", {
+  # The gap one layer out from R6-01. The release lint and the public-view
+  # contract both reason about *stored objects*, so an R function that queries a
+  # base table directly is invisible to them -- and `series_as_of()`, in the file
+  # the operations manual calls "the supported read interface", ranked
+  # canonical.fact_series_events with no release boundary and no observation
+  # status at all. Nothing was looking at it.
+  helpers <- readLines(file.path(project_test_root, "scripts", "05_query_helpers.R"))
+  # Comments stripped, then joined: a query is built across several lines by
+  # paste0(), so testing line by line would miss half of every statement -- which
+  # is exactly how the first version of this test passed while looking at nothing.
+  code <- paste(helpers[!grepl("^\\s*#", helpers)], collapse = "\n")
+  testthat::expect_gt(lengths(regmatches(code, gregexpr("dbGetQuery", code, fixed = TRUE))), 3L)
+
+  # canonical.series_revisions is the one deliberate exception: a revision log
+  # records what changed *between* vintages, so restricting it to the published
+  # one would empty the thing it exists to show.
+  remaining <- gsub("canonical\\.series_revisions", "", code)
+  offending <- unique(unlist(regmatches(
+    remaining, gregexpr("(canonical|staging|raw|audit)\\.[a-z_]+", remaining)
+  )))
+  testthat::expect_equal(offending, character())
+
+  # And the as-of helper must be the stored macro, not a second implementation of
+  # the same question ranking by a different column.
+  testthat::expect_true(grepl("series_as_of_date", code, fixed = TRUE))
+  testthat::expect_false(grepl("fact_series_events", code, fixed = TRUE))
 })
 
 testthat::test_that("a release-wide phase that dies rolls back the derived tables it had begun", {

@@ -421,7 +421,9 @@ SCHEMA_MIGRATIONS <- list(
   list(version = 30L, reingests = character(), registry_driven = TRUE,
        change = "Publication stops being a mutable status on the source bundle. A release_id hashes the source files, so fourteen attempts spanning four schema versions shared one identifier, and the single attempt among them that failed set that shared row to blocked -- withdrawing the whole published database because the next build broke. A decision is now recorded once per product, source bundle plus build identity, and never rewritten; whether a product is published is a one-row pointer that only an accepted build moves. The release-wide phases run as one transaction, so a build that dies leaves the derived tables it had begun to overwrite intact. Every published object declares whether it is current, all, history or diagnostic, and a current one must descend restrictively from a filtered base relation rather than merely mention the word releases -- which is what let an unfiltered observation view, the projections built on it, the missingness mart and the annual foreign-exchange view pass the lint. The expected grid and missingness carry the vintage they were computed from. Breaking: the default current-value view is realized observations only, and the publisher\'s full current statement including projections is published as v_publisher_statement_latest. Changes no observation."),
   list(version = 31L, reingests = character(), registry_driven = TRUE,
-       change = "Reports describe the attempt that produced them rather than every attempt that ever shared the source bundle, and the release compares each generated file with the database beside it, because a report that looks authoritative and is stale misleads more than no report. The provenance queue names, per vintage, which acquisition fields are missing and what each one costs -- separating operator-recorded availability, which every point-in-time claim depends on, from the four fields that only affect re-acquisition. The source-region queue is ordered by the economic weight of the worksheet rather than by how many cells nobody has looked at, so the price index is reviewed before the auction year-sheets. A declared canonical membership is checked for comparability as well as equality: aliases differing in unit, scale or frequency, and aliases that share no period with their primary and have therefore never been tested, block the release. A direct publisher panel reaching an aggregate mart blocks the release while rows that repeat every modelled dimension remain unresolved. Changes no observation.")
+       change = "Reports describe the attempt that produced them rather than every attempt that ever shared the source bundle, and the release compares each generated file with the database beside it, because a report that looks authoritative and is stale misleads more than no report. The provenance queue names, per vintage, which acquisition fields are missing and what each one costs -- separating operator-recorded availability, which every point-in-time claim depends on, from the four fields that only affect re-acquisition. The source-region queue is ordered by the economic weight of the worksheet rather than by how many cells nobody has looked at, so the price index is reviewed before the auction year-sheets. A declared canonical membership is checked for comparability as well as equality: aliases differing in unit, scale or frequency, and aliases that share no period with their primary and have therefore never been tested, block the release. A direct publisher panel reaching an aggregate mart blocks the release while rows that repeat every modelled dimension remain unresolved. Changes no observation."),
+  list(version = 32L, reingests = character(), registry_driven = TRUE,
+       change = "Grain is declared per worksheet as well as per source, because one grain for a whole workbook was wrong for direct investment, whose Cuadro 5 and Cuadro 7 are country panels inside a source declared scalar. Whether a value was read from a row the publisher hid, and how many formulas its worksheet carries, are queryable per observation rather than reconstructible from a packed range. Every source is selected by the SHA-256 recorded in the registry rather than by file modification time, which is when a file reached this disk and not when it was published; with one candidate file the rule never fires, and with two it now stops the run and names the fix instead of guessing. The database is a distribution artifact with its own recorded identity, so the commit that carries a rebuilt database stops looking like a provenance mismatch. Changes no observation.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -1255,7 +1257,10 @@ DATABASE_TABLE_STATEMENTS <- c(
   "CREATE TABLE IF NOT EXISTS map_canonical_series (canonical_series_id VARCHAR, series_id VARCHAR, relationship VARCHAR, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, PRIMARY KEY (canonical_series_id, series_id))",
   "CREATE TABLE IF NOT EXISTS methodology_regime (regime_id VARCHAR PRIMARY KEY, concept_key VARCHAR, regime_label VARCHAR, change_type VARCHAR, effective_from DATE, effective_to DATE, comparability VARCHAR, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE)",
   "CREATE TABLE IF NOT EXISTS classification_concordance (concordance_id VARCHAR PRIMARY KEY, from_scheme VARCHAR, from_code VARCHAR, to_scheme VARCHAR, to_code VARCHAR, relationship VARCHAR, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE)",
-  "CREATE TABLE IF NOT EXISTS source_grains (source_id VARCHAR PRIMARY KEY, series_grain VARCHAR, note VARCHAR, reviewed_by VARCHAR, reviewed_at DATE)",
+  # Keyed by (source_id, source_sheet) since schema 32: a source declares one
+  # grain under the '*' wildcard and may override it per worksheet, so source_id
+  # alone is no longer unique.
+  "CREATE TABLE IF NOT EXISTS source_grains (source_id VARCHAR, source_sheet VARCHAR, series_grain VARCHAR, note VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, PRIMARY KEY (source_id, source_sheet))",
   # Identities the publisher states -- in a footnote, or in the block header
   # itself -- and which therefore have to hold in what was parsed. The audit's
   # P1: "Add per-source aggregation identities only where the publisher defines
@@ -1307,6 +1312,11 @@ DATABASE_TABLE_STATEMENTS <- c(
   # the same inputs. release_id keeps that meaning -- "these input files" -- and
   # build_id answers the other question, "this database".
   "CREATE TABLE IF NOT EXISTS build_identity (build_id VARCHAR PRIMARY KEY, release_id VARCHAR, git_commit VARCHAR, git_dirty BOOLEAN, schema_version INTEGER, config_digest VARCHAR, code_digest VARCHAR, environment_digest VARCHAR, r_version VARCHAR, built_at TIMESTAMP)",
+  # The audit's R6-18. The database file is itself a distributed artifact, and
+  # nothing recorded its identity: the commit carrying a rebuilt .duckdb is
+  # necessarily later than the build that produced it, which reads as a
+  # provenance mismatch until someone works out why. This says so explicitly.
+  "CREATE TABLE IF NOT EXISTS distribution_artifacts (artifact_id VARCHAR PRIMARY KEY, build_id VARCHAR, data_release_id VARCHAR, artifact_path VARCHAR, size_bytes BIGINT, schema_version INTEGER, recorded_at TIMESTAMP)",
   # Run history, append-only. Re-running the same source bundle rewrites the
   # ingestion_runs row for that release, because a release is deterministic and
   # there is only one of it; an *attempt* is not, and the operational question
@@ -1503,6 +1513,16 @@ initialize_database <- function(con, root = NULL) {
   )
   fresh_bootstrap <- !length(existing_versions) && !existing_sources
   relocate_tables_to_storage_layers(con)
+  # Grain is keyed by (source_id, source_sheet) from schema 32, and a primary key
+  # cannot be widened in place. source_grains mirrors config/source_grains.csv and
+  # is rewritten from it on every run, so dropping it loses nothing that the file
+  # does not hold -- which is why this is a drop rather than a careful migration.
+  if (DBI::dbExistsTable(con, "source_grains") &&
+      !"source_sheet" %in% table_column_names(con, "source_grains")) {
+    DBI::dbExecute(con, paste0(
+      "DROP TABLE ", database_object_qualified_name(con, "source_grains")
+    ))
+  }
   statements <- DATABASE_TABLE_STATEMENTS
   invisible(lapply(statements, function(statement) {
     DBI::dbExecute(con, qualify_create_statement(statement))
@@ -1549,6 +1569,7 @@ initialize_database <- function(con, root = NULL) {
   ensure_table_column(con, "expected_observation_grid", "build_id", "VARCHAR")
   ensure_table_column(con, "observation_missingness", "vintage_id", "VARCHAR")
   ensure_table_column(con, "observation_missingness", "build_id", "VARCHAR")
+
   # A vintage can belong to many releases; source_files holds one column, and it
   # is the bundle that first ingested the file. Named as `release_id` beside an
   # observation it read as the release the query had selected, which for a reused
@@ -1788,6 +1809,9 @@ initialize_database <- function(con, root = NULL) {
   # two promotion gates that pass vacuously while the registers are empty.
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 31")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (31, current_timestamp, 'Generated reports describe the attempt that produced them and are compared with the database beside them; the provenance and source-region queues are ranked by what they cost rather than by their size; a declared canonical membership must be comparable as well as equal; and a direct publisher panel may not reach an aggregate mart while its rows repeat every modelled dimension')")
+  }
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 32")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (32, current_timestamp, 'Per-worksheet grain overrides, per-observation formula and hidden-row provenance, hash-based source selection for every source, and a recorded distribution artifact identity')")
   }
 }
 

@@ -12,7 +12,8 @@ esquema 24 una release además tiene un ciclo de vida propio en `audit.releases`
 
 | Archivo | Registra | Estado |
 |---|---|---|
-| `REVISION_AUDITORIA_5_P0_P1_P2.md` | Quinta auditoría técnica, P0/P1/P2 — esquemas 27, 28 y 29 | **Vigente** |
+| `REVISION_AUDITORIA_6_P0_P1_P2.md` | Sexta auditoría técnica, P0/P1/P2 — esquemas 30, 31 y 32 | **Vigente** |
+| `REVISION_AUDITORIA_5_P0_P1_P2.md` | Quinta auditoría técnica, P0/P1/P2 — esquemas 27, 28 y 29 | Histórico |
 | `REVISION_AUDITORIA_4_P0_P1_P2.md` | Cuarta auditoría técnica, P0/P1/P2 — esquemas 24, 25 y 26 | Histórico |
 | `REVISION_AUDITORIA_3_P0_P1_P2.md` | Tercera auditoría, P0/P1/P2 — esquemas 22 y 23 | Histórico |
 | `REVISION_AUDITORIA_2_P0_P1_P2.md` | Segunda auditoría, P0/P1/P2 | Histórico |

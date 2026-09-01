@@ -1,4 +1,4 @@
-# Paraguay macroeconomic database — governed pilot v29
+# Paraguay macroeconomic database — governed pilot v32
 
 ## About this project
 
@@ -20,7 +20,7 @@ What this buys a researcher or analyst working with Paraguayan macro/financial d
 - **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `release_blocked` produced error-severity flags, is never published through the research views, and stops the caller with a nonzero status.
 - **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
 
-The schema is at version 29. Five external technical audits have been worked through since v11; `CHANGELOG.md` records what each version changed and `docs/SCHEMA_MIGRATIONS.md` is regenerated from the migration registry on every run, so it describes the database in front of you rather than the one it was written against.
+The schema is at version 32. Six external technical audits have been worked through since v11; `CHANGELOG.md` records what each version changed and `docs/SCHEMA_MIGRATIONS.md` is regenerated from the migration registry on every run, so it describes the database in front of you rather than the one it was written against.
 
 ## What the three interfaces promise
 
@@ -28,14 +28,16 @@ Three access paths answer three different questions, and using the wrong one is 
 
 | Interface | Question it answers | What it guarantees |
 | --- | --- | --- |
-| `v_series_latest`, `series_latest()`, `v_*_latest`, `v_latest_raw_*` | "What does the publisher say now?" | The newest **accepted** vintage of each series. A staged or blocked release is invisible here; the `_all` twins exist for ingestion diagnostics and are not a research interface. |
-| `series_as_of_date(d)` | "What did the database say on date `d`?" | Point-in-time: only vintages available on or before `d`, ranked by the operator-recorded `available_at` where one exists and by publication date otherwise. |
+| `v_series_latest`, `v_*_latest`, `v_latest_raw_*` | "What is the current data?" | The newest **published** vintage of each series, **realized observations only**. A staged or blocked build is invisible here; the `_all` twins exist for ingestion diagnostics and are not a research interface. |
+| `v_publisher_statement_latest` | "What does the publisher currently say?" | The same, **including the 343 published projections**. Not an estimation sample. `marts.v_series_projections` is the projections on their own. |
+| `series_as_of_date(d)` | "What did the database say on date `d`?" | Point-in-time, realized observations only; `series_statement_as_of_date(d)` includes projections. **Snapshot-limited today** — see below. |
 | `marts.v_research_series` and the validated marts | "What has an economist signed off on?" | Only series carrying a complete research-eligibility record — unit, scale, frequency, stock/flow, nominal/real and seasonal adjustment. **This is currently 0 rows by design**: no series has been through that review yet. |
 
-Two consequences a researcher has to act on:
+Three things a researcher has to know:
 
-- **`v_series_latest` contains published projections.** 343 observations across 186 series are dated after the vintage that published them — the annex publishes forecast years to 2028, and FX operations to end-2026. They carry `observation_status = 'after_publication'` and are reachable on their own through `marts.v_series_projections`. An estimation sample must either filter `observation_status = 'observed'` or read `v_series_latest_observed`, which does it for you. The default keeps them because they are what the publisher published; it is not a look-ahead-safe default.
+- **The realized/statement split is new, and it is a breaking change.** Until schema 30, `v_series_latest` held the projections too and exposed `observation_status` beside them. That was defensible and the naming was not: `v_series_latest` is the obvious default, and a researcher who never read the column got 2028 forecasts in an estimation sample. Nothing is hidden — `v_publisher_statement_latest` is the full statement and `v_series_latest_observed` still works as an alias — but the default is now the safe one.
 - **`latest` is not `validated`.** Everything outside the marts is the publisher's number with its provenance attached, not a reviewed economic series. Units, stock/flow and comparability across sources have not been adjudicated.
+- **`as-of` is not real-time.** There is one retained vintage per source, no recorded revision, and no operator-recorded availability, so `series_as_of_date('2020-12-31')` returns **zero rows** despite history back to 1945. The mechanism is complete; the acquisition evidence is not. Do not make a real-time claim from this database until `config/source_vintages.csv` is filled in — `outputs/source_provenance_worklist.csv` says exactly what is missing per vintage.
 
 The sections below cover the quick start, the monthly replacement workflow, the full changelog of correctness fixes by version, the data model, and example queries.
 
@@ -68,15 +70,17 @@ source("run_update.R")
 - `outputs/observation_missingness_latest.csv` — every expected observation the publisher did not supply, and why
 - `outputs/workbook_behaviour_latest.csv` — cached formulas and hidden rows per worksheet, with the observations read from hidden rows
 
-Four further files are worklists for a reviewer rather than release diagnostics, and do not change between runs unless the evidence does: `outputs/canonical_core_candidates.csv`, `outputs/duplicate_series_candidates.csv`, `outputs/direct_panel_duplicate_keys.csv` and `outputs/source_region_review_worklist.csv`.
+Six further files are worklists for a reviewer rather than release diagnostics, and do not change between runs unless the evidence does: `outputs/canonical_core_candidates.csv`, `outputs/duplicate_series_candidates.csv`, `outputs/direct_panel_duplicate_keys.csv`, `outputs/source_region_review_worklist.csv`, `outputs/source_region_review_queue.csv` (the same cells ranked by the economic weight of the worksheet) and `outputs/source_provenance_worklist.csv` (which acquisition field is missing per vintage, and what it costs).
 
-The database is written to `database/paraguay_macro_pilot.duckdb`. Do not accept a run whose report says `release_blocked`: the release is left unaccepted, so `v_series_latest`, `series_as_of_date()` and every mart return nothing until the errors are resolved and the run repeats.
+The database is written to `database/paraguay_macro_pilot.duckdb`. A run whose report says `release_blocked` **does not withdraw the previous database**: since schema 30, publication is a pointer at an immutable per-build decision, and a build that fails never moves it. The last published build stays published while you read the flags and repeat the run.
 
 ## Monthly replacement workflow
 
 Each source has one folder under `input/current/`. Replace the workbook in the appropriate folder with the new official version and run `source("run_update.R")`. Keep the folder name and source registry entry stable; the official Excel filename may change.
 
-The pipeline ignores Excel lock files beginning with `~$`. For a single-file source, if two candidates remain it selects the newest modification time and raises a warning identifying the ignored file. Identical bytes reuse the existing content vintage and archive copy.
+The pipeline ignores Excel lock files beginning with `~$`. Identical bytes reuse the existing content vintage and archive copy.
+
+**Since schema 32 every source selects by the SHA-256 recorded in `config/source_vintages.csv`, and this changes one failure mode.** With one candidate file in a folder — the normal case, where you replace the workbook and remove the old one — the rule never fires and nothing is different. With **two** candidates the run now stops and names the fix, where it used to pick the newer modification time and warn. That is deliberate: modification time is when a file reached this disk, not when the publisher released it, and a wrong vintage becoming current on a warning is not a risk worth carrying. If you mean to keep both files, record the intended one's hash; if you are replacing one, remove the old one.
 
 The semantic reference workbook lives at:
 
@@ -86,7 +90,7 @@ input/current/bank_reference/Referencias_bancos_financieras.xlsx
 
 Replace it only when an official reviewed reference version changes. Its fifteen named Excel tables are identified primarily by worksheet and exact column signature; Excel’s autogenerated display name is used only to resolve an otherwise ambiguous match.
 
-## What v12–v29 repaired
+## What v12–v32 repaired
 
 Five external technical audits, worked through band by band. **`CHANGELOG.md` is the record**, newest first, with the measured effect of each change; `revisiones/` holds the per-audit notes, including what was declined and why. The sections below stop at v11 and are kept as written.
 
@@ -304,7 +308,7 @@ This creates `database/paraguay_macro_rebuilt_from_archive.duckdb` and never ove
 - `docs/VERIFICATION.md`: verified workbook facts, test targets and environment limitation.
 - `docs/SCHEMA_MIGRATIONS.md`: generated from the migration registry on every run — which version the database is at, what each step changed, and which sources it re-ingested.
 - `docs/AUDITORIA_REGRESIONES.md`: reconstructed R1–R35 status and acceptance gates.
-- `revisiones/REVISION_AUDITORIA_5_P0_P1_P2.md`: the fifth external audit, finding by finding — what was implemented, what was declined and why. The four earlier rounds sit beside it.
+- `revisiones/REVISION_AUDITORIA_6_P0_P1_P2.md`: the sixth external audit, finding by finding — what was implemented, what was declined and why. The five earlier rounds sit beside it.
 - `docs/REVISION_V11_BOOTSTRAP_AND_YEAR_AXIS.md`: direct mapping from the v10 execution report to v11 fixes.
 - `docs/REVISION_V10_RUNTIME_REPAIRS.md`: direct mapping from the v9 runtime report to v10 fixes.
 - `config/table_dictionary.csv`: machine-readable database object catalogue.

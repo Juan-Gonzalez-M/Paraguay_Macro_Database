@@ -277,7 +277,7 @@ testthat::test_that("revision logging and as-of extraction work on a second vint
     release_id = "release:test", source_id = "eve", vintage_id = c("v:first", "v:second")
   ), append = TRUE)
   stage_release(con, "release:test", 2L)
-  decide_release(con, "release:test", "accepted", 0L, 0L)
+  publish_test_release(con, "release:test", "accepted")
 
   item <- function(id, file) list(vintage_id = id, source_id = "eve", source_file = file)
   meta <- tibble::tibble(
@@ -346,7 +346,7 @@ testthat::test_that("revision logging and as-of extraction work on a second vint
   # from every research interface at once, and the unfiltered twin still holds
   # everything so the release can be diagnosed. Nothing is rebuilt to do this --
   # the views join through audit.releases, so one UPDATE is the whole decision.
-  decide_release(con, "release:test", "blocked", 1L, 0L)
+  publish_test_release(con, "release:test", "blocked", errors = 1L)
   testthat::expect_equal(DBI::dbGetQuery(
     con, "SELECT count(*) AS n FROM v_series_latest"
   )$n[[1]], 0L)
@@ -356,7 +356,7 @@ testthat::test_that("revision logging and as-of extraction work on a second vint
   testthat::expect_gt(DBI::dbGetQuery(
     con, "SELECT count(*) AS n FROM v_series_latest_all"
   )$n[[1]], 0L)
-  decide_release(con, "release:test", "accepted", 0L, 0L)
+  publish_test_release(con, "release:test", "accepted")
   testthat::expect_equal(DBI::dbGetQuery(
     con, "SELECT count(*) AS n FROM v_series_latest"
   )$n[[1]], 1L)
@@ -566,13 +566,15 @@ testthat::test_that("every object lives in the storage layer that says what it i
     "SELECT view_name FROM duckdb_views() WHERE schema_name = 'marts' AND NOT internal"
   ))$view_name
   testthat::expect_true("v_research_series" %in% marts)
-  # v_series_missingness joins them from schema 25, v_series_projections from
-  # schema 27 and the per-grain catalogues from schema 29: which expected periods
-  # are absent and why, which values are not outcomes, and how many series of each
-  # grain there actually are, are research-facing answers rather than diagnostics.
-  testthat::expect_true(all(grepl("^(v_mart_|v_catalogue_)", setdiff(
-    marts, c("v_research_series", "v_series_missingness", "v_series_projections")
-  ))))
+  # What belongs in marts is no longer a list kept in step by hand -- that list
+  # went stale twice. Since schema 30 every published object declares its scope in
+  # config/public_view_contract.csv, so the assertion is that every marts view is
+  # declared there and none of them is diagnostic.
+  contract <- read_public_view_contract(project_test_root)
+  testthat::skip_if(is.null(contract), "no public view contract")
+  declared <- contract[contract$schema_name == "marts", , drop = FALSE]
+  testthat::expect_setequal(marts, declared$object_name)
+  testthat::expect_true(all(declared$public_scope %in% c("current", "all")))
   testthat::expect_equal(DBI::dbGetQuery(con, paste(
     "SELECT count(*) AS n FROM duckdb_views()",
     "WHERE schema_name <> 'marts' AND view_name LIKE 'v\\_mart\\_%' ESCAPE '\\'"

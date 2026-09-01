@@ -14,40 +14,74 @@
 
 SERIES_GRAIN_VALUES <- c("scalar_series", "event", "entity_panel", "curve_panel")
 
+# Grain is declared per source and, since schema 32, may be overridden per
+# worksheet.
+#
+# One grain per source was too coarse and the audit's section 4.3 names the case:
+# direct_investment is declared scalar_series, and its Cuadro 5 and Cuadro 7 are
+# country panels -- 73 and 34 countries each, which is an entity panel wearing a
+# scalar catalogue's clothes. One workbook mixing structures is normal, and
+# forcing a single answer for it means the catalogue is wrong either way.
+#
+# The `*` wildcard in source_sheet is the source-level rule, matching the
+# convention config/table_status.csv and config/source_value_tokens.csv already
+# use. A worksheet row wins over the wildcard.
 apply_series_grain <- function(con, root) {
   path <- file.path(root, "config", "source_grains.csv")
-  required <- c("source_id", "series_grain", "note", "reviewed_by", "reviewed_at")
+  required <- c("source_id", "source_sheet", "series_grain", "note", "reviewed_by", "reviewed_at")
   if (!file.exists(path)) stop("Series grain configuration not found: ", path, call. = FALSE)
   grains <- readr::read_csv(path, col_types = readr::cols(.default = readr::col_character()))
   if (!identical(names(grains), required)) stop(
-    "Series grain guard: config/source_grains.csv columns changed or are reordered.", call. = FALSE
+    "Series grain guard: config/source_grains.csv columns changed or are reordered. Expected: ",
+    paste(required, collapse = ", "), call. = FALSE
   )
   invalid <- setdiff(unique(grains$series_grain), SERIES_GRAIN_VALUES)
   if (length(invalid)) stop(
     "Series grain guard: unsupported series_grain value(s): ", paste(invalid, collapse = "; "),
     ". Allowed: ", paste(SERIES_GRAIN_VALUES, collapse = ", "), ".", call. = FALSE
   )
-  if (anyDuplicated(grains$source_id)) stop(
-    "Series grain guard: duplicate source_id rows.", call. = FALSE
+  if (anyDuplicated(paste(grains$source_id, grains$source_sheet))) stop(
+    "Series grain guard: duplicate (source_id, source_sheet) rows.", call. = FALSE
   )
   registry_path <- file.path(root, "config", "source_registry.csv")
   if (file.exists(registry_path)) {
     registered <- readr::read_csv(registry_path, show_col_types = FALSE)$source_id
-    undeclared <- setdiff(registered, grains$source_id)
+    wildcard <- grains$source_id[grains$source_sheet == RECONCILIATION_UNBOUNDED]
+    undeclared <- setdiff(registered, wildcard)
     if (length(undeclared)) stop(
-      "Series grain guard: no grain declared for source(s): ",
+      "Series grain guard: no source-level grain declared for source(s): ",
       paste(undeclared, collapse = "; "), call. = FALSE
     )
   }
   replace_table_if_changed(con, "source_grains", grains %>% dplyr::transmute(
-    source_id, series_grain, note,
+    source_id, source_sheet, series_grain, note,
     reviewed_by = dplyr::coalesce(.data$reviewed_by, "unreviewed"),
     reviewed_at = suppressWarnings(lubridate::ymd(.data$reviewed_at, quiet = TRUE))
   ))
-  DBI::dbExecute(con, paste(
+  # The source-level rule first, then the worksheet overrides on top of it. A
+  # series is placed by the sheet it is published on, which the documented
+  # snapshot records per observation; a series appearing on several sheets keeps
+  # the source rule, because a grain that changes by worksheet is a property of
+  # the worksheet and not of that series.
+  DBI::dbExecute(con, paste0(
     "UPDATE dim_series SET series_grain = (",
-    "  SELECT g.series_grain FROM source_grains g WHERE g.source_id = dim_series.source_id)"
+    "  SELECT g.series_grain FROM source_grains g",
+    "  WHERE g.source_id = dim_series.source_id AND g.source_sheet = ",
+    sql_string(RECONCILIATION_UNBOUNDED), ")"
   ))
+  if (database_object_exists(con, "documented_series_snapshot")) {
+    DBI::dbExecute(con, paste0(
+      "UPDATE dim_series SET series_grain = o.series_grain FROM (",
+      "  SELECT s.series_id, any_value(g.series_grain) AS series_grain",
+      "  FROM ", project_qualified_name("documented_series_snapshot"), " s",
+      "  JOIN ", project_qualified_name("source_grains"), " g",
+      "    ON g.source_id = s.source_id AND g.source_sheet = s.source_sheet",
+      "  WHERE g.source_sheet <> ", sql_string(RECONCILIATION_UNBOUNDED),
+      "  GROUP BY 1 HAVING count(DISTINCT g.series_grain) = 1",
+      "    AND count(DISTINCT s.source_sheet) = 1) o",
+      " WHERE o.series_id = dim_series.series_id"
+    ))
+  }
   invisible(nrow(grains))
 }
 

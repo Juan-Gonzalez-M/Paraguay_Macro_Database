@@ -1,23 +1,25 @@
-source_id,series_grain,note,reviewed_by,reviewed_at
-banking_indicators,scalar_series,Published banking soundness indicators as time series.,unreviewed,
-banks,entity_panel,Bank-level statement and portfolio panel; held in raw tables rather than dim_series.,unreviewed,
-bank_reference,entity_panel,Institution reference dimensions for the bank and finance panels.,unreviewed,
-bcp_fx_daily,scalar_series,Daily central-bank FX purchase and sale measures.,unreviewed,
-compensatory_fx_sales,scalar_series,Monthly compensatory and complementary FX sales.,unreviewed,
-corporate_bond_curves,curve_panel,One series per currency/rating/maturity node of a yield curve; not a macro time series.,unreviewed,
-credit_survey,scalar_series,Quarterly credit-conditions survey response shares.,unreviewed,
-direct_investment,scalar_series,Direct investment positions and flows.,unreviewed,
-economic_annex,scalar_series,Statistical Annex macroeconomic tables.,unreviewed,
-eve,scalar_series,Expectations survey by concept and horizon.,unreviewed,
-exchange_houses,entity_panel,One series per exchange house and statement item.,unreviewed,
-exchange_rates,scalar_series,Nominal and real exchange-rate series.,unreviewed,
-financial,entity_panel,Finance-company statement and portfolio panel; held in raw tables.,unreviewed,
-financial_indicators,scalar_series,Financial system indicators; identities still positional pending remodelling.,unreviewed,
-fx_operations,scalar_series,FX operations by sector and frequency.,unreviewed,
-icc,scalar_series,Consumer confidence index components.,unreviewed,
-insurance_annex,scalar_series,Insurance sector annex tables.,unreviewed,
-interbank_market,event,One row per dated interbank operation rather than a periodic measure.,unreviewed,
-liquidity_facility,event,One row per dated liquidity-facility operation.,unreviewed,
-lrm_auctions,event,One row per monetary-regulation auction tender.,unreviewed,
-payments,scalar_series,Payment-system volumes and values.,unreviewed,
-securities_trades,event,One row per securities transaction; held in a snapshot table.,unreviewed,
+source_id,source_sheet,series_grain,note,reviewed_by,reviewed_at
+bank_reference,*,entity_panel,Institution reference dimensions for the bank and finance panels.,unreviewed,NA
+banking_indicators,*,scalar_series,Published banking soundness indicators as time series.,unreviewed,NA
+banks,*,entity_panel,Bank-level statement and portfolio panel; held in raw tables rather than dim_series.,unreviewed,NA
+bcp_fx_daily,*,scalar_series,Daily central-bank FX purchase and sale measures.,unreviewed,NA
+compensatory_fx_sales,*,scalar_series,Monthly compensatory and complementary FX sales.,unreviewed,NA
+corporate_bond_curves,*,curve_panel,One series per currency/rating/maturity node of a yield curve; not a macro time series.,unreviewed,NA
+credit_survey,*,scalar_series,Quarterly credit-conditions survey response shares.,unreviewed,NA
+direct_investment,*,scalar_series,Direct investment positions and flows.,unreviewed,NA
+direct_investment,Cuadro 5,entity_panel,"Foreign direct investment stock by country of origin: 73 country series per quarter and year, an entity panel rather than 73 macroeconomic concepts.",unreviewed,NA
+direct_investment,Cuadro 7,entity_panel,"Foreign direct investment stock by country and economic activity: 34 country-activity series, an entity panel.",unreviewed,NA
+economic_annex,*,scalar_series,Statistical Annex macroeconomic tables.,unreviewed,NA
+eve,*,scalar_series,Expectations survey by concept and horizon.,unreviewed,NA
+exchange_houses,*,entity_panel,One series per exchange house and statement item.,unreviewed,NA
+exchange_rates,*,scalar_series,Nominal and real exchange-rate series.,unreviewed,NA
+financial,*,entity_panel,Finance-company statement and portfolio panel; held in raw tables.,unreviewed,NA
+financial_indicators,*,scalar_series,Financial system indicators; identities still positional pending remodelling.,unreviewed,NA
+fx_operations,*,scalar_series,FX operations by sector and frequency.,unreviewed,NA
+icc,*,scalar_series,Consumer confidence index components.,unreviewed,NA
+insurance_annex,*,scalar_series,Insurance sector annex tables.,unreviewed,NA
+interbank_market,*,event,One row per dated interbank operation rather than a periodic measure.,unreviewed,NA
+liquidity_facility,*,event,One row per dated liquidity-facility operation.,unreviewed,NA
+lrm_auctions,*,event,One row per monetary-regulation auction tender.,unreviewed,NA
+payments,*,scalar_series,Payment-system volumes and values.,unreviewed,NA
+securities_trades,*,event,One row per securities transaction; held in a snapshot table.,unreviewed,NA

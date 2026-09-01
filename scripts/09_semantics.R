@@ -735,6 +735,46 @@ expected_period_grid <- function(from, to, frequency) {
 # early when there is nothing to compute. A database with no documented data then
 # had no missingness mart at all, and the release lint could not check a view that
 # did not exist. A published interface should exist whether or not it has rows.
+# The audit's R6-13: "expose derived per-observation flags" for formula and
+# hidden-row provenance.
+#
+# Schema 29 recorded both per worksheet, which is the right grain for the drift
+# test -- a sheet that has begun hiding a block has changed behaviour -- and the
+# wrong grain for a researcher holding a number. "15,403 observations come from
+# hidden rows" is a fact about the database; "is *this* value one of them" was a
+# question you could only answer by unpacking a range yourself.
+#
+# Derived, not stored: the hidden ranges are on the worksheet and the coordinate
+# is on the observation, so the join is the answer and copying a flag onto 1.2
+# million rows would only create something to keep in step.
+create_observation_behaviour_view <- function(con) {
+  if (!database_object_exists(con, "documented_series_snapshot")) return(invisible(FALSE))
+  if (!database_object_exists(con, "source_sheets")) return(invisible(FALSE))
+  if (!"hidden_rows" %in% table_column_names(con, "source_sheets")) return(invisible(FALSE))
+  create_project_view(con, "v_observation_source_behaviour", paste(
+    "WITH spans AS (",
+    "  SELECT source_id, sheet_name, vintage_id,",
+    "         TRY_CAST(split_part(span, '-', 1) AS BIGINT) AS row_from,",
+    "         TRY_CAST(CASE WHEN span LIKE '%-%' THEN split_part(span, '-', 2)",
+    "                       ELSE span END AS BIGINT) AS row_to",
+    "  FROM (SELECT source_id, sheet_name, vintage_id,",
+    "               unnest(string_split(hidden_rows, ';')) AS span",
+    "        FROM source_sheets WHERE hidden_rows IS NOT NULL))",
+    "SELECT o.series_id, o.period, o.vintage_id, o.source_id, o.source_sheet,",
+    "       o.source_row, o.source_column,",
+    "       EXISTS (SELECT 1 FROM spans s",
+    "               WHERE s.vintage_id = o.vintage_id AND s.sheet_name = o.source_sheet",
+    "                 AND o.source_row BETWEEN s.row_from AND s.row_to) AS from_hidden_row,",
+    "       coalesce(h.formula_cells, 0) AS sheet_formula_cells,",
+    "       h.hidden_rows AS sheet_hidden_rows, h.hidden_columns AS sheet_hidden_columns",
+    "FROM documented_series_snapshot o",
+    "LEFT JOIN source_sheets h",
+    "  ON h.vintage_id = o.vintage_id AND h.sheet_name = o.source_sheet",
+    "WHERE o.vintage_id IN (", accepted_release_vintages_sql(), ")"
+  ), schema = "marts")
+  invisible(TRUE)
+}
+
 create_missingness_views <- function(con) {
   if (!database_object_exists(con, "observation_missingness")) return(invisible(FALSE))
   # Published, so it carries the release boundary like everything else in marts:
@@ -759,8 +799,43 @@ create_missingness_views <- function(con) {
   invisible(TRUE)
 }
 
+observation_missingness_is_current <- function(con, build_id) {
+  if (is.na(build_id)) return(FALSE)
+  if (!DBI::dbExistsTable(con, "expected_observation_grid")) return(FALSE)
+  if (!"build_id" %in% table_column_names(con, "expected_observation_grid")) return(FALSE)
+  stored <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS rows, count(DISTINCT build_id) AS builds,",
+    "min(build_id) AS build_id FROM",
+    project_qualified_name("expected_observation_grid")
+  ))
+  if (!stored$rows[[1]] || stored$builds[[1]] != 1L) return(FALSE)
+  identical(stored$build_id[[1]], build_id)
+}
+
 apply_observation_missingness <- function(con, root = NULL, build_id = NA_character_) {
   if (!DBI::dbExistsTable(con, "observation_missingness")) return(invisible(0L))
+  # The audit's R6-16: this phase rebuilds a 2.4-million-row grid on every run and
+  # is 19 of the 36 seconds a reuse build takes. It is skipped when it provably
+  # cannot produce a different answer.
+  #
+  # "Provably" is doing real work, and the build identity is what makes it hold.
+  # build_id hashes the release -- itself the hash of every source file -- plus
+  # the code, configuration, environment and schema version. So a new vintage, an
+  # edited token register, a changed frequency declaration or an edit to this
+  # function all change it, and all force a full rebuild.
+  #
+  # A guard on "did any source change" would not have been enough: a run with
+  # every source reused and new missingness logic would have kept the old answer,
+  # which is how schema 22 first failed to land.
+  #
+  # The audit's own instruction was not to optimise before the release and
+  # version semantics were right. They are now: the grid carries the build that
+  # computed it, which is what makes this checkable at all.
+  if (observation_missingness_is_current(con, build_id)) {
+    return(invisible(DBI::dbGetQuery(con, paste(
+      "SELECT count(*) AS n FROM", project_qualified_name("observation_missingness")
+    ))$n[[1]]))
+  }
   DBI::dbExecute(con, "DELETE FROM expected_observation_grid")
   DBI::dbExecute(con, "DELETE FROM observation_missingness")
   # The token register is loaded before the classification that reads it, so a
@@ -945,6 +1020,7 @@ apply_observation_missingness <- function(con, root = NULL, build_id = NA_charac
     "  WHERE m.series_id = g.series_id AND m.period = g.period)"
   ))
   create_missingness_views(con)
+  create_observation_behaviour_view(con)
   if (!is.null(root)) readr::write_csv(
     DBI::dbGetQuery(con, paste(
       "SELECT source_id, source_sheet, reason, count(*) AS periods,",
