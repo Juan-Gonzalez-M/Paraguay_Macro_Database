@@ -473,16 +473,115 @@ validate_canonical_membership_agreement <- function(con, release_id, tolerance =
     "WHERE NOT pf.is_deleted AND NOT af.is_deleted",
     "GROUP BY 1, 2 HAVING count(*) FILTER (WHERE abs(pf.value - af.value) >", tolerance, ") > 0"
   )), error = function(e) NULL)
-  if (is.null(disagreements) || !nrow(disagreements)) return(invisible(TRUE))
+  if (!is.null(disagreements) && nrow(disagreements)) {
+    insert_quality_flag(
+      con, release_id, "error", "canonical_alias_disagrees", NA_character_,
+      paste0(
+        nrow(disagreements), " canonical alias(es) disagree with their primary series on periods ",
+        "where both publish a value, so they are not the same figure and the membership is wrong: ",
+        paste(head(paste0(
+          disagreements$canonical_series_id, " vs ", disagreements$alias_series_id, " (",
+          disagreements$disagreeing_periods, " of ", disagreements$overlapping_periods, ")"
+        ), 5), collapse = "; ")
+      )
+    )
+    return(invisible(FALSE))
+  }
+  validate_canonical_membership_comparability(con, release_id)
+}
+
+# The audit's test 8, the part value equality does not cover.
+#
+# Two series can agree on every overlapping period and still not be the same
+# economic quantity: one in millions and one in units agree at zero, a monthly
+# and a quarterly series agree wherever the quarter ends, and an alias that never
+# overlaps its primary at all agrees vacuously. Declaring a membership is
+# asserting comparability, so the release asserts it too.
+validate_canonical_membership_comparability <- function(con, release_id) {
+  if (!database_object_exists(con, "map_canonical_series")) return(invisible(FALSE))
+  members <- tryCatch(DBI::dbGetQuery(con, paste(
+    "SELECT m.canonical_series_id, m.relationship, m.series_id,",
+    "d.unit_code, d.scale_multiplier, d.frequency, d.stock_flow, d.nominal_real",
+    "FROM", project_qualified_name("map_canonical_series"), "m",
+    "JOIN", project_qualified_name("dim_series"), "d USING (series_id)"
+  )), error = function(e) NULL)
+  if (is.null(members) || !nrow(members)) return(invisible(TRUE))
+  problems <- character()
+  for (canonical in unique(members$canonical_series_id)) {
+    group <- members[members$canonical_series_id == canonical, , drop = FALSE]
+    # A fragment covers a different span by definition, so only aliases are held
+    # to the frequency and unit of their primary.
+    comparable <- group[group$relationship %in% c("primary", "alias"), , drop = FALSE]
+    if (nrow(comparable) < 2L) next
+    for (field in c("unit_code", "scale_multiplier", "frequency")) {
+      values <- unique(comparable[[field]])
+      if (length(values) > 1L) problems <- c(problems, paste0(
+        canonical, " declares aliases differing in ", field, " (",
+        paste(values, collapse = " vs "), ")"
+      ))
+    }
+  }
+  # An alias with no overlapping period has never been tested against its primary.
+  vacuous <- tryCatch(DBI::dbGetQuery(con, paste(
+    "WITH p AS (SELECT canonical_series_id, series_id FROM",
+    project_qualified_name("map_canonical_series"), "WHERE relationship = 'primary'),",
+    "a AS (SELECT canonical_series_id, series_id FROM",
+    project_qualified_name("map_canonical_series"), "WHERE relationship = 'alias')",
+    "SELECT p.canonical_series_id, a.series_id AS alias_series_id",
+    "FROM p JOIN a USING (canonical_series_id)",
+    "WHERE NOT EXISTS (",
+    "  SELECT 1 FROM", project_qualified_name("fact_series_events"), "pf",
+    "  JOIN", project_qualified_name("fact_series_events"), "af",
+    "    ON af.series_id = a.series_id AND af.period = pf.period AND NOT af.is_deleted",
+    "  WHERE pf.series_id = p.series_id AND NOT pf.is_deleted)"
+  )), error = function(e) NULL)
+  if (!is.null(vacuous) && nrow(vacuous)) problems <- c(problems, paste0(
+    nrow(vacuous), " alias(es) share no period with their primary, so the equality that ",
+    "justifies the membership has never been tested: ",
+    paste(head(paste0(vacuous$canonical_series_id, "/", vacuous$alias_series_id), 3), collapse = "; ")
+  ))
+  if (!length(problems)) return(invisible(TRUE))
   insert_quality_flag(
-    con, release_id, "error", "canonical_alias_disagrees", NA_character_,
+    con, release_id, "error", "canonical_membership_incomparable", NA_character_,
     paste0(
-      nrow(disagreements), " canonical alias(es) disagree with their primary series on periods ",
-      "where both publish a value, so they are not the same figure and the membership is wrong: ",
-      paste(head(paste0(
-        disagreements$canonical_series_id, " vs ", disagreements$alias_series_id, " (",
-        disagreements$disagreeing_periods, " of ", disagreements$overlapping_periods, ")"
-      ), 5), collapse = "; ")
+      "A declared canonical membership asserts the members are the same economic quantity, and ",
+      "these are not comparable as declared: ", paste(head(problems, 5), collapse = "; ")
+    )
+  )
+  invisible(FALSE)
+}
+
+# The audit's test 11, and its R6-09.
+#
+# The direct panels have unique physical keys and 411 groups of rows that repeat
+# every dimension the database models -- INHAB/REHAB pairs, conflicting totals
+# published on separate lines. Physical identity is not economic identity, and
+# summing a panel whose rows are not economically distinguished double-counts by
+# an amount nobody can bound. The rows are kept, the duplicates are reported, and
+# the panel stays out of any aggregate mart until someone identifies the missing
+# dimension from the publisher's documentation.
+validate_direct_panel_aggregation_safety <- function(con, release_id) {
+  panels <- DBI::dbGetQuery(con, paste(
+    "SELECT table_name FROM information_schema.tables",
+    "WHERE table_schema = 'raw' AND table_name LIKE 'raw\\_%' ESCAPE '\\'"
+  ))$table_name
+  if (!length(panels)) return(invisible(TRUE))
+  marts <- DBI::dbGetQuery(con, paste(
+    "SELECT view_name, sql FROM duckdb_views() WHERE schema_name = 'marts' AND NOT internal"
+  ))
+  if (!nrow(marts)) return(invisible(TRUE))
+  reached <- marts$view_name[vapply(marts$sql, function(body) any(vapply(
+    panels, function(panel) grepl(panel, body, fixed = TRUE), logical(1)
+  )), logical(1))]
+  if (!length(reached)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "direct_panel_in_aggregate_mart", NA_character_,
+    paste0(
+      length(reached), " mart view(s) read a direct publisher panel: ",
+      paste(sort(reached), collapse = ", "),
+      ". Those panels contain rows that repeat every modelled dimension, so aggregating them ",
+      "double-counts. See outputs/direct_panel_duplicate_keys.csv; the missing dimension has to ",
+      "come from the publisher's documentation before a mart may use the panel."
     )
   )
   invisible(FALSE)

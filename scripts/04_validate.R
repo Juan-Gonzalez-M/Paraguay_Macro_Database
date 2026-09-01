@@ -1476,6 +1476,51 @@ validate_observation_missingness <- function(con, release_id) {
 # a source is provisional -- it is operator work, not a parser outcome -- and an
 # error the moment someone claims a worksheet of that source is validated, since
 # a research product nobody can re-acquire is not reproducible.
+# The audit's test 6: "compare every *_latest.csv count and distinct check list to
+# the live latest attempt after all phases finish".
+#
+# The flag report was written before the statistical screens ran, so the file an
+# auditor opened had 33 rows where the database had 35 -- and nothing said so.
+# The ordering is fixed; this is what keeps it fixed. Run at the very end, after
+# the report has been written, and comparing counts rather than trusting them.
+validate_report_agreement <- function(con, release_id, root) {
+  if (is.null(root)) return(invisible(FALSE))
+  attempt_id <- current_attempt_id(con, release_id)
+  checks <- list(
+    list(
+      file = "quality_flags_latest.csv",
+      n = DBI::dbGetQuery(con, paste0(
+        "SELECT count(*) AS n FROM ", project_qualified_name("quality_flags"),
+        " WHERE ", attempt_flags_predicate(con, release_id)
+      ))$n[[1]],
+      label = "quality flags raised by this attempt"
+    ),
+    list(
+      file = "observation_missingness_latest.csv",
+      n = NA_integer_, label = "missingness rows"
+    )
+  )
+  mismatches <- character()
+  for (check in checks) {
+    path <- file.path(root, "outputs", check$file)
+    if (!file.exists(path) || is.na(check$n)) next
+    rows <- nrow(readr::read_csv(path, show_col_types = FALSE, progress = FALSE))
+    if (!identical(as.integer(rows), as.integer(check$n))) mismatches <- c(mismatches, paste0(
+      check$file, " holds ", rows, " row(s) where the database holds ", check$n,
+      " ", check$label
+    ))
+  }
+  if (!length(mismatches)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "warning", "report_disagrees_with_database", NA_character_,
+    paste0(
+      "A generated report does not describe the database beside it, which is how a reader is ",
+      "misled by a file that looks authoritative: ", paste(mismatches, collapse = "; ")
+    )
+  )
+  invisible(FALSE)
+}
+
 validate_source_provenance <- function(con, release_id, root) {
   if (!database_object_exists(con, "source_provenance")) return(invisible(FALSE))
   status <- DBI::dbGetQuery(con, paste(
@@ -1490,6 +1535,48 @@ validate_source_provenance <- function(con, release_id, root) {
   if (!is.null(root)) readr::write_csv(
     status, file.path(root, "outputs", "source_provenance_status.csv")
   )
+  # The audit's R6-04. Reporting that provenance is incomplete has not moved it
+  # in three rounds, because "22 vintages are incomplete" is not a task anybody
+  # can pick up. This says, per vintage, exactly which fields are missing and what
+  # the consequence is -- and it names available_at separately from the other
+  # four, because that is the one blocking every point-in-time claim the database
+  # makes. The values are the operator's to supply; none is invented here.
+  if (!is.null(root)) {
+    fields <- c("official_url", "release_identifier", "retrieved_at", "retrieval_method")
+    available <- DBI::dbGetQuery(con, paste(
+      "SELECT vintage_id, available_at FROM", project_qualified_name("source_provenance")
+    ))
+    status$available_at <- available$available_at[match(status$vintage_id, available$vintage_id)]
+    dated <- DBI::dbGetQuery(con, paste(
+      "SELECT vintage_id, publication_date, publication_date_source FROM",
+      project_qualified_name("source_files")
+    ))
+    worklist <- tibble(
+      source_id = status$source_id, vintage_id = status$vintage_id,
+      missing_fields = vapply(seq_len(nrow(status)), function(i) {
+        absent <- fields[vapply(fields, function(f) is.na(status[[f]][[i]]), logical(1))]
+        if (is.na(status$available_at[[i]])) absent <- c("available_at", absent)
+        paste(absent, collapse = "; ")
+      }, character(1)),
+      publication_date = dated$publication_date[match(status$vintage_id, dated$vintage_id)],
+      publication_date_source = dated$publication_date_source[
+        match(status$vintage_id, dated$vintage_id)
+      ]
+    )
+    worklist$consequence <- ifelse(
+      grepl("available_at", worklist$missing_fields, fixed = TRUE) &
+        worklist$publication_date_source %in% c("content_max_period", "pending_content_inference"),
+      "as-of ranking falls back to a date derived from the content maximum, which is the reference period and not an availability fact",
+      ifelse(
+        grepl("available_at", worklist$missing_fields, fixed = TRUE),
+        "as-of ranking falls back to the publication date read from the filename",
+        "the vintage cannot be independently re-acquired"
+      )
+    )
+    worklist <- worklist[nzchar(worklist$missing_fields), , drop = FALSE]
+    worklist <- worklist[order(worklist$source_id), , drop = FALSE]
+    readr::write_csv(worklist, file.path(root, "outputs", "source_provenance_worklist.csv"))
+  }
   if (!nrow(incomplete)) return(invisible(TRUE))
   validated_sources <- if (database_object_exists(con, "table_status")) {
     DBI::dbGetQuery(con, paste(
@@ -2175,6 +2262,7 @@ validate_database <- function(con, manifest, release_id, root, db_path = NULL) {
   validate_research_eligibility_metadata(con, release_id)
   validate_workbook_behaviour(con, release_id, root)
   validate_canonical_membership_agreement(con, release_id)
+  validate_direct_panel_aggregation_safety(con, release_id)
   # The published interface, checked before the release gate reads the flags.
   validate_stored_object_qualification(con, release_id)
   validate_published_release_filter(con, release_id, root)
@@ -2258,22 +2346,29 @@ write_quality_flag_report <- function(con, release_id, root) {
   invisible(flags)
 }
 
-write_update_report <- function(con, release_id, root) {
+write_update_report <- function(con, release_id, root, attempt_id = NULL) {
   sources <- DBI::dbGetQuery(con, paste0(
     "SELECT f.source_id, f.source_file, f.vintage_id, f.publication_date, f.publication_date_source, f.ingestion_status FROM source_files f JOIN release_sources r USING (vintage_id) WHERE r.release_id = ", sql_string(release_id), " ORDER BY f.source_id"
   ))
   coverage <- if (file.exists(file.path(root, "outputs", "semantic_coverage_latest.csv"))) readr::read_csv(file.path(root, "outputs", "semantic_coverage_latest.csv"), show_col_types = FALSE) else tibble()
   mapping_path <- file.path(root, "outputs", "documented_financial_coverage_latest.csv")
   mappings <- if (file.exists(mapping_path)) readr::read_csv(mapping_path, show_col_types = FALSE) else tibble()
+  if (is.null(attempt_id)) attempt_id <- current_attempt_id(con, release_id)
+  flag_predicate <- if (is.na(attempt_id)) paste0("release_id = ", sql_string(release_id))
+                    else paste0("attempt_id = ", sql_string(attempt_id))
   flags <- DBI::dbGetQuery(con, paste0(
     "SELECT severity, source_id, check_name, detail FROM quality_flags WHERE ",
-    attempt_flags_predicate(con, release_id), " ORDER BY severity, source_id"
+    flag_predicate, " ORDER BY severity, source_id"
   ))
   # Scoped by attempt, not by release. A report headed "this update" was reading
   # every timing ever recorded for the bundle -- 488 rows across eight attempts
   # where the run it described had 55 -- so the same stage appeared repeatedly
   # with the durations of runs that were not this one. The audit's R6-11.
-  attempt_id <- current_attempt_id(con, release_id)
+  # attempt_id is passed in, not looked up: this runs after
+  # close_ingestion_attempt(), so the attempt is no longer the open one and a
+  # lookup returns nothing -- which fell back to release_id and put 696 timing
+  # rows from eight attempts into a report headed "this update", the same stage
+  # appearing over and over.
   timings <- DBI::dbGetQuery(con, paste0(
     "SELECT source_id, stage, elapsed_seconds FROM ingestion_stage_timings WHERE ",
     if (is.na(attempt_id)) paste0("release_id = ", sql_string(release_id))

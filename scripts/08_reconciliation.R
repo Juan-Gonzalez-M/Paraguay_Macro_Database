@@ -652,6 +652,31 @@ create_source_region_views <- function(con) {
 # The reviewer's worklist, ordered by how much is unaccounted for, with the
 # column ranges each worksheet's unreviewed cells occupy so the question can be
 # asked at a coordinate rather than in the abstract.
+#
+# The audit's R6-07 asks for one thing more: priority "by economically important
+# table rather than cell count alone". 6,522 cells sorted by volume puts the LRM
+# auction year-sheets at the top, and nobody should review those before the price
+# index. So the queue carries the worksheet's economic weight beside its size --
+# how many published series it feeds, and whether it is a table anyone is waiting
+# on -- and orders by that.
+#
+# Weight is read from the reviewed domain register, not guessed from labels: a
+# worksheet already mapped to a macro domain is one a researcher will reach for.
+source_region_review_weight <- function(con) {
+  if (!database_object_exists(con, "documented_series_snapshot")) {
+    return(tibble(source_id = character(), source_sheet = character(),
+                  published_series = integer(), domain = character()))
+  }
+  series <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id, source_sheet, count(DISTINCT series_id) AS published_series",
+    "FROM", project_qualified_name("documented_series_snapshot"), "GROUP BY 1, 2"
+  ))
+  domains <- if (database_object_exists(con, "table_domains")) DBI::dbGetQuery(con, paste(
+    "SELECT source_id, source_sheet, domain FROM", project_qualified_name("table_domains")
+  )) else tibble(source_id = character(), source_sheet = character(), domain = character())
+  dplyr::left_join(series, domains, by = c("source_id", "source_sheet"))
+}
+
 write_source_region_report <- function(con, root, classified = NULL) {
   if (is.null(classified)) return(invisible(NULL))
   report <- classified %>%
@@ -666,6 +691,26 @@ write_source_region_report <- function(con, root, classified = NULL) {
     ) %>%
     dplyr::arrange(dplyr::desc(.data$unreviewed_cells), dplyr::desc(.data$numeric_cells_outside_region))
   readr::write_csv(report, file.path(root, "outputs", "source_region_completeness.csv"))
+  weight <- source_region_review_weight(con)
+  queue <- report[report$unreviewed_cells > 0, , drop = FALSE] %>%
+    dplyr::left_join(weight, by = c("source_id", "source_sheet")) %>%
+    dplyr::mutate(
+      published_series = dplyr::coalesce(.data$published_series, 0L),
+      domain = dplyr::coalesce(.data$domain, "undeclared"),
+      # A worksheet with a reviewed macro domain outranks one without, and within
+      # each the number of published series that depend on it outranks the number
+      # of cells nobody has looked at. Cell count breaks ties and no more.
+      review_priority = dplyr::case_when(
+        .data$domain != "undeclared" & .data$published_series > 0 ~ "1_domain_mapped",
+        .data$published_series > 0 ~ "2_publishes_series",
+        TRUE ~ "3_no_published_series"
+      )
+    ) %>%
+    dplyr::arrange(
+      .data$review_priority, dplyr::desc(.data$published_series),
+      dplyr::desc(.data$unreviewed_cells)
+    )
+  readr::write_csv(queue, file.path(root, "outputs", "source_region_review_queue.csv"))
   readr::write_csv(
     classified[classified$classification == "unreviewed", , drop = FALSE],
     file.path(root, "outputs", "source_region_review_worklist.csv")

@@ -276,7 +276,17 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
   phase("quality_screens", run_quality_screens(con, release_id, root))
   # And the flag report is written after them, so the file describes every check
   # that ran rather than every check that had run when validation ended.
-  phase("quality_flag_report", write_quality_flag_report(con, release_id, root))
+  #
+  # Written, then compared with the database, then written again. The comparison
+  # is the audit's test 6 and its subject is the file, so it can only run once the
+  # file exists; and if it finds a disagreement it raises a flag, which the file
+  # must then contain. The second write costs nothing and makes the file
+  # authoritative whatever the first one caught.
+  phase("quality_flag_report", {
+    write_quality_flag_report(con, release_id, root)
+    validate_report_agreement(con, release_id, root)
+    write_quality_flag_report(con, release_id, root)
+  })
   flags <- DBI::dbGetQuery(con, paste0(
     "SELECT severity FROM quality_flags WHERE attempt_id = ", sql_string(attempt_id)
   ))
@@ -318,7 +328,10 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
   # The attempt row was opened before any work began; this closes it.
   close_ingestion_attempt(con, attempt_id, run_status, errors, warnings, build$build_id)
   attempt_closed <- TRUE
-  write_update_report(con, release_id, root)
+  # Every phase measured so far reaches the report; the ones after it cannot,
+  # since a report cannot time its own writing.
+  flush_release_timings()
+  write_update_report(con, release_id, root, attempt_id)
   catalogue <- DBI::dbGetQuery(con, paste0(
     "SELECT s.* FROM source_sheets s JOIN release_sources r USING (vintage_id) WHERE r.release_id = ",
     sql_string(release_id), " ORDER BY source_id, sheet_name"
