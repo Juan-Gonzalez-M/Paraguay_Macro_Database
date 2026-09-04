@@ -87,6 +87,44 @@ RECONCILIATION_UNBOUNDED <- "*"
 RECONCILIATION_LOWER_SENTINEL <- -1e15
 RECONCILIATION_UPPER_SENTINEL <- 1e15
 
+# Resolving a register keyed (source_id, source_sheet) with '*' as the
+# source-level rule, exactly once.
+#
+# The seventh audit's F-06. `config/source_grains.csv` has been keyed by
+# worksheet since schema 32, and write_coverage_dashboard() still joined it on
+# source_id alone -- so every worksheet of a source with N rules appeared N
+# times. direct_investment has three, and its seven worksheets each appeared
+# three times under contradictory grains: 256 dashboard rows for 242 worksheets,
+# and any sum over the file triple-counted direct investment.
+#
+# The idiom for doing this correctly was already in the same function, sixteen
+# lines below the defect, written for table_status. Copying it a third time is
+# how the second copy came to be wrong, so it is written once here.
+#
+# It also repairs the copy it replaces, which was wrong in a quieter way: the
+# inner select dropped the register's own source_sheet, so the tie-break
+# `CASE WHEN source_sheet = '*'` was reading the *worksheet's* name, which is
+# never '*'. The window's ordering was therefore constant and the winner
+# arbitrary whenever a source carried both a wildcard and an exact rule -- five
+# sources and fifteen worksheets do. It is latent today because all fifteen
+# exact rules agree with their wildcard on status, parser_claim and reviewed_by;
+# it stops being latent the first time someone overrides one.
+wildcard_precedence_join_sql <- function(register, columns, keys_sql,
+                                         wildcard = RECONCILIATION_UNBOUNDED) {
+  selected <- paste(paste0("r.", columns), collapse = ", ")
+  paste(
+    "SELECT source_id, source_sheet,", paste(columns, collapse = ", "),
+    "FROM (SELECT x.source_id, x.source_sheet,", selected, ",",
+    "  row_number() OVER (PARTITION BY x.source_id, x.source_sheet",
+    "    ORDER BY CASE WHEN r.source_sheet =", sql_string(wildcard), "THEN 1 ELSE 0 END,",
+    "             r.source_sheet) AS precedence",
+    "FROM (", keys_sql, ") x",
+    "JOIN", register, "r ON r.source_id = x.source_id",
+    " AND (r.source_sheet = x.source_sheet OR r.source_sheet =", sql_string(wildcard), "))",
+    "WHERE precedence = 1"
+  )
+}
+
 read_reconciliation_cell_rules <- function(root) {
   read_cell_rule_register(
     file.path(root, "config", "reconciliation_cell_rules.csv"),
@@ -293,6 +331,94 @@ compute_table_reconciliation <- function(con) {
   ))
 }
 
+# --- CSV row accounting ------------------------------------------------------
+# The audit's F-05 and section 11.3, in the same table as the worksheet
+# accounting so that one report answers "is every part of this source accounted
+# for" for all 22 of them.
+#
+#   source data rows = accepted rows + rejected rows + documented exclusions
+#
+# Everything it needs is already durable, which is what makes this computable
+# release-wide instead of at parse time -- and it has to be release-wide, because
+# apply_table_reconciliation() rebuilds this table every run and an unchanged
+# source is never re-parsed:
+#
+#   source rows  raw.source_sheets content bounds, minus the header row
+#   accepted     the snapshot named by config/long_csv_contracts.csv
+#   rejected     staging.discarded_rows, which compute_table_reconciliation()
+#                already reads for the worksheet path
+#
+# The column names are the worksheet path's -- `numeric_source_cells`,
+# `accepted_observations`. Read them as "what the source offered" and "what was
+# taken from it"; the unit is a row here and a cell there.
+compute_csv_row_reconciliation <- function(con, root, release_id) {
+  path <- file.path(root, "config", "long_csv_contracts.csv")
+  if (!file.exists(path)) return(tibble())
+  contracts <- readr::read_csv(
+    path, show_col_types = FALSE, col_types = readr::cols(.default = readr::col_character())
+  )
+  rows <- list()
+  for (i in seq_len(nrow(contracts))) {
+    table_name <- contracts$table_name[[i]]
+    if (!database_object_exists(con, table_name)) next
+    measured <- DBI::dbGetQuery(con, paste0(
+      "WITH offered AS (",
+      "  SELECT vintage_id, source_id,",
+      "         coalesce(content_last_row, 0) - coalesce(content_first_row, 1) AS source_rows",
+      "  FROM ", project_qualified_name("source_sheets"),
+      "  WHERE source_id = ", sql_string(contracts$source_id[[i]]), " AND sheet_name = 'data'",
+      "), accepted AS (",
+      "  SELECT vintage_id, count(*) AS accepted_rows FROM ",
+      project_qualified_name(table_name), " GROUP BY 1",
+      "), rejected AS (",
+      "  SELECT vintage_id, count(*) AS rejected_rows FROM ",
+      project_qualified_name("discarded_rows"), " WHERE source_sheet = 'data' GROUP BY 1",
+      ") SELECT o.vintage_id, o.source_id, o.source_rows,",
+      "  coalesce(a.accepted_rows, 0) AS accepted_rows,",
+      "  coalesce(r.rejected_rows, 0) AS rejected_rows",
+      " FROM offered o LEFT JOIN accepted a USING (vintage_id)",
+      " LEFT JOIN rejected r USING (vintage_id)"
+    ))
+    if (!nrow(measured)) next
+    rows[[length(rows) + 1L]] <- measured %>% dplyr::transmute(
+      vintage_id = .data$vintage_id, source_id = .data$source_id, source_sheet = "data",
+      release_id = .env$release_id,
+      numeric_source_cells = as.numeric(.data$source_rows),
+      accepted_observations = as.numeric(.data$accepted_rows),
+      rejected_observations = as.numeric(.data$rejected_rows),
+      documented_exclusions = 0L, many_to_one_allowance = 0L,
+      balance_delta = as.numeric(
+        .data$source_rows - .data$accepted_rows - .data$rejected_rows
+      ),
+      status = dplyr::if_else(
+        .data$source_rows - .data$accepted_rows - .data$rejected_rows == 0,
+        "balanced", "unexplained_cells"
+      ),
+      note = dplyr::if_else(
+        .data$source_rows - .data$accepted_rows - .data$rejected_rows == 0,
+        paste0(
+          .data$source_rows, " data row(s): ", .data$accepted_rows, " accepted, ",
+          .data$rejected_rows, " rejected with a recorded reason."
+        ),
+        paste0(
+          abs(.data$source_rows - .data$accepted_rows - .data$rejected_rows), " data row(s) of ",
+          .data$source_rows, " are neither accepted nor recorded as a rejection. Every row of a ",
+          "delimited source must be one or the other."
+        )
+      ),
+      checked_at = Sys.time(),
+      accepted_cells = as.numeric(.data$accepted_rows), cell_reuse = 0,
+      unmapped_in_region = 0, out_of_region_cells = 0, classified_cells = 0L,
+      unclassified_cells = as.integer(pmax(
+        .data$source_rows - .data$accepted_rows - .data$rejected_rows, 0
+      )),
+      parser_defect_cells = 0L
+    )
+  }
+  if (!length(rows)) return(tibble())
+  dplyr::bind_rows(rows)
+}
+
 # Resolve every unmapped cell against the rule register. Precedence is
 # most-specific-wins: a rule naming the worksheet beats a source-wide '*' rule,
 # and a smaller rectangle beats a larger one. Ties would make the classification
@@ -368,7 +494,14 @@ classify_unmapped_cells <- function(con, rules) {
 
 apply_table_reconciliation <- function(con, release_id, root) {
   measured <- compute_table_reconciliation(con)
-  if (!nrow(measured)) return(invisible(measured))
+  csv_rows <- compute_csv_row_reconciliation(con, root, release_id)
+  if (!nrow(measured)) {
+    if (nrow(csv_rows)) with_project_transaction(con, {
+      DBI::dbExecute(con, "DELETE FROM table_reconciliation")
+      DBI::dbWriteTable(con, "table_reconciliation", csv_rows, append = TRUE)
+    })
+    return(invisible(measured))
+  }
   rules <- read_reconciliation_cell_rules(root)
   classified <- classify_unmapped_cells(con, rules)
 
@@ -463,6 +596,12 @@ apply_table_reconciliation <- function(con, release_id, root) {
       "accepted_cells", "cell_reuse", "unmapped_in_region", "out_of_region_cells",
       "classified_cells", "unclassified_cells", "parser_defect_cells"
     )
+
+  # The two delimited sources join the 242 worksheets here rather than in a
+  # report of their own: the question "is every part of this source accounted
+  # for" has one answer per source, and until now two of the twenty-two were
+  # simply not being asked.
+  rows <- dplyr::bind_rows(rows, csv_rows)
 
   invalid <- setdiff(unique(rows$status), RECONCILIATION_STATUS_VALUES)
   if (length(invalid)) stop(

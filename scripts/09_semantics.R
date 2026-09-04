@@ -196,6 +196,390 @@ apply_series_semantics <- function(con) {
   invisible(TRUE)
 }
 
+# --- The economic review register --------------------------------------------
+# The seventh audit's section 11.4, and the hole it names:
+#
+#   "Only after this review should a series enter marts.v_research_series or a
+#    canonical cross-source concept."
+#
+# The gates for that have existed since schema 28 -- a series needs unit, scale,
+# frequency, stock/flow, nominal/real and seasonal adjustment, with not_reviewed
+# not counting. What did not exist was any way to satisfy them. Rows in
+# series_semantic_evidence whose basis is 'reviewed' are deliberately preserved
+# across every rebuild while derived rows are deleted and recomputed, and nothing
+# in the codebase has ever written one. The project had an output worklist saying
+# which series were unreviewed and no input for the answers.
+#
+# So this is the input. It ships empty, exactly as config/canonical_series.csv
+# does, and it changes no observation until an economist fills it in. What it
+# changes today is that filling it in is possible, and that a half-filled row
+# blocks the release instead of half-promoting a series.
+#
+# The eleven properties section 11.4 requires, in the order it lists them.
+SERIES_REVIEW_REQUIRED_FIELDS <- c(
+  "series_id",
+  "definition", "definition_evidence_uri",   # published definition and its evidence
+  "source_semantics",                         # what the source table and row mean
+  "frequency", "reference_period_convention", # frequency and reference-period convention
+  "timing_basis",                             # end-of-period, average, cumulative
+  "stock_flow",
+  "unit_code", "scale_multiplier", "currency", "valuation",
+  "nominal_real",
+  "seasonal_adjustment",
+  "transformation",
+  "hierarchy_role",                           # total / component / standalone
+  "comparability",                            # methodology breaks
+  "availability_convention",                  # release and availability timing
+  "reviewed_by", "reviewed_at"
+)
+
+# Required only when the answer above makes them meaningful. A base year on a
+# nominal series is not extra rigour, it is a contradiction.
+SERIES_REVIEW_CONDITIONAL_FIELDS <- c(
+  "price_base_year", "parent_series_id", "methodology_regime_id"
+)
+
+# Closed vocabularies, matching the values the derivation layer already writes so
+# that a reviewed answer and a derived one are the same kind of thing. An open
+# vocabulary here would let two reviewers write "eop" and "end_of_period" and
+# make the column unusable for exactly the automated transformation it exists to
+# license.
+SERIES_REVIEW_VOCABULARY <- list(
+  stock_flow = c("stock", "flow"),
+  nominal_real = c("nominal", "real"),
+  seasonal_adjustment = c("not_adjusted", "seasonally_adjusted", "trend_cycle"),
+  transformation = c("level", "index", "growth_rate", "contribution", "ratio"),
+  valuation = c("market_value", "book_value", "face_value", "fob", "cif", "not_applicable"),
+  timing_basis = c("end_of_period", "period_average", "period_total", "cumulative_to_date"),
+  hierarchy_role = c("total", "component", "standalone"),
+  comparability = c("comparable", "break_documented", "not_comparable")
+)
+
+read_series_review_register <- function(root) {
+  columns <- c(SERIES_REVIEW_REQUIRED_FIELDS, SERIES_REVIEW_CONDITIONAL_FIELDS)
+  empty <- tibble::as_tibble(stats::setNames(
+    rep(list(character()), length(columns)), columns
+  ))
+  path <- file.path(root, "config", "series_review.csv")
+  if (!file.exists(path)) return(empty)
+  register <- readr::read_csv(
+    path, show_col_types = FALSE, col_types = readr::cols(.default = readr::col_character())
+  )
+  # A malformed *file* stops the run; a malformed *row* blocks the release
+  # through a flag. The difference matters: the first is a broken register that
+  # nothing can interpret, the second is a reviewer's work in progress, and an
+  # operator should be told which one they have.
+  missing <- setdiff(columns, names(register))
+  if (length(missing)) stop(
+    "Series review register: missing column(s) ", paste(missing, collapse = ", "),
+    ". The register declares the whole economic review of a series; a column that ",
+    "is absent is a question nobody was asked.", call. = FALSE
+  )
+  register[columns]
+}
+
+# Everything wrong with the register, as rows a person can work through. A
+# release blocks while any of them exists.
+# Units that measure no currency. Used only to decide whether a three-letter
+# `unit_code` is naming a currency, which is the one unit/currency contradiction
+# worth blocking on: a series measured in USD that declares itself PYG.
+SERIES_REVIEW_DIMENSIONLESS_UNITS <- c(
+  "INDEX", "INDEX_POINTS", "PERCENT", "PROPORTION", "RATIO", "COUNT", "DAYS", "YEARS"
+)
+
+series_review_problems <- function(register, known_series = character(),
+                                   known_frequencies = character()) {
+  if (!nrow(register)) return(tibble::tibble(series_id = character(), problem = character()))
+  blank <- function(x) is.na(x) | !nzchar(trimws(x))
+  problems <- list()
+  add <- function(rows, problem) {
+    if (any(rows)) problems[[length(problems) + 1L]] <<- tibble::tibble(
+      series_id = register$series_id[rows], problem = problem
+    )
+  }
+
+  for (field in SERIES_REVIEW_REQUIRED_FIELDS) {
+    add(blank(register[[field]]), paste0(field, " is blank and is required"))
+  }
+  # An identifier that names nothing is the failure mode a register of free text
+  # invites: the review is real and attached to a series that does not exist, so
+  # the gates it was meant to satisfy stay unsatisfied and nobody notices.
+  if (length(known_series)) {
+    add(
+      !blank(register$series_id) & !register$series_id %in% known_series,
+      "series_id does not name a series in this database"
+    )
+  }
+  add(duplicated(register$series_id), "series_id is reviewed more than once")
+
+  for (field in names(SERIES_REVIEW_VOCABULARY)) {
+    allowed <- SERIES_REVIEW_VOCABULARY[[field]]
+    add(
+      !blank(register[[field]]) & !trimws(register[[field]]) %in% allowed,
+      paste0(field, " must be one of: ", paste(allowed, collapse = ", "))
+    )
+  }
+  add(
+    !blank(register$scale_multiplier) & is.na(suppressWarnings(
+      as.numeric(register$scale_multiplier)
+    )),
+    "scale_multiplier must be a number"
+  )
+  add(
+    !blank(register$reviewed_at) & is.na(suppressWarnings(
+      lubridate::ymd(register$reviewed_at, quiet = TRUE)
+    )),
+    "reviewed_at must be an ISO date (YYYY-MM-DD)"
+  )
+  # A definition nobody can check is not a definition. The same rule the
+  # reconciliation rule register enforces on its evidence field.
+  add(
+    !blank(register$definition) &
+      nchar(trimws(register$definition)) < RECONCILIATION_MINIMUM_EVIDENCE_CHARACTERS,
+    paste0("definition must quote the publisher's own wording (at least ",
+           RECONCILIATION_MINIMUM_EVIDENCE_CHARACTERS, " characters)")
+  )
+
+  # The conditional three.
+  add(
+    trimws(register$nominal_real) == "real" & blank(register$price_base_year),
+    "price_base_year is required when nominal_real is 'real'"
+  )
+  add(
+    trimws(register$hierarchy_role) == "component" & blank(register$parent_series_id),
+    "parent_series_id is required when hierarchy_role is 'component'"
+  )
+  if (length(known_series)) {
+    add(
+      !blank(register$parent_series_id) & !register$parent_series_id %in% known_series,
+      "parent_series_id does not name a series in this database"
+    )
+  }
+  add(
+    !blank(register$comparability) & trimws(register$comparability) != "comparable" &
+      blank(register$methodology_regime_id),
+    "methodology_regime_id is required when comparability is not 'comparable'"
+  )
+
+  # --- The seven the re-audit's section A7 asks for --------------------------
+  # Each one passes vacuously on an empty register, which is the argument for
+  # adding them now rather than after the first review is written.
+
+  # 1. Frequency. It is required and was checked only for blankness, so any
+  # string passed. The vocabulary is not invented here: it is the set of
+  # frequencies the database actually holds, because a review naming a frequency
+  # no series has is a review of something that is not in front of the reviewer.
+  if (length(known_frequencies)) add(
+    !blank(register$frequency) & !trimws(register$frequency) %in% known_frequencies,
+    paste0("frequency must be one this database uses: ",
+           paste(sort(known_frequencies), collapse = ", "))
+  )
+
+  # 2. Scale. "Is a number" admitted 0 and negatives, and a scale multiplier is
+  # a factor to base units: zero would erase the series and a negative would
+  # invert its sign, silently, in value_in_base_units.
+  scale_numeric <- suppressWarnings(as.numeric(register$scale_multiplier))
+  add(
+    !blank(register$scale_multiplier) & !is.na(scale_numeric) &
+      (scale_numeric <= 0 | !is.finite(scale_numeric)),
+    "scale_multiplier must be a finite number greater than zero"
+  )
+
+  # 3. Base year. Presence was required when nominal_real is 'real'; the column
+  # is free text, so "banana" satisfied it.
+  base_year <- suppressWarnings(as.integer(register$price_base_year))
+  add(
+    !blank(register$price_base_year) &
+      (is.na(base_year) | !grepl("^[0-9]{4}$", trimws(register$price_base_year)) |
+         base_year < 1900L | base_year > as.integer(format(Sys.Date(), "%Y")) + 1L),
+    "price_base_year must be a four-digit year between 1900 and next year"
+  )
+
+  # 4. Hierarchy. A series that is its own parent passed every check, because
+  # known_series contains the row's own identifier. Aggregating a total into
+  # itself is the arithmetic that follows.
+  add(
+    !blank(register$parent_series_id) &
+      trimws(register$parent_series_id) == trimws(register$series_id),
+    "parent_series_id is the series itself"
+  )
+  parents <- stats::setNames(trimws(register$parent_series_id), trimws(register$series_id))
+  parents <- parents[!is.na(parents) & nzchar(parents)]
+  in_cycle <- vapply(trimws(register$series_id), function(start) {
+    seen <- character()
+    node <- start
+    while (!is.na(node) && nzchar(node) && node %in% names(parents)) {
+      if (node %in% seen) return(TRUE)
+      seen <- c(seen, node)
+      node <- unname(parents[[node]])
+    }
+    FALSE
+  }, logical(1), USE.NAMES = FALSE)
+  add(in_cycle, "the hierarchy declared in this register contains a cycle")
+
+  # 5. Unit and currency. Narrow on purpose: a three-letter unit code that is not
+  # one of the dimensionless measures is naming a currency, and it must be the
+  # currency the row declares. An index of guaraní prices legitimately carries a
+  # currency context, so nothing is said about that case.
+  unit_upper <- toupper(trimws(register$unit_code))
+  names_a_currency <- !blank(register$unit_code) & grepl("^[A-Z]{3}$", unit_upper) &
+    !unit_upper %in% SERIES_REVIEW_DIMENSIONLESS_UNITS
+  add(
+    names_a_currency & !blank(register$currency) &
+      unit_upper != toupper(trimws(register$currency)),
+    "unit_code names a currency that contradicts the declared currency"
+  )
+
+  # 6. A review dated in the future has not happened.
+  reviewed_on <- suppressWarnings(lubridate::ymd(register$reviewed_at, quiet = TRUE))
+  add(!is.na(reviewed_on) & reviewed_on > Sys.Date(), "reviewed_at is in the future")
+
+  # 7. Reviewed evidence reaching the research interface is enforced where it can
+  # be seen -- validate_research_eligibility_metadata() in scripts/04_validate.R,
+  # which raises research_series_evidence_not_reviewed. It is not a property of
+  # a register row in isolation, so it is not checked here.
+
+  if (!length(problems)) return(tibble::tibble(series_id = character(), problem = character()))
+  dplyr::bind_rows(problems) %>% dplyr::arrange(.data$series_id, .data$problem)
+}
+
+# The frequencies this database actually holds. Not a constant, because the two
+# lists the project already has disagree -- EXPECTED_GRID_FREQUENCIES is
+# monthly/quarterly/annual, the marts gap screen also accepts semiannual, and
+# dim_series additionally holds irregular_daily. Rather than invent a third list
+# or silently pick one, the register is checked against what is in front of the
+# reviewer. Reconciling those two is a real defect and a separate one.
+known_series_frequencies <- function(con) {
+  if (!database_object_exists(con, "dim_series")) return(character())
+  sort(stats::na.omit(DBI::dbGetQuery(con, paste(
+    "SELECT DISTINCT frequency FROM", project_qualified_name("dim_series"),
+    "WHERE frequency IS NOT NULL AND trim(frequency) <> ''"
+  ))$frequency))
+}
+
+# Load the register, and let a reviewed answer outrank every derived one.
+#
+# Runs after apply_series_semantics(), never before. Those derivations include
+# unconditional UPDATEs -- unit_code from unit, nominal_real from the price base
+# year, transformation from the unit -- which would overwrite a reviewed value if
+# review came first. Ordering review last makes "reviewed wins" true by
+# construction rather than by each derivation remembering to check.
+apply_series_review <- function(con, root) {
+  if (!database_object_exists(con, "series_review")) return(invisible(0L))
+  register <- read_series_review_register(root)
+  known <- if (database_object_exists(con, "dim_series")) DBI::dbGetQuery(
+    con, paste("SELECT series_id FROM", project_qualified_name("dim_series"))
+  )$series_id else character()
+  problems <- series_review_problems(register, known, known_series_frequencies(con))
+  # A register with a problem in it applies nothing. Loading the good rows and
+  # reporting the bad ones would promote half a review, which is the state the
+  # gate exists to prevent.
+  usable <- if (nrow(problems)) register[0, ] else register
+
+  rows <- usable %>% dplyr::transmute(
+    series_id = trimws(.data$series_id), definition = trimws(.data$definition),
+    definition_evidence_uri = trimws(.data$definition_evidence_uri),
+    source_semantics = trimws(.data$source_semantics), frequency = trimws(.data$frequency),
+    reference_period_convention = trimws(.data$reference_period_convention),
+    timing_basis = trimws(.data$timing_basis), stock_flow = trimws(.data$stock_flow),
+    unit_code = toupper(trimws(.data$unit_code)),
+    scale_multiplier = as.numeric(.data$scale_multiplier),
+    currency = trimws(.data$currency), valuation = trimws(.data$valuation),
+    nominal_real = trimws(.data$nominal_real),
+    price_base_year = dplyr::na_if(trimws(.data$price_base_year), ""),
+    seasonal_adjustment = trimws(.data$seasonal_adjustment),
+    transformation = trimws(.data$transformation),
+    hierarchy_role = trimws(.data$hierarchy_role),
+    parent_series_id = dplyr::na_if(trimws(.data$parent_series_id), ""),
+    methodology_regime_id = dplyr::na_if(trimws(.data$methodology_regime_id), ""),
+    comparability = trimws(.data$comparability),
+    availability_convention = trimws(.data$availability_convention),
+    reviewed_by = trimws(.data$reviewed_by),
+    reviewed_at = suppressWarnings(lubridate::ymd(.data$reviewed_at, quiet = TRUE))
+  )
+
+  with_project_transaction(con, {
+    DBI::dbExecute(con, "DELETE FROM series_review")
+    if (nrow(rows)) DBI::dbWriteTable(con, "series_review", rows, append = TRUE)
+    # The evidence rows. Written with basis = 'reviewed' and the reviewer's own
+    # sentence, so v_series_measurement keeps showing the difference between "the
+    # publisher's label says so" and "an economist checked" -- which is the whole
+    # design of that column and the reason this could not be done by simply
+    # filling in dim_series.
+    if (database_object_exists(con, "series_semantic_evidence")) {
+      DBI::dbExecute(con, "DELETE FROM series_semantic_evidence WHERE basis = 'reviewed'")
+      # The union, so the two lists cannot drift apart.
+      #
+      # They already had. `frequency` is a research-eligibility field and the
+      # register carries it and writes it to dim_series, but it was absent from
+      # this vector -- so no reviewed evidence was ever recorded for it. Harmless
+      # while nothing read the evidence, and immediately fatal once schema 36
+      # made the gate read it: a fully completed review could not satisfy the
+      # check it was written to satisfy. Found by the test, not by reasoning.
+      fields <- union(
+        RESEARCH_ELIGIBILITY_FIELDS,
+        c("unit_code", "scale_multiplier", SERIES_SEMANTIC_COLUMNS)
+      )
+      if (nrow(rows)) {
+        evidence <- dplyr::bind_rows(lapply(fields, function(field) tibble::tibble(
+          series_id = rows$series_id, field = field, value = as.character(rows[[field]]),
+          basis = "reviewed",
+          evidence = paste0(
+            rows$reviewed_by, " (", rows$reviewed_at, "): ", rows$definition,
+            " Source: ", rows$definition_evidence_uri
+          ),
+          derived_at = Sys.time()
+        )))
+        # Reviewed rows replace derived ones for the same (series_id, field);
+        # the primary key means they cannot coexist, and the delete above cleared
+        # only the reviewed side, so the derived twin goes now.
+        if (nrow(evidence)) {
+          DBI::dbExecute(con, paste0(
+            "DELETE FROM series_semantic_evidence WHERE series_id IN (",
+            paste(vapply(unique(rows$series_id), sql_string, character(1)), collapse = ", "),
+            ") AND field IN (",
+            paste(vapply(fields, sql_string, character(1)), collapse = ", "), ")"
+          ))
+          DBI::dbWriteTable(con, "series_semantic_evidence", evidence, append = TRUE)
+        }
+      }
+    }
+    # And the values themselves, onto dim_series, where every existing query
+    # already reads them.
+    if (nrow(rows)) DBI::dbExecute(con, paste(
+      "UPDATE dim_series SET",
+      "unit_code = r.unit_code, scale_multiplier = r.scale_multiplier,",
+      "frequency = r.frequency, currency = r.currency,",
+      "price_base_year = coalesce(r.price_base_year, dim_series.price_base_year),",
+      "stock_flow = r.stock_flow, nominal_real = r.nominal_real,",
+      "seasonal_adjustment = r.seasonal_adjustment, transformation = r.transformation,",
+      "valuation = r.valuation,",
+      "parent_series_id = coalesce(r.parent_series_id, dim_series.parent_series_id),",
+      "is_total = (r.hierarchy_role = 'total'),",
+      "hierarchy_status = CASE WHEN r.hierarchy_role = 'standalone' THEN 'flat' ELSE 'resolved' END",
+      "FROM", project_qualified_name("series_review"), "r",
+      "WHERE r.series_id = dim_series.series_id"
+    ))
+  })
+  create_series_review_views(con)
+  invisible(nrow(rows))
+}
+
+# In main, not marts, and the distinction is the contract's own: marts publishes
+# observations under a release boundary, and every marts object is `current` or
+# `all`. This describes *series* and carries no vintage, which is what the nine
+# other `reference` objects -- v_series_measurement, v_series_semantic_evidence,
+# v_series_table_status -- have in common with it.
+create_series_review_views <- function(con) {
+  if (!database_object_exists(con, "series_review")) return(invisible(FALSE))
+  create_project_view(con, "v_series_review", paste(
+    "SELECT r.*, d.source_id, d.label AS series_label, d.series_grain",
+    "FROM", project_qualified_name("series_review"), "r",
+    "JOIN", project_qualified_name("dim_series"), "d USING (series_id)"
+  ))
+  invisible(TRUE)
+}
+
 # --- Irregular published intervals ------------------------------------------
 # Period bounds are a function of the reference period and the frequency, and
 # v_series_observations derives them for that reason: copying two dates onto 1.2
@@ -313,6 +697,17 @@ derive_series_semantics_from_text <- function(con) {
   }
 
   evidence <- dplyr::bind_rows(rows)
+  # A reviewed judgement outranks a derived one, and the primary key
+  # (series_id, field) means they cannot both be stored. The delete below spares
+  # reviewed rows deliberately -- that is what makes review durable across
+  # rebuilds -- so the derived side has to stand down for the same key, or the
+  # append aborts. Latent until schema 34 gave anyone a way to record a review.
+  reviewed <- DBI::dbGetQuery(
+    con, "SELECT series_id, field FROM series_semantic_evidence WHERE basis = 'reviewed'"
+  )
+  if (nrow(evidence) && nrow(reviewed)) evidence <- evidence %>% dplyr::anti_join(
+    reviewed, by = c("series_id", "field")
+  )
   with_project_transaction(con, {
     DBI::dbExecute(con, "DELETE FROM series_semantic_evidence WHERE basis <> 'reviewed'")
     if (nrow(evidence)) DBI::dbWriteTable(con, "series_semantic_evidence", evidence, append = TRUE)
@@ -486,7 +881,7 @@ create_semantic_views <- function(con) {
     # the filter selected, which release_sources gives.
     "SELECT f.series_id, f.period,", bounds, ", f.value, f.vintage_id, f.publication_date,",
     "f.is_deleted, f.source_file, d.source_id, n.source_sheet,",
-    "s.first_ingested_release_id, r.accepted_release_id,",
+    "s.first_ingested_release_id, r.accepted_release_id, r.first_published_at,",
     "d.frequency, d.unit, d.unit_code,",
     "d.scale, d.scale_multiplier,",
     "CASE WHEN d.scale_multiplier IS NULL THEN NULL ELSE f.value * d.scale_multiplier END",
@@ -502,9 +897,18 @@ create_semantic_views <- function(con) {
     "JOIN dim_series d USING (series_id)",
     "LEFT JOIN source_files s ON s.vintage_id = f.vintage_id",
     "LEFT JOIN source_provenance p ON p.vintage_id = f.vintage_id",
-    "LEFT JOIN (SELECT rs.vintage_id, max(rs.release_id) AS accepted_release_id",
-    "           FROM release_sources rs JOIN releases rl USING (release_id)",
-    "           WHERE rl.status = 'accepted' GROUP BY 1) r ON r.vintage_id = f.vintage_id",
+    # The accepted product that first admitted this vintage, and when.
+    #
+    # This was `max(rs.release_id)` over release_sources joined to
+    # `releases.status = 'accepted'`, and it was wrong three ways at once. The
+    # aggregate is a *lexical* maximum over hashed identifiers, so for a vintage
+    # in several bundles it named whichever hex prefix sorted highest -- not the
+    # earliest, not the latest, not the active one. It read `releases.status`,
+    # the mutable per-bundle column schema 30 retired as the publication test, so
+    # a failed rebuild of any bundle containing the vintage nulled the label on
+    # rows that were still published. And it was exposed to researchers in every
+    # v_mart_*_all. The re-audit's section A7.
+    "LEFT JOIN (", admitting_data_release_sql(), ") r ON r.vintage_id = f.vintage_id",
     "LEFT JOIN documented_series_snapshot n ON n.vintage_id = f.vintage_id",
     "  AND n.series_id = f.series_id AND n.period = f.period",
     "LEFT JOIN series_period_bounds b ON b.series_id = f.series_id AND b.period = f.period",
@@ -514,6 +918,23 @@ create_semantic_views <- function(con) {
     "WHERE f.vintage_id IN (", accepted_release_vintages_sql(), ")"
   )))
   create_project_view(con, "v_series_observations_all", observations_body(""))
+  # The third carrier, and the one a point-in-time query needs: every vintage
+  # that was ever published, rather than the ones the current pointer names.
+  #
+  # The re-audit's RA2-01. "What is published now" and "what could have been seen
+  # then" are different questions over different populations, and until now both
+  # were answered from the first. A vintage superseded by a later bundle left the
+  # as-of population entirely, so no cutoff could return it -- including cutoffs
+  # from before its successor existed.
+  #
+  # The blocked case is what makes this a filter rather than no filter at all: a
+  # build that ended blocked was never knowable by anyone, so admitting it would
+  # be a look-ahead error of exactly the kind as-of exists to prevent. Hence
+  # accepted products only, and `v_series_observations_all` remains the
+  # unfiltered twin for diagnostics.
+  create_project_view(con, "v_series_observations_history", observations_body(paste0(
+    "WHERE f.vintage_id IN (", accepted_history_vintages_sql(), ")"
+  )))
   # The as-of interface the audit asks for. v_series_latest answers "what does
   # the publisher say today"; this answers "what could a researcher have known
   # on a given date", which is the question a forecast evaluation must ask. Both
@@ -525,12 +946,21 @@ create_semantic_views <- function(con) {
   # is: an as-of query is asked precisely when look-ahead matters, so the default
   # must not be the one that leaks it. Pass include_projections := true to get the
   # publisher's full statement as of that date.
+  # It reads the *history* carrier, not the current one.
+  #
+  # Reading v_series_observations applied the active-bundle filter before the
+  # ranking, which meant the ranking could only ever choose among vintages that
+  # are current today -- so a cutoff before the newest publication still returned
+  # the newest vintage's value, silently, with no way for the caller to tell.
+  # That is look-ahead: the exact error this interface exists to prevent, in the
+  # one place it was least visible. The re-audit's RA2-01.
   as_of_body <- function(projection_predicate) paste(
     "AS TABLE",
     "WITH ranked AS (",
     "  SELECT *, row_number() OVER (PARTITION BY series_id, period",
     "    ORDER BY available_at DESC NULLS LAST, vintage_id DESC) AS rn",
-    "  FROM v_series_observations WHERE available_at IS NOT NULL AND available_at <= as_of",
+    "  FROM v_series_observations_history",
+    "  WHERE available_at IS NOT NULL AND available_at <= as_of",
     projection_predicate,
     ")",
     "SELECT series_id, period, period_start, period_end, value, value_in_base_units,",
@@ -751,6 +1181,7 @@ create_observation_behaviour_view <- function(con) {
   if (!database_object_exists(con, "documented_series_snapshot")) return(invisible(FALSE))
   if (!database_object_exists(con, "source_sheets")) return(invisible(FALSE))
   if (!"hidden_rows" %in% table_column_names(con, "source_sheets")) return(invisible(FALSE))
+  formula_coordinates <- database_object_exists(con, "report_cell_formulas")
   create_project_view(con, "v_observation_source_behaviour", paste(
     "WITH spans AS (",
     "  SELECT source_id, sheet_name, vintage_id,",
@@ -765,6 +1196,18 @@ create_observation_behaviour_view <- function(con) {
     "       EXISTS (SELECT 1 FROM spans s",
     "               WHERE s.vintage_id = o.vintage_id AND s.sheet_name = o.source_sheet",
     "                 AND o.source_row BETWEEN s.row_from AND s.row_to) AS from_hidden_row,",
+    # Schema 35, the seventh audit's F-07. Schema 29 closed this gap for hidden
+    # rows and could not close it for formulas, because the hidden ranges are
+    # coordinates and the formula count was a number. Now that the coordinates are
+    # recorded, the same join answers the same question: readxl cannot calculate,
+    # so every value here is a cached result, and this says whether *this* value
+    # is one whose cell held a formula at all.
+    if (formula_coordinates) paste(
+      "       EXISTS (SELECT 1 FROM", project_qualified_name("report_cell_formulas"), "c",
+      "               WHERE c.vintage_id = o.vintage_id AND c.sheet_name = o.source_sheet",
+      "                 AND c.row_id = o.source_row",
+      "                 AND c.column_id = o.source_column) AS from_formula_cell,"
+    ) else "       CAST(NULL AS BOOLEAN) AS from_formula_cell,",
     "       coalesce(h.formula_cells, 0) AS sheet_formula_cells,",
     "       h.hidden_rows AS sheet_hidden_rows, h.hidden_columns AS sheet_hidden_columns",
     "FROM documented_series_snapshot o",
@@ -1072,6 +1515,25 @@ write_semantic_review_worklist <- function(con, root) {
     "ORDER BY mapped_to_canonical_series DESC, unresolved_unit DESC, observations DESC"
   )), error = function(e) NULL)
   if (is.null(worklist)) return(invisible(NULL))
+  # Schema 34: the queue and the register are the two ends of one workflow, and
+  # until now they did not name each other. A reviewer reading this file could
+  # see that a series was unreviewed and had nowhere to go with the answer.
+  register <- tryCatch(read_series_review_register(root), error = function(e) NULL)
+  reviewed_ids <- if (is.null(register)) character() else trimws(register$series_id)
+  blank <- function(x) is.na(x) | !nzchar(trimws(x))
+  worklist$review_register_row <- ifelse(
+    worklist$series_id %in% reviewed_ids, "present", "absent"
+  )
+  worklist$review_register_missing_fields <- vapply(worklist$series_id, function(series_id) {
+    if (is.null(register) || !series_id %in% reviewed_ids) {
+      return(paste(SERIES_REVIEW_REQUIRED_FIELDS[-1], collapse = "; "))
+    }
+    row <- register[trimws(register$series_id) == series_id, , drop = FALSE][1, ]
+    absent <- SERIES_REVIEW_REQUIRED_FIELDS[-1][
+      vapply(SERIES_REVIEW_REQUIRED_FIELDS[-1], function(f) blank(row[[f]]), logical(1))
+    ]
+    if (!length(absent)) "" else paste(absent, collapse = "; ")
+  }, character(1), USE.NAMES = FALSE)
   readr::write_csv(worklist, file.path(root, "outputs", "semantic_review_worklist.csv"))
   invisible(worklist)
 }

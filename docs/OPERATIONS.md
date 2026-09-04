@@ -3,7 +3,7 @@
 ## First run
 
 1. Open `pilot_paraguay_macro_database.Rproj` in RStudio.
-2. Run `source("scripts/00_install_packages.R")` once.
+2. Run `renv::restore()` once to reproduce the recorded environment. `source("scripts/00_install_packages.R")` is the fallback without `renv`; it installs by name rather than by version. `run_update.R` refuses to build against an environment that differs from `renv.lock` unless `PARAGUAY_MACRO_ALLOW_ENV_DRIFT=1` is set, which is recorded as a flag on the build.
 3. Run `source("run_tests.R")` to validate the environment and pilot inputs.
 4. Run `source("run_update.R")` to create the production database.
 5. Review all output files listed in the README, especially `documented_source_coverage_latest.csv` and `documented_series_continuity_latest.csv`.
@@ -95,6 +95,28 @@ Neither blocks the release: a gate nobody can pass is a gate that gets switched 
 
 Work the queue from `outputs/source_region_review_worklist.csv`, add a rule with the worksheet evidence quoted, and re-run. `source_region_rule_unused` tells you a rule stopped matching — usually because a parser repair landed. Note that a rule's `source_sheet` is matched byte for byte: several published worksheets end in a space (`CUADRO 10 `, `Subastas 2015 `), and the register keeps them exactly as the publisher typed them.
 
+### The delimited sources, where the unit is a row
+
+The two CSV sources are accounted for in the same table under the same rule, with `source_sheet = 'data'` and a row where a worksheet has a cell:
+
+```text
+source data rows = accepted rows + rejected rows + documented exclusions
+```
+
+Source rows come from the recorded content bounds, accepted rows are the snapshot, and rejected rows are `staging.discarded_rows`. A residual is `unexplained_cells` and blocks, exactly as it does for a worksheet.
+
+Until schema 34 neither source was in this table at all. Both parsers read permissively and dropped whatever failed to parse, so the only loss they could notice was losing every row — and three real securities trades with a blank volume had been disappearing on every run since the source was added.
+
+Every recorded rejection carries a reason from `ROW_REJECTION_REASONS`, and `config/row_rejection_reasons.csv` says what each one means and whether seeing it is expected:
+
+| Reason | `expected` |
+|---|---|
+| `non_data_note` | a labelled row with no numeric value: a heading, note or footnote — **expected** |
+| `missing_mandatory_dimension` | a real publisher record the grain cannot place — **expected** |
+| `invalid_date`, `invalid_numeric_token`, `unsupported_currency`, `out_of_range_value`, `duplicate_key`, `unrecognized_period_with_values` | **unexpected**: the publication has changed shape or the contract is wrong |
+
+An **undeclared** reason is an error and blocks the release. An **unexpected** one is a warning: the reason is understood, and its appearance means something changed. To add a reason, add it to `ROW_REJECTION_REASONS` in `scripts/01_utils.R` *and* to the register — the reader checks the two sets match in both directions, so neither can drift.
+
 ## Accepting or blocking a release
 
 Since schema 30 a run decides a **product**, not a source bundle, and publishing is a pointer.
@@ -115,7 +137,80 @@ Every published interface — `v_series_latest`, `series_as_of_date()`, the seve
 
 What each object publishes is declared in `config/public_view_contract.csv`. **Adding a view without a row there blocks the release** — deliberately, because a view nobody has classified is one nobody has decided researchers should read. Set `public_scope` (`current`, `all`, `history`, `reference`, `diagnostic`), say why in a sentence, and put your name on it. If the view carries the release boundary in its own body rather than reading something that does, set `carries_release_boundary` to `TRUE`; the release verifies that claim against the stored SQL.
 
-Nothing here is meant to be edited by hand. If you must override a decision, update `audit.releases.status` and record who did it in `decided_by` — the change takes effect immediately, because every published view joins through that table rather than being rebuilt from it.
+### A build runs in its own file
+
+Since schema 33 a run does not write the published database at all. `run_isolated_update()` copies `database/paraguay_macro_pilot.duckdb` to `database/candidates/candidate_<stamp>.duckdb`, runs the whole pipeline there, and renames the candidate into place only if the build is accepted:
+
+```text
+production (untouched, still published)
+        │ copy
+        ▼
+database/candidates/candidate_<stamp>.duckdb  ← every write the run makes
+        │
+   accepted? ──no──▶ database/candidates/blocked_<stamp>.duckdb
+        │                (production is byte-for-byte unchanged)
+       yes
+        ▼
+  production ─▶ database/backups/paraguay_macro_pilot_pre_swap_<stamp>.duckdb
+  candidate  ─▶ production
+```
+
+This is the seventh audit's F-01. The pointer already prevented a failed build from *withdrawing* the published database; it could not prevent it from *changing* it. Published views resolve vintages through the source bundle rather than the build, sources commit one at a time long before the decision exists, and the schema migrations' `invalidate_v*()` steps delete published facts before the run even begins. None of that is reachable now, because the run and the published file are no longer the same bytes.
+
+What it costs: a full copy of the database at the start of every run, and roughly twice the database size in free space while a run is in progress. What it does **not** give: facts are still not versioned per build, so an arbitrary past product cannot be reconstructed from inside one file. The guarantee is that a build you did not accept cannot have altered the one you did.
+
+**A blocked run leaves `outputs/` describing the blocked build, not the database you have.** That is deliberate — diagnosing a block needs the blocked build's reports — and `outputs/update_report.md` says so in its first line. Query the retained candidate directly to inspect what the failed build produced.
+
+### One writer at a time
+
+Since schema 37 an update takes a lock at `database/.update.lock` before it copies anything, and releases it however the run ends.
+
+This is not belt-and-braces on DuckDB's own lock — DuckDB's lock does nothing here. The whole point of the candidate design is that production is never *opened*; it is only copied. Two updates could therefore copy the same published database, build independently, both be accepted, and both rename over production. The last one won, and the other release vanished along with its build identity and every diagnostic it produced, silently.
+
+- A **live** holder refuses the second run and names the process, host and start time.
+- A holder whose process is **gone** is reported and taken over. A crashed update must not block the run that fixes it.
+- If you are certain a lock is dead and the takeover did not fire — a different machine, say — remove the directory by hand.
+
+**The base is verified too**, because a lock cannot cover every case: a lock inherited from a dead holder, or an operator restoring a backup by hand mid-build, produces a state no lock sees. The production file's SHA-256 is recorded when it is copied and re-checked immediately before the swap. If it changed, the run refuses and **keeps** its candidate under `database/candidates/unpublished_<stamp>.duckdb` — it is a complete accepted build, and you will want it to diff against whatever replaced its base.
+
+### If a swap is interrupted
+
+Between moving the published database aside and moving the candidate in, the published pathname does not exist. A soft failure is rolled back automatically; a hard kill in that window is not.
+
+`database/.swap_in_progress` exists only during that window. If a run finds it, it **refuses to start** and tells you to read it. The file names three paths:
+
+```
+moved_aside=database/backups/paraguay_macro_pilot_pre_swap_<stamp>.duckdb
+candidate=database/candidates/candidate_<stamp>.duckdb
+publication=database/paraguay_macro_pilot.duckdb
+```
+
+Move whichever you want published to `publication`, then delete the marker. The two candidates are the previous database and the new build; both are intact, and the choice is yours.
+
+### Verifying the published file
+
+Every accepted swap writes `database/paraguay_macro_pilot.duckdb.sha256` after the file is closed, checkpointed and renamed — the one moment its bytes are final. It is in the format the standard tool reads:
+
+```
+shasum -a 256 -c database/paraguay_macro_pilot.duckdb.sha256
+```
+
+The hash lives beside the file rather than inside it because **a file cannot contain its own hash**: writing the row changes the bytes the row describes. That is why the artifact rows recorded before schema 38 are 37% short of the file they name — the size was read from a connection that was still open with rows still to write. A database therefore records the hashes of artifacts *other* than itself: `audit.distribution_artifacts` carries the real hash of the database each build replaced, and `compact_database.R` records the same link between what it consumed and what it produced.
+
+### Overriding a decision
+
+Nothing here is meant to be edited by hand, and **editing `audit.releases.status` does nothing**. Until schema 30 every published view joined that column; they now resolve through `audit.active_data_release`, and `audit.data_releases` records one immutable decision per product. A hand-edited status changes a lifecycle record and no data.
+
+There are two supported interventions:
+
+- **To withdraw the current build**, restore the database it replaced. Every accepted swap leaves it at `database/backups/paraguay_macro_pilot_pre_swap_<stamp>.duckdb`, and `audit.distribution_artifacts` records each artifact's size and build beside the build that produced it. Stop anything reading the database, move the current file aside, move the backup into its place, and confirm `audit.active_data_release` names the build you intended.
+- **To publish a corrected build**, fix the cause and re-run. That is the whole procedure: a run that is accepted publishes itself and one that is not cannot.
+
+The 2026-09-03 repository cleanup removed all superseded local backups. Until the next accepted run
+creates a new pre-swap copy, the current database has no local predecessor to restore; use Git LFS
+history if recovery of an earlier committed database is required.
+
+There is no supported way to promote a build the gates blocked. That is not an oversight — `promote_data_release()` refuses a product not decided `accepted`, and the refusal is tested.
 
 ## Recording where a source came from
 
@@ -124,6 +219,29 @@ Nothing here is meant to be edited by hand. If you must override a decision, upd
 The release warns while it is incomplete: `publication_date_inferred_from_content` lists every vintage whose availability is still being guessed from a filename or from the content. `official_release_date` outranks both, so recording it is also how you correct a date the pipeline inferred wrongly — the next run picks it up even for an unchanged file, and propagates it to every snapshot and fact of that vintage.
 
 `available_at` is a separate field and a separate fact: when the file actually became available to you, which is not the reference period it covers and not necessarily the date printed on it. It is what `series_as_of_date()` ranks by when it is present, so a point-in-time query is only as honest as this column. Leave it blank rather than guessing; the pipeline falls back to the publication date and says so.
+
+### Retaining a superseded workbook
+
+`series_as_of_date('2020-12-31')` returns zero rows because there is one vintage per source, not because the mechanism is missing. Every retained vintage is a past information set; the archive is what makes it one.
+
+Two rules, and the first is the one that changed at schema 32:
+
+- **Do not leave the old workbook in `input/current/<source>/`.** Selection is by the SHA-256 recorded in `config/source_vintages.csv`, so two candidate files in one folder stop the run by design. Replace the file, and let `input_archive/` keep the predecessor — it is content-addressed as `input_archive/<source_id>/<sha256>.<ext>` and is never overwritten, so the previous vintage is retained by the act of ingesting the new one.
+- **Never prune `input_archive/`.** `validate_archive_integrity()` re-hashes every archived file on every release and raises `archived_vintage_unverifiable` — an error, which blocks — if a vintage the database reports cannot be re-read or no longer matches its recorded hash. A vintage without its bytes is not retained; it is a row claiming to be.
+
+`outputs/vintage_retention_status.csv` reports, per vintage, the archive state and how many vintages that source now holds. While a source holds one, that row says so and says what it costs: no revision history and no as-of reconstruction.
+
+To ingest a historical workbook you still have, put it in the folder on its own, record its hash in `config/source_vintages.csv`, run, then restore the current file and run again. Both vintages then exist and `series_as_of_date()` has something to rank.
+
+**Until schema 36 that recipe did not work, and the manual was the thing that was wrong.** Each run mints a bundle whose id is a hash of the manifest, so the two runs produce two different bundles and the pointer ends on the second. The as-of macros ranked over `v_series_observations`, which filters to the bundle the pointer names — so the historical vintage was ingested, archived, retained, and invisible to every cutoff. Following these instructions produced two vintages and one answer.
+
+The as-of interface now ranks over `main.v_series_observations_history`: every vintage belonging to **any accepted data release**, which is the population a point-in-time question is actually about. Three consequences worth stating plainly:
+
+- **A superseded vintage stays answerable.** That is the whole point, and it is what makes retaining workbooks worth doing.
+- **A build that was never accepted is never knowable**, at any cutoff. It was not published, so nobody could have read it, and admitting it would be look-ahead in the one interface that exists to prevent look-ahead.
+- **Blocking a bundle today does not erase what it published yesterday.** Current views empty immediately, because the pointer moves; as-of keeps answering, because a later failed rebuild does not un-happen an earlier publication.
+
+`series_as_of_date()` and `series_statement_as_of_date()` are declared `history` in `config/public_view_contract.csv`, not `current`. That reclassification is part of the repair: the release lint requires a `current` object to descend from the active-pointer carrier, so while they were declared `current` the lint was certifying exactly the thing that made them wrong.
 
 ## Preparing a copy for distribution
 
@@ -137,7 +255,7 @@ Writes `database/paraguay_macro_pilot_distribution.duckdb` with `source_path` an
 
 **See [SCHEMA_MIGRATIONS.md](SCHEMA_MIGRATIONS.md).** That file is generated from the migration registry and the `schema_version` table on every release, so it always describes the database you have in front of you: which version it is at, what each step changed, and which sources each step sends back through the parser.
 
-It is generated rather than written because this section used to be written by hand and drifted. It named `upgrade_v1_to_v12.R` as the entry point while the recovery section below named `upgrade_v1_to_v11.R`, and the recovery sequence stopped at schema 11 while the database was at 14 — three statements about the same migrations, none of them checked against the registry. `validate_database()` now raises `migration_runbook_stale` if the generated file falls behind.
+It is generated rather than maintained separately so the entry point, recovery sequence and migration registry cannot drift apart. `validate_database()` raises `migration_runbook_stale` if the generated file falls behind.
 
 Do not edit `docs/SCHEMA_MIGRATIONS.md`. To change what it says, change `SCHEMA_MIGRATIONS` in `scripts/02_extract_raw.R`, which is also what the invalidation steps read.
 
@@ -188,6 +306,42 @@ DBI::dbGetQuery(con, "
 The schema-13 and schema-14 round is the worked example: about ten runs, several of them migrating, took the file from 230 MiB to 555 MiB, of which 254 MiB was free space. Compaction returned it to 301 MiB with every row, view and constraint verified identical.
 
 Compaction matters more than the disk cost suggests, because `database/paraguay_macro_pilot.duckdb` is tracked through Git LFS: every committed release stores the whole file, so a bloated database consumes LFS quota and bandwidth on each commit. Compact before committing a release.
+
+### Classifying what is already there
+
+Twenty-six copies predating the convention had names like `pre30b_194844.duckdb`, matched no class, and were reported and ignored — 9.5 GiB the script could see and not understand. What they are cannot be read from their names, but it can be read from inside them: every DuckDB file states the schema version it was left at.
+
+```
+Rscript prune_backups.R --classify            # read each one, propose names, rename nothing
+Rscript prune_backups.R --classify --apply    # rename
+```
+
+It opens each unrecognised file read-only and names it for what it contains. **The earliest copy at each schema version is that step's migration evidence and is kept; a second or fifth copy at the same version is a working snapshot from one session and ages out** — five of them were schema 29 alone. `outputs/backup_inventory.csv` records the mapping. Nothing is deleted, and `--classify --apply` renames only; deletion is the separate `--apply` below.
+
+### Retaining and pruning copies
+
+Compaction reclaims free space *inside* the live file. What dominated `database/` was everything beside it: 34 files and 13 GB in eight days, because every compaction wrote a full pre-compaction copy and nothing ever removed one. Since schema 33 an accepted build also leaves the database it replaced, so the accumulation is faster, not slower — and both leftovers are worth keeping, for a while.
+
+The retention rule reads the filename:
+
+| Prefix | Written by | Rule |
+|---|---|---|
+| `paraguay_macro_pilot_pre_swap_` | an accepted build, before the swap | rolling |
+| `paraguay_macro_pilot_pre_compaction_` | `compact_database.R` | rolling |
+| `blocked_` (in `database/candidates/`) | a build that did not pass its gates | rolling |
+| `paraguay_macro_pilot_pre_migration_schema<N>_` | a schema step that re-ingests sources | **kept** |
+| `paraguay_macro_pilot_milestone_<label>` | you, deliberately | **kept** |
+| anything else | — | **reported, never touched** |
+
+```
+Rscript prune_backups.R            # says what it would delete, deletes nothing
+Rscript prune_backups.R --apply
+Rscript prune_backups.R --keep=5 --apply
+```
+
+**It is dry-run by default and the pipeline never calls it.** A rule that deletes databases as a side effect of a build is one that will eventually delete the copy you needed, and the pre-swap backup exists precisely for the runs where something has gone wrong. Deleting a database is an operator's act.
+
+The 26 hand-named copies already in `database/backups/` — `pre_schema29_212127.duckdb` and the rest — match no class and are reported rather than deleted. Rename one to `paraguay_macro_pilot_pre_migration_schema29_...` to have it kept deliberately, or remove it by hand.
 
 ## Routine replacement
 

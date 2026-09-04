@@ -147,10 +147,18 @@ create_mart_views <- function(con) {
     # validated and whose source cells reconcile. Today every one of them is
     # empty, which is the honest answer and the same answer v_research_series
     # already gives.
+    #
+    # Since schema 36 it also requires the *series* to have been reviewed, for
+    # the reason set out over v_research_series: a mart row is an observation of
+    # a series, so if the series' unit, timing and stock/flow status rest on a
+    # regex over a Spanish label rather than on an economist's judgement, the
+    # observation is not a research product either. Worksheet review and series
+    # review answer different questions and both are required.
     create_project_view(con, paste0("v_mart_", mart), paste(
-      "SELECT * FROM", paste0("marts.v_mart_", mart, "_all"),
-      "WHERE review_status = 'validated' AND reconciliation_status = 'balanced'",
-      "AND vintage_id IN (", accepted_release_vintages_sql(), ")"
+      "SELECT m.* FROM", paste0("marts.v_mart_", mart, "_all"), "m",
+      "JOIN", project_qualified_name("series_review"), "sr ON sr.series_id = m.series_id",
+      "WHERE m.review_status = 'validated' AND m.reconciliation_status = 'balanced'",
+      "AND m.vintage_id IN (", accepted_release_vintages_sql(), ")"
     ), schema = "marts")
   }
   # Catalogue counts that do not pretend an auction tender is a macro series.
@@ -201,6 +209,10 @@ create_mart_views <- function(con) {
 }
 
 # --- Coverage dashboard -----------------------------------------------------
+# The worksheets the dashboard is about: one row per parsed worksheet, and the
+# key both registers below are resolved against.
+COVERAGE_DASHBOARD_KEYS <- "SELECT DISTINCT source_id, source_sheet FROM documented_series_snapshot"
+
 write_coverage_dashboard <- function(con, root) {
   if (is.null(root)) return(invisible(NULL))
   dashboard <- DBI::dbGetQuery(con, paste(
@@ -237,23 +249,19 @@ write_coverage_dashboard <- function(con, root) {
     "coalesce(brk.breaks, 0) AS methodology_breaks",
     "FROM series_stats st",
     "LEFT JOIN identity_stats ist USING (source_id, source_sheet)",
-    "LEFT JOIN source_grains g ON g.source_id = st.source_id",
-    "LEFT JOIN table_domains dm ON dm.source_id = st.source_id AND dm.source_sheet = st.source_sheet",
-    # Exact-over-wildcard, not either-of: a source carrying both a worksheet row
-    # and a '*' row otherwise appears twice in the dashboard under two statuses.
+    # Exact-over-wildcard, not either-of, for both registers. A source carrying
+    # both a worksheet row and a '*' row otherwise appears once per rule -- the
+    # audit's F-06, which this join failed and the one below only appeared to
+    # pass. See wildcard_precedence_join_sql() in scripts/08_reconciliation.R.
     "LEFT JOIN (",
-    "  SELECT source_id, source_sheet, status, parser_claim, reviewed_by,",
-    "    row_number() OVER (PARTITION BY source_id, source_sheet",
-    "      ORDER BY CASE WHEN source_sheet = '*' THEN 1 ELSE 0 END) AS precedence",
-    "  FROM (",
-    "    SELECT s.source_id, x.source_sheet, s.status, s.parser_claim, s.reviewed_by",
-    "    FROM table_status s",
-    "    JOIN (SELECT DISTINCT source_id, source_sheet FROM documented_series_snapshot) x",
-    "      ON x.source_id = s.source_id",
-    "     AND (s.source_sheet = x.source_sheet OR s.source_sheet = '*')",
-    "  )",
+    wildcard_precedence_join_sql("source_grains", "series_grain", COVERAGE_DASHBOARD_KEYS),
+    ") g ON g.source_id = st.source_id AND g.source_sheet = st.source_sheet",
+    "LEFT JOIN table_domains dm ON dm.source_id = st.source_id AND dm.source_sheet = st.source_sheet",
+    "LEFT JOIN (",
+    wildcard_precedence_join_sql(
+      "table_status", c("status", "parser_claim", "reviewed_by"), COVERAGE_DASHBOARD_KEYS
+    ),
     ") ts ON ts.source_id = st.source_id AND ts.source_sheet = st.source_sheet",
-    "  AND ts.precedence = 1",
     "LEFT JOIN table_reconciliation rc ON rc.source_id = st.source_id",
     "  AND rc.source_sheet = st.source_sheet",
     "LEFT JOIN (",
@@ -292,6 +300,27 @@ write_coverage_dashboard <- function(con, root) {
 # start late, pause, and move sharply. Treating a statistical screen as proof of
 # a defect would be the same error the audit warns about when it separates
 # "candidate equality" from "recommended consolidation".
+# A screen counts; a worklist names. The re-audit's RA2-12.
+#
+# Bounded, because the point is that somebody works through it: 38,433 rows is
+# the same "look at everything" instruction as the fifteen-row summary it
+# replaces, only longer. The cap is recorded in the file itself so a reader can
+# tell a full list from a truncated one, and the summary CSV keeps the totals.
+SCREEN_WORKLIST_LIMIT <- 2000L
+
+write_screen_worklist <- function(con, root, filename, query,
+                                  limit = SCREEN_WORKLIST_LIMIT) {
+  if (is.null(root)) return(invisible(NULL))
+  rows <- tryCatch(DBI::dbGetQuery(con, query), error = function(e) NULL)
+  if (is.null(rows) || !nrow(rows)) return(invisible(NULL))
+  total <- nrow(rows)
+  rows <- utils::head(rows, limit)
+  rows$worklist_rank <- seq_len(nrow(rows))
+  rows$worklist_of_total <- total
+  readr::write_csv(rows, file.path(root, "outputs", filename))
+  invisible(rows)
+}
+
 run_quality_screens <- function(con, release_id, root) {
   expected_step <- paste(
     "CASE frequency WHEN 'monthly' THEN 1 WHEN 'quarterly' THEN 3",
@@ -317,6 +346,31 @@ run_quality_screens <- function(con, release_id, root) {
   ))
   if (nrow(gaps)) {
     readr::write_csv(gaps, file.path(root, "outputs", "gap_screen_latest.csv"))
+    # …and the gaps themselves. The summary above says 499 series skip 24,149
+    # periods; it does not say which series, or when, which is everything an
+    # investigation needs. The re-audit's RA2-12, applied to both screens.
+    write_screen_worklist(con, root, "gap_worklist.csv", paste(
+      "WITH ordered AS (",
+      "  SELECT o.series_id, o.source_id, o.source_sheet, o.frequency, o.vintage_id,",
+      "    o.period_start, o.unit_code,",
+      "    lag(o.period_start) OVER (PARTITION BY o.series_id ORDER BY o.period_start)",
+      "      AS previous_start",
+      "  FROM v_series_observations o",
+      "  WHERE NOT o.is_deleted AND o.frequency IN ('monthly','quarterly','semiannual','annual')",
+      "), steps AS (",
+      "  SELECT series_id, source_id, source_sheet, frequency, vintage_id, unit_code,",
+      "    previous_start, period_start,",
+      "    datediff('month', previous_start, period_start) AS observed_step,",
+      expected_step, "AS expected_step",
+      "  FROM ordered WHERE previous_start IS NOT NULL",
+      ")",
+      "SELECT series_id, source_id, source_sheet, frequency, unit_code, vintage_id,",
+      "  previous_start AS gap_after, period_start AS resumes_at,",
+      "  observed_step AS months_between, expected_step AS months_expected,",
+      "  (observed_step / expected_step) - 1 AS missing_periods",
+      "FROM steps WHERE observed_step > expected_step",
+      "ORDER BY missing_periods DESC, series_id, resumes_at"
+    ))
     insert_quality_flag(
       con, release_id, "warning", "regular_period_gaps", NA_character_,
       paste0(
@@ -350,6 +404,43 @@ run_quality_screens <- function(con, release_id, root) {
   ))
   if (nrow(jumps)) {
     readr::write_csv(jumps, file.path(root, "outputs", "discontinuity_screen_latest.csv"))
+    # The rows behind the count. 38,433 flagged observations summarised into
+    # fifteen rows by source cannot be investigated by anybody: the `scaled` CTE
+    # above already computes every field a reviewer needs and the outer SELECT
+    # threw all of it away. The re-audit's RA2-12.
+    #
+    # Ranked by how far past the threshold each observation sits, so the worst
+    # are first, and bounded -- a worklist nobody can finish is a screen with a
+    # different file name.
+    write_screen_worklist(con, root, "discontinuity_worklist.csv", paste(
+      "WITH ordered AS (",
+      "  SELECT o.series_id, o.source_id, o.source_sheet, o.period, o.value, o.vintage_id,",
+      "    o.unit_code,",
+      "    lag(o.value) OVER (PARTITION BY o.series_id ORDER BY o.period) AS previous_value,",
+      "    o.value - lag(o.value) OVER (PARTITION BY o.series_id ORDER BY o.period) AS change",
+      "  FROM v_series_observations o WHERE NOT o.is_deleted",
+      "), scaled AS (",
+      "  SELECT *, median(abs(change)) OVER (PARTITION BY series_id) AS typical_change,",
+      "    count(*) OVER (PARTITION BY series_id) AS observations",
+      "  FROM ordered WHERE change IS NOT NULL",
+      ")",
+      "SELECT series_id, source_id, source_sheet, period, previous_value, value, change,",
+      "  typical_change, 10 * typical_change AS threshold,",
+      "  abs(change) / nullif(typical_change, 0) AS times_typical_change,",
+      "  observations, unit_code, vintage_id,",
+      # The coordinate lives on the snapshot, not on the observation view, and a
+      # plain join would multiply a series published on several worksheets. A
+      # scalar subquery returns one row per observation by construction.
+      "  (SELECT any_value(n.source_row) FROM", project_qualified_name("documented_series_snapshot"), "n",
+      "   WHERE n.vintage_id = scaled.vintage_id AND n.series_id = scaled.series_id",
+      "     AND n.period = scaled.period) AS source_row,",
+      "  (SELECT any_value(n.source_column) FROM", project_qualified_name("documented_series_snapshot"), "n",
+      "   WHERE n.vintage_id = scaled.vintage_id AND n.series_id = scaled.series_id",
+      "     AND n.period = scaled.period) AS source_column",
+      "FROM scaled",
+      "WHERE observations >= 24 AND typical_change > 0 AND abs(change) > 10 * typical_change",
+      "ORDER BY times_typical_change DESC"
+    ))
     insert_quality_flag(
       con, release_id, "warning", "discontinuity_screen", NA_character_,
       paste0(

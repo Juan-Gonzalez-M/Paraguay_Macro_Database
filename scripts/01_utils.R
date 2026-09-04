@@ -13,13 +13,36 @@ suppressPackageStartupMessages({
   library(yaml)
 })
 
-project_root <- function() normalizePath(getwd(), winslash = "/", mustWork = TRUE)
-
 ensure_dirs <- function(root) {
   fs::dir_create(file.path(root, c(
-    "database", "database/backups", "outputs", "input_archive", "logs"
+    "database", "database/backups", "database/candidates", "outputs", "input_archive", "logs"
   )), recurse = TRUE)
 }
+
+# Why a parser is allowed to discard a publisher's row.
+#
+# The audit's section 11.3 asks for a release to block on unclassified rejected
+# rows. A register of reasons alone cannot deliver that: the first version of
+# this check compared the register against a grep over the sources, and the grep
+# missed both the ternary in the FX parser and the CSV reasons, which are list
+# names rather than string literals. It passed by luck.
+#
+# So the vocabulary is here, in code, and both ends are held to it: a parser may
+# only record a reason from this vector, and config/row_rejection_reasons.csv
+# must declare exactly this vector and nothing else. The register says what each
+# one *means* and whether seeing it is expected; this says which ones exist.
+ROW_REJECTION_REASONS <- c(
+  # Written by the ICC/EVE and FX-operations parsers since schema 12.
+  "non_data_note",
+  "unrecognized_period_with_values",
+  # The delimited sources, since schema 34.
+  "invalid_date",
+  "invalid_numeric_token",
+  "missing_mandatory_dimension",
+  "unsupported_currency",
+  "out_of_range_value",
+  "duplicate_key"
+)
 
 normalize_label <- function(x) {
   stringr::str_to_lower(stringr::str_squish(as.character(x)))
@@ -125,7 +148,9 @@ PROJECT_TABLE_SCHEMA <- c(
   source_region_rules = "audit", source_region_classification = "audit",
   source_provenance = "raw", aggregate_identities = "audit",
   expected_observation_grid = "staging", observation_missingness = "staging",
-  build_identity = "audit", ingestion_run_attempts = "audit", source_value_tokens = "audit",
+  build_identity = "audit", build_environment = "audit",
+  ingestion_run_attempts = "audit", source_value_tokens = "audit",
+  report_cell_formulas = "raw", series_review = "canonical",
   # The staging names the in-place rebuilds use. DuckDB cannot alter a primary
   # key or add a CHECK, so those migrations build a replacement beside the table
   # and rename it; without an assignment the replacement would be created in
@@ -240,6 +265,179 @@ accepted_release_vintages_sql <- function() {
   paste(
     "SELECT rs.vintage_id FROM release_sources rs",
     "JOIN active_data_release a ON a.source_bundle_id = rs.release_id"
+  )
+}
+
+# --- A record that survives the process ---------------------------------------
+# The re-audit's A11 #16. `ensure_dirs()` has created logs/ since the first
+# audit and nothing has ever written to it: run history lives in DuckDB and in
+# outputs/*_latest.csv, both of which are *inside* the thing being built and both
+# overwritten by the next run.
+#
+# That is fine until the case this exists for. A build that dies before its
+# candidate can be opened, or one that is refused by the lock, or one whose swap
+# is interrupted, leaves no database to have recorded anything in -- and the
+# messages go to stderr and vanish with the session. One line of JSON per event,
+# appended, is the smallest thing that answers "what happened at 03:14" a week
+# later.
+#
+# Deliberately not a logging framework: no dependency, no configuration, no
+# levels. If it grows one it should be because something needed it.
+write_run_log <- function(root, event, ...) {
+  if (is.null(root) || !nzchar(root)) return(invisible(FALSE))
+  directory <- file.path(root, "logs")
+  if (!dir.exists(directory)) return(invisible(FALSE))
+  record <- c(
+    list(
+      at = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3"),
+      event = event,
+      pid = Sys.getpid(),
+      host = as.character(Sys.info()[["nodename"]])
+    ),
+    lapply(list(...), function(value) {
+      if (is.null(value) || length(value) != 1L) return(as.character(
+        if (is.null(value)) NA_character_ else paste(value, collapse = "; ")
+      ))
+      if (is.na(value)) NA_character_ else value
+    })
+  )
+  line <- tryCatch(
+    jsonlite::toJSON(record, auto_unbox = TRUE, null = "null", na = "null"),
+    error = function(e) NULL
+  )
+  if (is.null(line)) return(invisible(FALSE))
+  path <- file.path(directory, paste0("update_", format(Sys.Date(), "%Y%m"), ".jsonl"))
+  # Appending, and never failing the run because logging failed: a build must not
+  # die because a disk is full of diagnostics.
+  try(cat(line, "\n", sep = "", file = path, append = TRUE), silent = TRUE)
+  invisible(TRUE)
+}
+
+# --- Single-writer coordination ----------------------------------------------
+# The re-audit's RA2-08.
+#
+# The candidate design that closed F-01 has a consequence nobody had written
+# down: because production is only ever *copied* and never opened, DuckDB's own
+# single-writer lock gives no cross-run protection at all. Two updates can copy
+# the same published database, build independently, both be accepted, and both
+# rename over production -- last writer wins, and the loser's release disappears
+# along with its build identity and every diagnostic it produced. Nothing in the
+# repository prevented that, and nothing recorded that it could happen.
+#
+# `dir.create()` is the primitive: creating a directory is atomic on POSIX and
+# on Windows, returns FALSE rather than throwing when it already exists, and
+# needs no package. A lock file written with file.create() is not atomic in the
+# same way -- two processes can both find it absent and both create it.
+UPDATE_LOCK_NAME <- ".update.lock"
+
+process_is_alive <- function(pid) {
+  if (is.na(pid) || !nzchar(pid)) return(FALSE)
+  if (.Platform$OS.type == "windows") {
+    out <- suppressWarnings(tryCatch(system2(
+      "tasklist", c("/FI", shQuote(paste0("PID eq ", pid))), stdout = TRUE, stderr = FALSE
+    ), error = function(e) character()))
+    return(any(grepl(paste0("\\b", pid, "\\b"), out)))
+  }
+  # kill -0 tests for existence without signalling. A non-zero status means the
+  # process is gone (or is not ours, which for this purpose is the same answer).
+  identical(suppressWarnings(system2(
+    "kill", c("-0", pid), stdout = FALSE, stderr = FALSE
+  )), 0L)
+}
+
+acquire_update_lock <- function(root) {
+  path <- file.path(root, "database", UPDATE_LOCK_NAME)
+  holder <- function() {
+    info <- tryCatch(readr::read_csv(
+      file.path(path, "holder.csv"), show_col_types = FALSE,
+      col_types = readr::cols(.default = readr::col_character())
+    ), error = function(e) NULL)
+    if (is.null(info) || !nrow(info)) NULL else as.list(info[1, ])
+  }
+  take <- function() {
+    readr::write_csv(tibble(
+      pid = as.character(Sys.getpid()),
+      host = as.character(Sys.info()[["nodename"]]),
+      started_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+    ), file.path(path, "holder.csv"))
+    path
+  }
+  if (suppressWarnings(dir.create(path))) return(take())
+
+  current <- holder()
+  # A lock whose holder is gone is debris from a killed run, not a live writer.
+  # Refusing forever would mean a crashed update blocks every future one, which
+  # is a worse failure than the one the lock prevents.
+  if (is.null(current)) {
+    message("Update lock exists with no readable holder; taking it over.")
+    return(take())
+  }
+  same_host <- identical(current$host, as.character(Sys.info()[["nodename"]]))
+  if (same_host && !process_is_alive(current$pid)) {
+    message(
+      "Update lock was held by process ", current$pid, " (started ", current$started_at,
+      "), which is no longer running. Taking it over."
+    )
+    return(take())
+  }
+  stop(
+    "Another update holds the lock: process ", current$pid, " on ", current$host,
+    ", started ", current$started_at, ". Two updates must not build and publish at once -- ",
+    "they would copy the same database and the last to finish would silently discard the ",
+    "other's release. Wait for it, or remove ", path, " if you are certain it is dead.",
+    call. = FALSE
+  )
+}
+
+release_update_lock <- function(path) {
+  if (is.null(path) || is.na(path) || !nzchar(path)) return(invisible(FALSE))
+  unlink(path, recursive = TRUE, force = TRUE)
+  invisible(TRUE)
+}
+
+# Every vintage that was ever published -- which is a different question, and the
+# one a point-in-time query asks.
+#
+# The re-audit's RA2-01. `accepted_release_vintages_sql()` above resolves through
+# a *one-row* pointer, so it answers "what is published now". `release_id` is a
+# hash of the manifest, so replacing a single workbook mints a new bundle whose
+# release_sources set omits the superseded vintage. The old vintage stays in
+# fact_series_events, in source_files and in input_archive/ -- and drops out of
+# the population the as-of ranking sees. `series_as_of_date()` ranked over the
+# active bundle, so it could only ever return the current vintage, whatever date
+# it was asked about.
+#
+# The ingredients for the right answer already existed and were never joined:
+# release_sources is append-only and many-to-many, and data_releases records one
+# immutable decision per product. Their join is the set of vintages a researcher
+# could ever have been shown.
+#
+# It reads `data_releases.status`, not `releases.status`. The latter is the
+# mutable per-bundle column schema 30 retired as the publication test precisely
+# because a failed rebuild flipped it to blocked; using it here would let a later
+# failure erase history that was genuinely published.
+accepted_history_vintages_sql <- function() {
+  paste(
+    "SELECT DISTINCT rs.vintage_id FROM release_sources rs",
+    "JOIN data_releases d ON d.source_bundle_id = rs.release_id",
+    "WHERE d.status = 'accepted'"
+  )
+}
+
+# Which accepted product first admitted each vintage, and when.
+#
+# This replaces `max(release_id)` over hashed identifiers, which picked whichever
+# hex prefix sorted highest: not the earliest, not the latest, not the active one.
+# For a historical row the meaningful context is the product that first published
+# it, so that is what is recorded, with the decision timestamp beside it.
+admitting_data_release_sql <- function() {
+  paste(
+    "SELECT rs.vintage_id,",
+    "       arg_min(d.data_release_id, d.decided_at) AS accepted_release_id,",
+    "       min(d.decided_at) AS first_published_at",
+    "FROM release_sources rs",
+    "JOIN data_releases d ON d.source_bundle_id = rs.release_id",
+    "WHERE d.status = 'accepted' GROUP BY 1"
   )
 }
 
@@ -828,28 +1026,49 @@ check_environment <- function(root = getwd(), strict = FALSE) {
   if (!is.na(lock$r_version) && !identical(running_r, lock$r_version)) drift <- c(drift, paste0(
     "R ", running_r, " is running; renv.lock records ", lock$r_version
   ))
-  # Only the packages this project actually loads. renv.lock also pins the
-  # transitive tree, and a difference three levels down is not something an
-  # operator can act on from a test failure message.
+  # The whole lockfile is compared; only the declared packages can stop a build.
+  #
+  # The re-audit's RA2-09. Checking 19 of 61 was defended on the grounds that a
+  # difference three levels down is not actionable from a failure message, which
+  # is a good argument for not *failing* on it and no argument at all for not
+  # *looking*. A transitive package that has moved is exactly the sort of thing
+  # that explains a result nobody can reproduce, and it was invisible.
   declared <- read_required_packages(root)
-  for (package in intersect(declared, lock$packages$package)) {
+  transitive_drift <- character()
+  for (package in lock$packages$package) {
     expected <- lock$packages$version[lock$packages$package == package][[1]]
     installed <- tryCatch(
       as.character(utils::packageVersion(package)), error = function(e) NA_character_
     )
-    if (is.na(installed)) {
-      drift <- c(drift, paste0(package, " is not installed; renv.lock records ", expected))
+    note <- if (is.na(installed)) {
+      paste0(package, " is not installed; renv.lock records ", expected)
     } else if (!identical(installed, expected)) {
-      drift <- c(drift, paste0(package, " ", installed, " is installed; renv.lock records ", expected))
+      paste0(package, " ", installed, " is installed; renv.lock records ", expected)
+    } else NULL
+    if (is.null(note)) next
+    if (package %in% declared) drift <- c(drift, note) else {
+      transitive_drift <- c(transitive_drift, note)
     }
   }
+  if (length(transitive_drift)) message(
+    "The running environment differs from renv.lock in ", length(transitive_drift),
+    " transitive package(s). These do not stop a build -- nothing here loads them directly -- ",
+    "but they are recorded in audit.build_environment and are worth knowing when a result ",
+    "will not reproduce:\n  - ", paste(transitive_drift, collapse = "\n  - ")
+  )
   if (!length(drift)) {
-    message("Environment matches renv.lock: R ", running_r, " and ", length(declared), " packages.")
+    message(
+      "Environment matches renv.lock: R ", running_r, ", ", length(declared),
+      " direct package(s) of ", nrow(lock$packages), " pinned",
+      if (length(transitive_drift)) paste0(
+        " (", length(transitive_drift), " transitive difference(s) reported above)"
+      ) else "", "."
+    )
     return(invisible(TRUE))
   }
   detail <- paste0(
-    "The running environment differs from renv.lock in ", length(drift), " place(s):\n  - ",
-    paste(drift, collapse = "\n  - "),
+    "The running environment differs from renv.lock in ", length(drift),
+    " directly loaded package(s):\n  - ", paste(drift, collapse = "\n  - "),
     "\nRun renv::restore() to match it, or renv::snapshot() if the change is intended."
   )
   if (strict) stop(detail, call. = FALSE)
@@ -935,6 +1154,97 @@ git_build_state <- function(root) {
   )
 }
 
+# What was actually loaded, as opposed to what renv.lock says should have been.
+#
+# The audit's F-09. environment_digest below hashes the *file* renv.lock, so two
+# builds run against libraries that differ from each other and from the lockfile
+# produce a byte-identical build_id. The lockfile is a declaration; this is the
+# observation, and the reproducibility question needs both.
+#
+# The whole lockfile, not the nineteen names the installer lists.
+#
+# The re-audit's RA2-09. Schema 35 narrowed this to the declared packages on the
+# argument that a difference three levels down is not actionable from a failure
+# message. That argument is right about *failing* and wrong about *recording*:
+# 42 of the 61 pinned packages went unrecorded, so a build could not say what it
+# ran against, and the narrowing hid something specific. DBI, duckdb, xml2, readr
+# and testthat are built under R 4.5.2 while R 4.5.1 runs -- including the two
+# packages that write the database -- and nothing could see it, because the
+# comparison was of version strings and the Built field was never read.
+#
+# So: every lockfile package that is installed, with the R version it was built
+# under. The `is_direct` flag keeps the distinction the gate still needs.
+installed_package_versions <- function(root) {
+  declared <- read_required_packages(root)
+  lock <- read_environment_lock(root)
+  locked <- if (is.null(lock)) character() else lock$packages$package
+  # Radix, not the default: `sort()` is locale-aware, so "DBI" sorts before
+  # "bit" under C and after it under en_US. The order feeds a digest that feeds
+  # build_id, which would have made the build identity depend on the operator's
+  # locale -- a reproducibility defect introduced by the fix for a
+  # reproducibility defect. Radix is byte order everywhere, and it is also what
+  # DuckDB's ORDER BY gives, so the stored rows and the digest agree.
+  packages <- sort(union(declared, locked), method = "radix")
+  if (!length(packages)) return(tibble(
+    package = character(), version = character(), built_under = character(),
+    is_direct = logical(), library_path = character()
+  ))
+  described <- lapply(packages, function(package) {
+    description <- tryCatch(
+      utils::packageDescription(package), error = function(e) NULL
+    )
+    if (!length(description) || !is.list(description)) return(list(
+      version = NA_character_, built = NA_character_, library = NA_character_
+    ))
+    built <- if (is.null(description$Built)) NA_character_ else description$Built
+    list(
+      version = if (is.null(description$Version)) NA_character_ else description$Version,
+      # "R 4.5.2; aarch64-apple-darwin20; 2025-11-01 12:00:00 UTC; unix" -- the
+      # first field is the R version the binary was built under.
+      built = if (is.na(built)) NA_character_ else trimws(strsplit(built, ";", fixed = TRUE)[[1]][[1]]),
+      library = tryCatch(dirname(find.package(package)), error = function(e) NA_character_)
+    )
+  })
+  tibble(
+    package = packages,
+    version = vapply(described, function(d) d$version, character(1)),
+    built_under = vapply(described, function(d) d$built, character(1)),
+    is_direct = packages %in% declared,
+    library_path = vapply(described, function(d) as.character(d$library)[[1]], character(1))
+  )
+}
+
+# The machine, which nothing recorded at all: an arm64 macOS build and an x86
+# Linux build produced identical `r_version` strings and identical build ids.
+build_platform_record <- function() {
+  running <- tryCatch(utils::sessionInfo()$running, error = function(e) NULL)
+  list(
+    platform = R.version$platform,
+    os_release = if (is.null(running)) NA_character_ else as.character(running)
+  )
+}
+
+# The namespaces this session actually loaded, as evidence rather than identity.
+#
+# Deliberately *not* part of build_id. Loaded namespaces differ between
+# run_update.R and run_tests.R -- testthat and withr are loaded by one and not
+# the other -- so hashing them would make the same sources on the same machine
+# produce two different build identities depending on which entry point ran,
+# and "re-running the pipeline against unchanged inputs reproduces the exact
+# same release" is the property the whole release model rests on. The digest is
+# recorded beside the identity so the difference is visible without being
+# load-bearing. A deliberate departure from the re-audit's wording.
+loaded_namespaces_digest <- function() {
+  loaded <- sort(loadedNamespaces())
+  if (!length(loaded)) return(NA_character_)
+  versions <- vapply(loaded, function(package) tryCatch(
+    as.character(utils::packageVersion(package)), error = function(e) NA_character_
+  ), character(1), USE.NAMES = FALSE)
+  substr(digest::digest(
+    paste(paste0(loaded, ":", versions), collapse = "|"), algo = "sha256", serialize = FALSE
+  ), 1, 24)
+}
+
 build_identity_record <- function(root, release_id, schema_version = NA_integer_) {
   git <- git_build_state(root)
   config_digest <- digest_files(c(
@@ -946,6 +1256,28 @@ build_identity_record <- function(root, release_id, schema_version = NA_integer_
     file.path(root, "run_update.R")
   ))
   environment_digest <- digest_files(file.path(root, "renv.lock"))
+  # The audit's F-09. environment_digest is a hash of a *declaration*; this is a
+  # hash of what was loaded. Two builds against libraries that differ from each
+  # other and from the lockfile used to produce the same build_id, which makes
+  # the identity unable to answer the one question it exists for.
+  #
+  # It is part of the hash rather than a column beside it, deliberately: a
+  # different library is a different build, and recording that fact somewhere the
+  # identity does not read would leave two builds sharing an id again.
+  #
+  # Since schema 38 it covers the whole lockfile and each package's Built field,
+  # so a library rebuilt under a different R patch release is a different build
+  # -- which is exactly the difference that was invisible when only version
+  # strings were compared. It stays deterministic for a given machine and
+  # library, which is why it can be in the hash at all; see
+  # loaded_namespaces_digest() for the thing that cannot.
+  packages <- installed_package_versions(root)
+  package_versions_digest <- if (!nrow(packages)) NA_character_ else substr(digest::digest(
+    paste(paste0(packages$package, ":", packages$version, ":", packages$built_under),
+          collapse = "|"),
+    algo = "sha256", serialize = FALSE
+  ), 1, 24)
+  machine <- build_platform_record()
   # The audit's R6-18. build_id names the code, configuration and inputs behind a
   # database; nothing named the database file itself. So the commit that carries a
   # rebuilt .duckdb -- necessarily made *after* the build that produced it -- read
@@ -954,15 +1286,42 @@ build_identity_record <- function(root, release_id, schema_version = NA_integer_
   # the artifact has an identity of its own, recorded beside the build.
   build_id <- paste0("build:", substr(digest::digest(paste(
     release_id, git$commit, isTRUE(git$dirty), schema_version,
-    config_digest, code_digest, environment_digest, R.version.string, sep = "|"
+    config_digest, code_digest, environment_digest, package_versions_digest,
+    R.version.string, machine$platform, sep = "|"
   ), algo = "sha256", serialize = FALSE), 1, 24))
-  tibble(
+  record <- tibble(
     build_id = build_id, release_id = release_id, git_commit = git$commit,
     git_dirty = git$dirty, schema_version = as.integer(schema_version),
     config_digest = config_digest, code_digest = code_digest,
-    environment_digest = environment_digest, r_version = R.version.string,
+    environment_digest = environment_digest,
+    package_versions_digest = package_versions_digest, r_version = R.version.string,
+    platform = machine$platform, os_release = machine$os_release,
+    loaded_namespaces_digest = loaded_namespaces_digest(),
     built_at = Sys.time()
   )
+  # The versions themselves travel with the record. A digest can say two builds
+  # ran against different libraries; only the list can say which package moved.
+  attr(record, "package_versions") <- packages
+  record
+}
+
+# The observed environment, one row per package, recorded beside the build it
+# produced. Written from the attribute build_identity_record() carries so the
+# digest and the list cannot describe different libraries.
+record_build_environment <- function(con, build) {
+  if (!database_object_exists(con, "build_environment")) return(invisible(FALSE))
+  packages <- attr(build, "package_versions")
+  if (is.null(packages) || !nrow(packages)) return(invisible(FALSE))
+  DBI::dbExecute(con, paste0(
+    "DELETE FROM ", project_qualified_name("build_environment"),
+    " WHERE build_id = ", sql_string(build$build_id[[1]])
+  ))
+  DBI::dbWriteTable(con, "build_environment", tibble(
+    build_id = build$build_id[[1]], package = packages$package, version = packages$version,
+    recorded_at = Sys.time(), built_under = packages$built_under,
+    is_direct = packages$is_direct, library_path = packages$library_path
+  ), append = TRUE)
+  invisible(nrow(packages))
 }
 
 a1_column_number <- function(x) {
@@ -1001,6 +1360,10 @@ xlsx_sheet_dimensions <- function(path) {
   rel_target <- stats::setNames(xml2::xml_attr(rel_nodes, "Target"), xml2::xml_attr(rel_nodes, "Id"))
   rel_type <- stats::setNames(xml2::xml_attr(rel_nodes, "Type"), xml2::xml_attr(rel_nodes, "Id"))
   out <- vector("list", length(sheet_nodes))
+  # Carried as an attribute rather than a column: every caller of this function
+  # consumes one row per worksheet, and a list-column would have to be handled by
+  # all of them to be recorded by one.
+  formulas <- list()
   for (i in seq_along(sheet_nodes)) {
     node <- sheet_nodes[[i]]
     sid <- xml2::xml_attr(node, "id")
@@ -1054,13 +1417,33 @@ xlsx_sheet_dimensions <- function(path) {
     # direction -- a parser cannot say whether a value it read, or skipped, was
     # visible to the publisher's own reader.
     #
-    # Recorded per sheet rather than per cell: attaching formula text to each of
-    # 1.25 million cells would change the content hash of every worksheet version
-    # and force the whole raw layer to be re-read, which is a large cost for a
-    # diagnostic. The count and the hidden ranges answer the question that
-    # matters operationally -- how much of this sheet is computed, what is hidden,
-    # and did either change between vintages.
-    formula_cells <- length(xml2::xml_find_all(doc, ".//*[local-name()='c']/*[local-name()='f']"))
+    # The count stays on the sheet row, because that is what the drift test
+    # between vintages compares. The seventh audit's F-07 asks for the other
+    # grain as well, and it is right: "91,673 formula cells" is a fact about the
+    # database, and "is *this* number a cached formula result" was a question a
+    # researcher holding one could not ask.
+    #
+    # The reasoning recorded here at schema 29 -- that per-cell formula data would
+    # change the content hash of every worksheet version and force the raw layer
+    # to be re-read -- was about storing formula text *in report_cell_values*,
+    # which is content-hashed. It does not apply to a side table keyed by
+    # coordinate, and 91,673 rows is nothing. So the coordinates are kept, and the
+    # cell values are not touched.
+    formula_nodes <- xml2::xml_find_all(doc, ".//*[local-name()='c']/*[local-name()='f']")
+    formula_cells <- length(formula_nodes)
+    if (formula_cells) {
+      # The A1 ref is on the parent <c>, which is the same node set the active
+      # bounds above are read from -- no second pass over the file.
+      formula_refs <- xml2::xml_attr(xml2::xml_parent(formula_nodes), "r")
+      formula_rows <- suppressWarnings(as.integer(stringr::str_extract(formula_refs, "[0-9]+")))
+      formula_columns <- stringr::str_extract(formula_refs, "[A-Z]+")
+      usable <- !is.na(formula_rows) & !is.na(formula_columns)
+      if (any(usable)) formulas[[length(formulas) + 1L]] <- tibble(
+        sheet_name = xml2::xml_attr(node, "name"),
+        row_id = formula_rows[usable],
+        column_id = vapply(formula_columns[usable], a1_column_number, numeric(1), USE.NAMES = FALSE)
+      )
+    }
     hidden_rows <- suppressWarnings(as.integer(xml2::xml_attr(xml2::xml_find_all(
       doc, ".//*[local-name()='row'][@hidden='1' or @hidden='true']"
     ), "r")))
@@ -1082,7 +1465,20 @@ xlsx_sheet_dimensions <- function(path) {
       hidden_columns = pack_integer_ranges(hidden_column_numbers)
     )
   }
-  bind_rows(out)
+  dimensions <- bind_rows(out)
+  attr(dimensions, "formula_cells") <- if (length(formulas)) bind_rows(formulas) else tibble(
+    sheet_name = character(), row_id = integer(), column_id = numeric()
+  )
+  dimensions
+}
+
+# The formula coordinates a dimensions frame is carrying, or an empty frame. One
+# accessor so a caller never has to know it is an attribute.
+xlsx_formula_cell_coordinates <- function(dimensions) {
+  coordinates <- attr(dimensions, "formula_cells")
+  if (is.null(coordinates)) tibble(
+    sheet_name = character(), row_id = integer(), column_id = numeric()
+  ) else coordinates
 }
 
 csv_source_dimensions <- function(path) {
@@ -1316,14 +1712,79 @@ write_table_in_storage_layer <- function(con, table_name, data) {
 # actually wrote, so the artifact_id is the state of the file at the moment the
 # run finished with it -- and a later commit of that same file is a fact about
 # git, not a discrepancy in the provenance.
+#
+# Since schema 33 a build writes to a candidate file and is renamed into place
+# only if it is accepted, so the file this run is writing and the file it will
+# become are two different paths. The size is measured on the one that exists;
+# the name recorded is the one a reader will find it under. Without the split,
+# every artifact row named a temporary candidate that no longer exists.
+# --- Artifact identity ---------------------------------------------------------
+# The re-audit's RA2-10: the artifact id hashed build, filename and *size*, and
+# the size was read while the connection was still open with rows still to be
+# written. The recorded number was 553,136,128 against a shipped file of
+# 344,993,792 -- 37% out -- so the identifier of a database could not be
+# recomputed from the database.
+#
+# A file cannot contain its own hash. Writing the row changes the bytes the row
+# describes, and that is not a bug to work around but an arithmetic fact, which
+# is why "record it after final close" needs somewhere other than the file to
+# record it. So the rule is: **a database records the hashes of artifacts other
+# than itself, and its own hash lives in a sidecar beside it.**
+#
+# The sidecar is written after the connection is closed, the checkpoint has run
+# and the rename has happened -- the one moment the bytes are final -- and it is
+# in the format `shasum -c` reads, so the claim is checkable with a standard
+# tool and no R at all.
+ARTIFACT_SIDECAR_SUFFIX <- ".sha256"
+
+record_published_artifact <- function(path, build_id, schema_version = NA_integer_,
+                                      sha256 = NULL, supersedes = NA_character_) {
+  if (!file.exists(path)) return(invisible(FALSE))
+  if (is.null(sha256)) sha256 <- file_sha256(path)
+  sidecar <- paste0(path, ARTIFACT_SIDECAR_SUFFIX)
+  writeLines(c(
+    paste0(sha256, "  ", basename(path)),
+    paste0("# build=", if (is.null(build_id)) NA_character_ else build_id),
+    paste0("# schema_version=", schema_version),
+    paste0("# bytes=", format(file.info(path)$size, scientific = FALSE)),
+    paste0("# recorded_at=", format(Sys.time(), "%Y-%m-%dT%H:%M:%S")),
+    paste0("# supersedes_sha256=", supersedes),
+    "# Written after final close. Verify with: shasum -a 256 -c <this file>"
+  ), sidecar)
+  invisible(sha256)
+}
+
+# The hash a sidecar claims, or NA. Used to complete the record of an artifact a
+# later run inherited rather than produced.
+published_artifact_sha256 <- function(path) {
+  sidecar <- paste0(path, ARTIFACT_SIDECAR_SUFFIX)
+  if (!file.exists(sidecar)) return(NA_character_)
+  first <- utils::head(readLines(sidecar, warn = FALSE), 1)
+  if (!length(first)) return(NA_character_)
+  hash <- sub("\\s.*$", "", trimws(first))
+  if (grepl("^[0-9a-f]{64}$", hash)) hash else NA_character_
+}
+
 record_distribution_artifact <- function(con, db_path, build_id, data_release_id,
-                                         schema_version = NA_integer_) {
+                                         schema_version = NA_integer_,
+                                         artifact_path = db_path,
+                                         sha256 = NA_character_,
+                                         artifact_role = "database",
+                                         derived_from_artifact_id = NA_character_) {
   if (!database_object_exists(con, "distribution_artifacts")) return(invisible(FALSE))
   if (is.null(db_path) || !nzchar(db_path) || !file.exists(db_path)) return(invisible(FALSE))
+  if (is.null(artifact_path) || !nzchar(artifact_path)) artifact_path <- db_path
   info <- file.info(db_path)
+  # The identifier is derived from the content hash where one is known, and falls
+  # back to the old size-based recipe only where it is not -- which is the row
+  # this run writes about itself, still open and still growing. Those rows say so
+  # by carrying a null sha256 rather than a number that looks authoritative and
+  # is 37% wrong.
   artifact_id <- paste0("artifact:", substr(digest::digest(
-    paste(build_id, data_release_id, basename(db_path), info$size, sep = "|"),
-    algo = "sha256", serialize = FALSE
+    paste(
+      build_id, data_release_id, basename(artifact_path),
+      if (is.na(sha256)) info$size else sha256, sep = "|"
+    ), algo = "sha256", serialize = FALSE
   ), 1, 24))
   DBI::dbExecute(con, paste0(
     "DELETE FROM ", project_qualified_name("distribution_artifacts"),
@@ -1331,9 +1792,37 @@ record_distribution_artifact <- function(con, db_path, build_id, data_release_id
   ))
   DBI::dbWriteTable(con, "distribution_artifacts", tibble(
     artifact_id = artifact_id, build_id = build_id, data_release_id = data_release_id,
-    artifact_path = repository_uri(db_path, dirname(dirname(db_path))),
+    artifact_path = repository_uri(artifact_path, dirname(dirname(artifact_path))),
     size_bytes = as.numeric(info$size), schema_version = as.integer(schema_version),
-    recorded_at = Sys.time()
+    recorded_at = Sys.time(), sha256 = as.character(sha256),
+    artifact_role = as.character(artifact_role),
+    derived_from_artifact_id = as.character(derived_from_artifact_id)
+  ), append = TRUE)
+  invisible(artifact_id)
+}
+
+# The artifact a run inherited: the database it copied, whose bytes were final
+# before this run began and whose sidecar therefore states its true hash. Written
+# by the *next* build, which is the only party that can know it -- see the note
+# above record_published_artifact() on why a file cannot record its own hash.
+record_inherited_artifact <- function(con, artifact_path, sha256, schema_version = NA_integer_) {
+  if (is.na(sha256) || !nzchar(sha256)) return(invisible(FALSE))
+  if (!database_object_exists(con, "distribution_artifacts")) return(invisible(FALSE))
+  existing <- DBI::dbGetQuery(con, paste0(
+    "SELECT artifact_id FROM ", project_qualified_name("distribution_artifacts"),
+    " WHERE sha256 = ", sql_string(sha256)
+  ))
+  if (nrow(existing)) return(invisible(existing$artifact_id[[1]]))
+  artifact_id <- paste0("artifact:", substr(digest::digest(
+    paste("inherited", basename(artifact_path), sha256, sep = "|"),
+    algo = "sha256", serialize = FALSE
+  ), 1, 24))
+  DBI::dbWriteTable(con, "distribution_artifacts", tibble(
+    artifact_id = artifact_id, build_id = NA_character_, data_release_id = NA_character_,
+    artifact_path = repository_uri(artifact_path, dirname(dirname(artifact_path))),
+    size_bytes = NA_real_, schema_version = as.integer(schema_version),
+    recorded_at = Sys.time(), sha256 = sha256, artifact_role = "superseded_database",
+    derived_from_artifact_id = NA_character_
   ), append = TRUE)
   invisible(artifact_id)
 }

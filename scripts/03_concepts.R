@@ -92,7 +92,7 @@ apply_reviewed_concept_mappings <- function(con, root) {
       scale = dplyr::first(.data$scale), frequency = dplyr::first(.data$frequency),
       mapping_status = "reviewed", first_vintage_id = dplyr::first(.data$first_vintage_id), .groups = "drop"
     )
-  reviewed <- mappings %>% dplyr::left_join(known %>% dplyr::select(.data$series_id, .data$first_vintage_id), by = "series_id") %>% dplyr::transmute(
+  reviewed <- mappings %>% dplyr::left_join(known %>% dplyr::select("series_id", "first_vintage_id"), by = "series_id") %>% dplyr::transmute(
     series_id, concept_id, relationship, mapping_status = "reviewed", evidence, reviewed_by,
     reviewed_at = as.Date(.data$reviewed_at),
     first_vintage_id
@@ -346,6 +346,31 @@ create_table_status_views <- function(con) {
   # them fourteen times over. A researcher counting series would have been wrong
   # by an order of magnitude, and any join through this view would have
   # multiplied observations silently.
+  # Two reviews, of two different objects, and both are required.
+  #
+  # The re-audit's RA2-02. Until schema 36 this view asked one question --
+  # is every worksheet this series was assembled from `validated` -- and
+  # `canonical.series_review` was not mentioned anywhere in it. The eligibility
+  # gate beside it inspected six *column values* on dim_series for the sentinels
+  # `not_reviewed` and `UNRESOLVED_SOURCE_UNITS`, which the derivation layer
+  # never writes: a Spanish label containing "saldo" and "serie original", plus a
+  # published price base year, unit and scale, fills all six with
+  # basis = 'published_label'. So promoting one worksheet would have admitted
+  # every series on it with zero economic review, while the documentation --
+  # mine, written the round before -- said the register gated this view.
+  #
+  # The authority question the re-audit asks is answered here rather than left
+  # implicit. They are not competing claims about the same thing:
+  #
+  #   table_status  -- is this *worksheet's* parsing and cell accounting fit to
+  #                    publish? A property of a source table.
+  #   series_review -- is this *series'* economic meaning established: unit,
+  #                    scale, timing, stock/flow, nominal/real, adjustment,
+  #                    hierarchy? A property of a series.
+  #
+  # A series can sit on a perfectly reconciled worksheet and still have no
+  # established meaning, and a reviewed series can sit on a worksheet whose cells
+  # do not add up. Neither implies the other, so both are required.
   create_project_view(con, "v_research_series", paste(
     "WITH series_status AS (",
     "  SELECT series_id, count(*) AS status_rows,",
@@ -355,8 +380,11 @@ create_table_status_views <- function(con) {
     "    max(reviewed_at) AS reviewed_at",
     "  FROM v_series_table_status GROUP BY 1",
     ")",
-    "SELECT c.*, t.source_sheet, 'validated' AS status, t.reviewed_by, t.reviewed_at",
+    "SELECT c.*, t.source_sheet, 'validated' AS status,",
+    "t.reviewed_by AS table_reviewed_by, t.reviewed_at AS table_reviewed_at,",
+    "r.reviewed_by, r.reviewed_at, r.definition, r.definition_evidence_uri",
     "FROM v_series_catalogue c JOIN series_status t USING (series_id)",
+    "JOIN ", project_qualified_name("series_review"), " r ON r.series_id = c.series_id",
     "WHERE t.validated_rows = t.status_rows",
     # v_series_catalogue counts every vintage the database holds, because it is a
     # catalogue. The research surface may not: a series whose only observations

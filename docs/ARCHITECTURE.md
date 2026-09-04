@@ -10,22 +10,42 @@
 6. **Never hide discarded or unmapped content.** Parser omissions and mapping coverage are written to quality outputs, and every numeric source cell inside a parsed region must resolve to an observation or to a reviewed classification saying what else it is. A cell nobody has accounted for blocks the release.
 7. **Say which layer an object belongs to.** Tables live in `raw`, `staging`, `canonical` or `audit`, and the research interface is published under `marts`. See `docs/DATA_MODEL.md`.
 8. **Derive only what the source states, and record the wording.** A measurement field is filled in only where the publisher says the answer in words, and the sentence travels with the value. `not_reviewed` is a real answer and is reported as one.
+9. **A build cannot touch the database it has not been accepted to replace.** The run writes a candidate file; publication is the rename of that file. See below.
 
 ## Update sequence
 
 ```mermaid
 flowchart TD
-    A[Resolve and hash inputs] --> B[Archive unique source files]
-    B --> C[Inspect worksheets named tables or CSV headers]
-    C --> D{Structure guard passes?}
-    D -- No --> E[Rollback source and flag error]
-    D -- Yes --> F[Read each sheet once and load raw plus semantic layers]
-    F --> G[Validate dates keys totals and mappings]
-    G --> H[Commit source vintage]
-    H --> I[Refresh latest and documented views]
+    A[Copy the published database to a build candidate] --> B[Resolve and hash inputs]
+    B --> C[Archive unique source files]
+    C --> D[Inspect worksheets named tables or CSV headers]
+    D --> E{Structure guard passes?}
+    E -- No --> F[Rollback source and flag error]
+    E -- Yes --> G[Read each sheet once and load raw plus semantic layers]
+    G --> H[Validate dates keys totals and mappings]
+    H --> I[Commit source vintage into the candidate]
+    I --> J[Rebuild release-wide derived tables in one transaction]
+    J --> K{Any error-severity flag?}
+    K -- Yes --> L[Retain the candidate for inspection; publish nothing]
+    K -- No --> M[Record the decision and promote inside the candidate]
+    M --> N[Rename the candidate over the published database]
 ```
 
 Each source is processed inside its own transaction. A failed workbook cannot partially replace the corresponding source, and it does not prevent independent sources from loading.
+
+### Why the candidate file exists
+
+Three isolation mechanisms sit inside the database and none of them is sufficient on its own:
+
+- the **per-source transaction**, which stops a half-parsed workbook landing;
+- the **release-wide transaction**, which stops a half-rebuilt derived layer landing;
+- the **decision and pointer**, which stop a failed build withdrawing the published product.
+
+What they cannot stop is a failed build *changing* the published product, because every one of them operates inside the file that *is* the published product. Published views resolve vintages through the source bundle rather than the build, so all builds of one bundle expose the same rows; sources commit one at a time, hundreds of steps before the verdict exists; and the schema migrations' invalidation steps delete published facts before the run has begun. Committed work under a pointer that has not moved is still committed.
+
+So the run and the published database stop being the same bytes. `run_isolated_update()` in `scripts/06_pipeline.R` copies, builds in the copy, and renames it into place only on acceptance — the pattern `compact_database.R` has used for its own swap since schema 22.
+
+**The limit, stated rather than implied.** Facts are still not versioned per build. The guarantee is that a build you did not accept cannot have altered the one you did, provable by hashing the file. It is not that an arbitrary past product can be reconstructed from inside one database; that would need a per-build fact namespace and is not attempted.
 
 For `semantic_table` workbooks, raw preservation and semantic extraction share one in-memory list-cell matrix per worksheet. The raw content hash is computed from the same cropped active range used previously, while semantic parsers retain A1-based row and column coordinates. Sheets are processed sequentially, so the 94-sheet Annex is neither read twice nor retained in memory as a whole.
 

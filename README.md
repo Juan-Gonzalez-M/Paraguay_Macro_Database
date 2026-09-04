@@ -1,4 +1,4 @@
-# Paraguay macroeconomic database — governed pilot v32
+# Paraguay macroeconomic database — governed pilot v38
 
 ## About this project
 
@@ -20,7 +20,7 @@ What this buys a researcher or analyst working with Paraguayan macro/financial d
 - **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `release_blocked` produced error-severity flags, is never published through the research views, and stops the caller with a nonzero status.
 - **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
 
-The schema is at version 32. Six external technical audits have been worked through since v11; `CHANGELOG.md` records what each version changed and `docs/SCHEMA_MIGRATIONS.md` is regenerated from the migration registry on every run, so it describes the database in front of you rather than the one it was written against.
+The schema is at version 38. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. The current readiness limitations and remediation plan are in `revisiones/EMPIRICAL_READINESS_2026-09-03.md`.
 
 ## What the three interfaces promise
 
@@ -30,8 +30,8 @@ Three access paths answer three different questions, and using the wrong one is 
 | --- | --- | --- |
 | `v_series_latest`, `v_*_latest`, `v_latest_raw_*` | "What is the current data?" | The newest **published** vintage of each series, **realized observations only**. A staged or blocked build is invisible here; the `_all` twins exist for ingestion diagnostics and are not a research interface. |
 | `v_publisher_statement_latest` | "What does the publisher currently say?" | The same, **including the 343 published projections**. Not an estimation sample. `marts.v_series_projections` is the projections on their own. |
-| `series_as_of_date(d)` | "What did the database say on date `d`?" | Point-in-time, realized observations only; `series_statement_as_of_date(d)` includes projections. **Snapshot-limited today** — see below. |
-| `marts.v_research_series` and the validated marts | "What has an economist signed off on?" | Only series carrying a complete research-eligibility record — unit, scale, frequency, stock/flow, nominal/real and seasonal adjustment. **This is currently 0 rows by design**: no series has been through that review yet. |
+| `series_as_of_date(d)` | "What did the database say on date `d`?" | Point-in-time, realized observations only; `series_statement_as_of_date(d)` includes projections. Ranks over **every vintage that was ever published**, not the ones currently published. **Snapshot-limited today** — see below. |
+| `marts.v_research_series` and the validated marts | "What has an economist signed off on?" | Only series that an economist has reviewed in `config/series_review.csv` **and** whose worksheets are `validated` — two different reviews of two different objects, both required. **This is currently 0 rows by design**: no series has been through that review yet. |
 
 Three things a researcher has to know:
 
@@ -39,22 +39,32 @@ Three things a researcher has to know:
 - **`latest` is not `validated`.** Everything outside the marts is the publisher's number with its provenance attached, not a reviewed economic series. Units, stock/flow and comparability across sources have not been adjudicated.
 - **`as-of` is not real-time.** There is one retained vintage per source, no recorded revision, and no operator-recorded availability, so `series_as_of_date('2020-12-31')` returns **zero rows** despite history back to 1945. The mechanism is complete; the acquisition evidence is not. Do not make a real-time claim from this database until `config/source_vintages.csv` is filled in — `outputs/source_provenance_worklist.csv` says exactly what is missing per vintage.
 
+  Until schema 36 the mechanism was *not* complete, and it would have failed quietly the moment a second vintage arrived: the as-of macros ranked over the bundle the active pointer names, so a superseded vintage left the population entirely and no cutoff could return it. Retaining a workbook would have produced two vintages and one answer. It now ranks over every vintage belonging to any accepted data release, which is the population a point-in-time question is about.
+
 The sections below cover the quick start, the monthly replacement workflow, the full changelog of correctness fixes by version, the data model, and example queries.
 
 ## Quick start
 
 1. Unzip the project and open `pilot_paraguay_macro_database.Rproj` in RStudio.
-2. Install packages once:
+2. Reproduce the recorded environment once:
 
 ```r
-source("scripts/00_install_packages.R")
+renv::restore()
 ```
+
+   `renv.lock` records R 4.5.1 and the exact package versions this database was built with, and `renv::restore()` is the only way to get them. `source("scripts/00_install_packages.R")` remains as a fallback for a setup without `renv`, but it installs whatever CRAN publishes today and checks presence rather than version — so it can leave you a step behind or ahead of the lockfile without saying so.
+
+   **`run_update.R` now stops if the environment does not match**, rather than recording a lockfile digest that describes a library it was not built against. `check_environment()` names the difference. If you need to build anyway, `PARAGUAY_MACRO_ALLOW_ENV_DRIFT=1` is the deliberate override and the resulting build carries an `environment_drift_overridden` flag saying you took it.
 
 3. Build or update the database:
 
 ```r
 source("run_update.R")
 ```
+
+   The run does not write `database/paraguay_macro_pilot.duckdb`. It copies it to `database/candidates/`, builds there, and renames the candidate into place only if the build is accepted — so budget roughly three times the database size in free disk. A blocked run leaves the published database byte-for-byte unchanged and keeps its candidate for you to inspect. See [docs/DATABASE_STORAGE.md](docs/DATABASE_STORAGE.md).
+
+   The copy itself is cheap where the filesystem supports cloning — 0.1–0.3 seconds for 500 MiB on APFS — because `file.copy()` clones rather than duplicating blocks. On a filesystem without it, expect a full copy.
 
 4. Inspect these files before using the update:
 
@@ -72,7 +82,7 @@ source("run_update.R")
 
 Six further files are worklists for a reviewer rather than release diagnostics, and do not change between runs unless the evidence does: `outputs/canonical_core_candidates.csv`, `outputs/duplicate_series_candidates.csv`, `outputs/direct_panel_duplicate_keys.csv`, `outputs/source_region_review_worklist.csv`, `outputs/source_region_review_queue.csv` (the same cells ranked by the economic weight of the worksheet) and `outputs/source_provenance_worklist.csv` (which acquisition field is missing per vintage, and what it costs).
 
-The database is written to `database/paraguay_macro_pilot.duckdb`. A run whose report says `release_blocked` **does not withdraw the previous database**: since schema 30, publication is a pointer at an immutable per-build decision, and a build that fails never moves it. The last published build stays published while you read the flags and repeat the run.
+The database is published at `database/paraguay_macro_pilot.duckdb`. A run whose report says `release_blocked` **cannot have changed it at all**. Schema 30 made publication a pointer at an immutable per-build decision, so a failed build could not withdraw the database; schema 33 makes the build run in a separate file that is renamed into place only if it is accepted, so a failed build cannot alter it either — which the earlier design could not prevent, because the run and the published database were the same bytes. The last published build stays published, byte for byte, while you read the flags and repeat the run, and the failed build is retained under `database/candidates/` if you want to see what it produced.
 
 ## Monthly replacement workflow
 
@@ -90,96 +100,13 @@ input/current/bank_reference/Referencias_bancos_financieras.xlsx
 
 Replace it only when an official reviewed reference version changes. Its fifteen named Excel tables are identified primarily by worksheet and exact column signature; Excel’s autogenerated display name is used only to resolve an otherwise ambiguous match.
 
-## What v12–v32 repaired
+## Current release and change history
 
-Five external technical audits, worked through band by band. **`CHANGELOG.md` is the record**, newest first, with the measured effect of each change; `revisiones/` holds the per-audit notes, including what was declined and why. The sections below stop at v11 and are kept as written.
-
-## What v11 repairs
-
-- Fresh bootstrap never executes historical data invalidations; migration functions run only when the database had a prior schema version on entry.
-- The v9-to-v10 concept cleanup now computes its affected concept set before deletion, eliminating the undefined-variable startup failure while preserving unrelated concepts.
-- Legacy `dim_series` tables are expanded to the current column contract before migrations query `semantic_status` or concept metadata.
-- Year recognition accepts tightly controlled publisher footnotes, and year-axis selection requires an ordered, plausible sequence rather than using the largest count of year-like numbers.
-- `CUADRO 58` is covered by a real-workbook regression from January 2008 through the annual 2026 observation, with no fabricated 2033–2098 periods.
-- A v10 database reingests only `economic_annex`; all other completed sources remain reusable.
-- The bank EEFF smoke assertion derives its expected data-row count from the worksheet bounds and explicitly subtracts the header row.
-
-## What v10 repaired
-
-- `Cuadro 49` accepts the official monthly projections through 2028 but excludes the following percentage-summary and footnote rows from the time axis.
-- Exchange-rate histories process every validated consecutive-year/Compra/Venta block; isolated rate values such as `2080` cannot become a year header.
-- Formula-only exchange-house views use true empty content bounds and remain safe through raw hashing, semantic skipping and catalogue generation.
-- Series continuity uses explicit DuckDB aliases and has a two-vintage execution regression.
-- Liquidity event identity includes canonical `operation_type: deposito|repo`; tenor columns are dimensions rather than duplicated measures.
-- A v9 database reingests only the six affected documented sources once. Other completed sources and both long CSVs remain reusable.
-
-## What v9 repaired
-
-- The bank/finance reference loader reads the named table as the XML root and verifies every range before calling `readxl`.
-- Formula-only exchange-house views retain an explicit empty raw-cell schema; authoritative panels still load from their documented source sheets.
-- Shared matrix predicates preserve row/column coordinates through `stringr` operations.
-- `set` is recognized as September; naked `1`--`4` values are no longer quarters. A malformed quarter cell is inferred only when the surrounding four-quarter-plus-annual structure proves the slot.
-- Credit subquestion identifiers (`10,1`, `10,2`, etc.) are part of semantic identity.
-- Interbank transactions, LRM tenors and liquidity auctions use explicit row dimensions. When the publisher supplies no identifier for same-day duplicate events, deterministic within-key lanes retain every row without hashing amounts or rates; these are exposed as `identity_stability = positional_lane`.
-- Source discovery, metadata and ingestion share one source-level error boundary. Failed files receive `source_files` status and a quality flag, and the loop continues.
-- Existing v8 documented sources are marked once for v9 re-ingestion so corrected parsers are not bypassed by hash reuse.
-
-## What v8 improved
-
-- Generic records are collected as lightweight named lists; the growing collector is never passed into and returned from a function for every cell.
-- Unit, scale, currency, index-base and total inference runs once per distinct metadata label/title pair and is joined back without changing explicit source-specific overrides.
-- `series_id` SHA-256 is calculated once per distinct worksheet/path/frequency identity rather than once per period.
-- Payment BIC matching runs once per distinct series path.
-- `sheet_modes.csv` and documented source contracts are cached and automatically refreshed when the config file changes.
-- A semantic worksheet is read once. The same list-cell matrix feeds content-addressed raw storage and semantic extraction, without retaining the full 94-sheet Annex in memory.
-- `ingestion_stage_timings` and its latest CSV expose discovery, curation, validation, reuse and total time by source.
-- Equivalence tests compare vectorized metadata with the preserved v7 scalar rule, confirm byte-identical series IDs, preserve horizontal year-month row order, and verify explicit parser overrides.
-
-## What v7 added
-
-- `series_id` no longer hashes inferred `unit` or `currency`; correcting metadata does not manufacture a new series.
-- `identity_basis` documents the exact identity input and `identity_stability` marks series that still require a positional collision disambiguator.
-- `documented_series_continuity` compares each publication with the prior completed vintage and lists new, disappeared and metadata-changing series. Excess disappearances and unit/scale/currency changes roll back that source before tombstones or revisions can be committed, while retaining the diagnostic list.
-- `hierarchy_status = unresolved` is propagated to the sheet catalogue, observations and series when published aggregates and components coexist without a reviewed parent-child model.
-- `config/sheet_modes.csv` contains reviewed orientation exceptions and hierarchy policy; no sheet-name exception remains in the generic detector.
-- Index, percent, ratio and count measures are forced to `scale = units`; a continuing series cannot silently change unit, scale or currency.
-- Ten additional Excel workbooks cover liquidity operations, direct investment, insurance, BCP daily FX operations, exchange rates, bancarization, financial indicators, interbank markets, LRM auctions and compensatory/complementary FX sales.
-- `bond_curve_snapshot` and `securities_transactions_snapshot` load the two large CSV files with exact header, row, date, key and currency contracts. Latest and daily-activity views are included.
-- Worksheet XML inventory ignores chartsheets and derives meaningful bounds from active cells even when Excel declares thousands of formatted blank columns.
-
-## Earlier documented-source coverage
-
-- Eight reusable period orientations cover all 93 Annex statistical worksheets; the index sheet remains metadata only.
-- The payments bulletin exposes 38 normalized tables and loads its official BIC directory into `dim_payment_participant`.
-- Exchange-house balance sheets, ratios, dependencies and personnel are normalized by verified entity; the bulletin’s own currency definitions populate `dim_currency`.
-- The credit survey separates question, response and quarterly response share, while its indices retain sector and measure.
-- Every complex worksheet is audited in `documented_table_catalog`, with hard minimum sheet/observation contracts in `config/documented_source_contracts.csv`.
-- Ambiguous units are visible as `source_units`; the parser does not silently invent a unit or cross-source concept identity.
-- Full documented snapshots coexist with sparse events, so latest, as-of and revision queries work across the expanded sources.
-
-## Concept governance introduced in v6
-
-- `dim_concept` and `map_series_concept` separate source identity from reviewed economic equivalence.
-- `config/concept_mappings.csv` is the only path for asserting a cross-source relationship; reviewed rows require evidence, reviewer and date.
-- Equivalent series must share unit, scale and frequency contracts. Related but non-equivalent series can use a different relationship without being silently pooled.
-- `documented_sheet_drift` compares every complex worksheet with its prior completed vintage and raises an error on missing or shrinking coverage.
-- `find_anchor_cell()` accepts a bounded region or an explicit occurrence for future parsers with repeated labels.
-
-## Earlier correctness and storage fixes
-
-- Worksheet relationship IDs are resolved correctly from the workbook XML.
-- Direct-source guards filter the requested source rather than comparing the registry column to itself.
-- Mixed-type Excel cells are read as list cells, preserving actual dates in ICC and EVE.
-- Excel serial dates use the 1899-12-30 epoch; character serials no longer crash ICC.
-- Source-specific date guards reject unexplained periods: 1980 onward for the original curated sources and 1900 onward for the Annex’s verified long history. The normal future bound is 400 days; the Annex alone has a reviewed 1,000-day window for its official 2028 projections.
-- YAML specifications are explicitly read as UTF-8.
-- `unit` and `scale` are separate series attributes.
-- Existing v2 ICC, EVE and FX outputs are invalidated and rebuilt with the corrected guarded parsers.
-- A real-source smoke test derives its source count from the registry and asserts concrete row/date targets.
-- Currency code `6200` is now `currency_of_origin = FX` but `unit_currency = PYG`; `economic_currency` remains only as a deprecated alias of the measurement unit.
-- Time-series tests use minimum baselines and compare new snapshots with the prior completed vintage rather than requiring a permanently fixed row count.
-- Account identifiers are read as text, preserved in `account_number_raw`, and canonicalized without scientific notation.
-- Report-style cells use content-addressed sheet versions; unchanged sheets add only a lightweight vintage link.
+The active project is schema 38. `CHANGELOG.md` is the single maintained implementation history;
+`docs/SCHEMA_MIGRATIONS.md` is generated from the migration registry and records the executable
+upgrade path. Historical audit narratives and version-specific repair notes are intentionally not
+part of the current distribution. The only current readiness assessment and remediation plan is
+`revisiones/EMPIRICAL_READINESS_2026-09-03.md`.
 
 ## Data layers
 
@@ -282,9 +209,9 @@ For a database created by pilot v1:
 source("scripts/upgrade_v1_to_v12.R")
 ```
 
-The script backs up and retires the v1 database before rebuilding. The lower-numbered `upgrade_v1_to_v*.R` filenames remain as compatibility stubs that source it.
+The script backs up and retires the v1 database before rebuilding. Obsolete version-specific compatibility wrappers are not shipped.
 
-**`docs/SCHEMA_MIGRATIONS.md` is the authority on this, and it is generated from the migration registry on every run.** Naming a version here is how this section drifted before: it said `upgrade_v1_to_v11.R` while the runbook said `v12`. Read the generated file for the entry point, the per-version table of what each step changed, and which sources each step re-ingests.
+**`docs/SCHEMA_MIGRATIONS.md` is the authority on this, and it is generated from the migration registry on every run.** Read it for the current entry point, the per-version table of what each step changed, and which sources each step re-ingests.
 
 Any database at an earlier applied schema upgrades automatically when `run_update.R` is executed; `initialize_database()` walks every step it is missing, in order, and re-ingests only the sources whose registry entry says so. Existing full-copy `report_cells` data remains available through the compatibility view.
 
@@ -304,13 +231,9 @@ This creates `database/paraguay_macro_rebuilt_from_archive.duckdb` and never ove
 - `docs/DOCUMENTED_SOURCES.md`: parser orientations, series identity, hierarchy, units, all expanded sources and review queries.
 - `docs/CONCEPT_GOVERNANCE.md`: safe cross-source mapping workflow and review contract.
 - `docs/OPERATIONS.md`: replacement procedure, acceptance checklist and recovery.
-- `docs/FEEDBACK_IMPLEMENTATION.md`: both review rounds, item by item.
 - `docs/VERIFICATION.md`: verified workbook facts, test targets and environment limitation.
 - `docs/SCHEMA_MIGRATIONS.md`: generated from the migration registry on every run — which version the database is at, what each step changed, and which sources it re-ingested.
-- `docs/AUDITORIA_REGRESIONES.md`: reconstructed R1–R35 status and acceptance gates.
-- `revisiones/REVISION_AUDITORIA_6_P0_P1_P2.md`: the sixth external audit, finding by finding — what was implemented, what was declined and why. The five earlier rounds sit beside it.
-- `docs/REVISION_V11_BOOTSTRAP_AND_YEAR_AXIS.md`: direct mapping from the v10 execution report to v11 fixes.
-- `docs/REVISION_V10_RUNTIME_REPAIRS.md`: direct mapping from the v9 runtime report to v10 fixes.
+- `revisiones/EMPIRICAL_READINESS_2026-09-03.md`: current limitations, evidence and ordered remediation plan.
 - `config/table_dictionary.csv`: machine-readable database object catalogue.
 
 ## Pilot boundary

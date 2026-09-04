@@ -81,7 +81,7 @@ documented_year_values <- function(text) {
 # footnote/qualifier text (e.g. the "*" in "2021*") instead of discarding it.
 # Published footnote markers usually mean "provisional, subject to revision" --
 # real editorial information this project otherwise throws away silently while
-# parsing the year (see CUADRO 57a, AUDITORIA_REGRESIONES.md R40). A blank
+# parsing the year (verified on CUADRO 57a). A blank
 # capture (no marker) is normalized to NA, matching every other "not present"
 # convention in this file.
 documented_year_footnote <- function(text) {
@@ -337,19 +337,6 @@ documented_fill_right <- function(x) {
   x
 }
 
-documented_fill_down <- function(x) {
-  if (!length(x)) return(x)
-  for (j in seq_len(ncol(x))) {
-    values <- x[, j]
-    blank <- documented_blank(values)
-    previous <- cummax(ifelse(!blank, seq_along(values), 0L))
-    fill <- blank & previous > 0L
-    values[fill] <- values[previous[fill]]
-    x[, j] <- values
-  }
-  x
-}
-
 documented_compact_path <- function(x) {
   x <- stringr::str_squish(as.character(x))
   x <- x[!is.na(x) & nzchar(x)]
@@ -523,7 +510,7 @@ documented_measure_metadata_vectorized <- function(series_label, table_title) {
   # "constante(s) de <year>" appears consistently across the GDP tables
   # (Cuadro 1/2/6/6a/7/7a) and nowhere else; no evidence of a seasonal-
   # adjustment marker was found anywhere in the 94 real titles, so that field
-  # was deliberately not added (see revisiones/MEJORAS_v11.md).
+  # is left for explicit economic review rather than inferred from a title.
   price_base_year <- stringr::str_match(
     table_title, stringr::regex("constantes?\\s+de\\s+((?:19|20)[0-9]{2})", ignore_case = TRUE)
   )[, 2]
@@ -1303,7 +1290,7 @@ documented_extract_horizontal_year_month <- function(text, numbers, source_sheet
   years <- documented_year_values(text)
   # Most horizontal_year_month tables are genuine multi-year grids, where
   # requiring several ordered years protects against a lone stray value
-  # masquerading as a time axis (see AUDITORIA_REGRESIONES.md R27). A few
+  # masquerading as a time axis. A few
   # published tables are reviewed single-year exceptions (e.g. CUADRO 57a);
   # those opt into a lower floor explicitly via sheet_modes.csv rather than
   # loosening the general guard for every sheet in this mode.

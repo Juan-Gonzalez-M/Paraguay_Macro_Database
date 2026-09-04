@@ -390,9 +390,9 @@ validate_documented_sheet_drift <- function(con, item, release_id) {
       TRUE ~ "unchanged"
     )
   ) %>% dplyr::select(
-    .data$vintage_id, .data$previous_vintage_id, .data$source_id, .data$source_sheet,
-    .data$previous_observations, .data$current_observations, .data$observation_change,
-    .data$previous_series, .data$current_series, .data$series_change, .data$drift_status
+    "vintage_id", "previous_vintage_id", "source_id", "source_sheet",
+    "previous_observations", "current_observations", "observation_change",
+    "previous_series", "current_series", "series_change", "drift_status"
   )
   DBI::dbWriteTable(con, "documented_sheet_drift", drift, append = TRUE)
   risky <- drift %>% dplyr::filter(.data$drift_status %in% c("missing_sheet", "observations_shrank", "series_shrank"))
@@ -1211,8 +1211,7 @@ validate_research_eligibility_metadata <- function(con, release_id) {
     " JOIN ", project_qualified_name("dim_series"), " d ON d.series_id = r.series_id",
     " WHERE ", predicate, " GROUP BY 1 ORDER BY series DESC"
   ))
-  if (!nrow(ineligible)) return(invisible(TRUE))
-  insert_quality_flag(
+  if (nrow(ineligible)) insert_quality_flag(
     con, release_id, "error", "research_series_metadata_incomplete", NA_character_,
     paste0(
       sum(ineligible$series), " series reach the research surface without every field a ",
@@ -1222,7 +1221,45 @@ validate_research_eligibility_metadata <- function(con, release_id) {
       paste0(ineligible$source_id, " (", ineligible$series, ")", collapse = "; ")
     )
   )
-  invisible(FALSE)
+  # A value is not a review. The re-audit's RA2-02.
+  #
+  # The check above asks whether the column holds something other than
+  # `not_reviewed`, and the derivation layer fills these columns from published
+  # wording: `saldo` in a label yields stock_flow = 'stock' with
+  # basis = 'published_label'. That is a reasonable inference and it is not an
+  # economist's judgement, which is the entire distinction
+  # series_semantic_evidence exists to record -- and which nothing read.
+  #
+  # So the gate now asks the question the evidence table was built to answer:
+  # does every eligibility field of every series on the research surface rest on
+  # a row whose basis is 'reviewed'?
+  unreviewed <- if (!database_object_exists(con, "series_semantic_evidence")) {
+    tibble(source_id = character(), series = integer(), fields = character())
+  } else DBI::dbGetQuery(con, paste0(
+    "WITH required AS (SELECT unnest([",
+    paste(vapply(fields, sql_string, character(1)), collapse = ", "), "]) AS field),",
+    " surface AS (SELECT r.series_id, d.source_id FROM marts.v_research_series r",
+    "   JOIN ", project_qualified_name("dim_series"), " d USING (series_id))",
+    " SELECT s.source_id, count(DISTINCT s.series_id) AS series,",
+    "        string_agg(DISTINCT q.field, ', ') AS fields",
+    " FROM surface s CROSS JOIN required q",
+    " WHERE NOT EXISTS (SELECT 1 FROM ",
+    project_qualified_name("series_semantic_evidence"), " e",
+    "   WHERE e.series_id = s.series_id AND e.field = q.field AND e.basis = 'reviewed')",
+    " GROUP BY 1 ORDER BY series DESC"
+  ))
+  if (nrow(unreviewed)) insert_quality_flag(
+    con, release_id, "error", "research_series_evidence_not_reviewed", NA_character_,
+    paste0(
+      sum(unreviewed$series), " series reach the research surface carrying values nobody has ",
+      "reviewed. The fields are populated, but by derivation from published wording rather than ",
+      "by an economist: a label reading 'saldo' is evidence about a label, not a judgement that ",
+      "the series is a stock. Record the review in config/series_review.csv. Affected: ",
+      paste0(unreviewed$source_id, " (", unreviewed$series, ": ", unreviewed$fields, ")",
+             collapse = "; ")
+    )
+  )
+  invisible(!nrow(ineligible) && !nrow(unreviewed))
 }
 
 # The audit's F-05. A value dated after the vintage that published it is not an
@@ -1545,6 +1582,135 @@ validate_active_data_release <- function(con, release_id) {
 # auditor opened had 33 rows where the database had 35 -- and nothing said so.
 # The ordering is fixed; this is what keeps it fixed. Run at the very end, after
 # the report has been written, and comparing counts rather than trusting them.
+# The audit's F-06, as the audit states it in section 11.2: the dashboard must
+# hold exactly one row per worksheet, and the query that proves it must return
+# zero rows.
+#
+# An error, not a warning. A coverage report that counts direct investment three
+# times is not a diagnostic to read later -- it is a number a reader will add up,
+# and 256 rows for 242 worksheets shipped for a whole schema version because
+# nothing looked. The check reads the written file rather than re-running the
+# query behind it, because the file is what a reader opens and re-running the
+# query could only prove the query agrees with itself.
+validate_coverage_dashboard <- function(con, release_id, root) {
+  if (is.null(root)) return(invisible(FALSE))
+  path <- file.path(root, "outputs", "coverage_dashboard.csv")
+  if (!file.exists(path)) return(invisible(FALSE))
+  dashboard <- readr::read_csv(path, show_col_types = FALSE, progress = FALSE)
+  if (!all(c("source_id", "source_sheet") %in% names(dashboard))) return(invisible(FALSE))
+  duplicated_keys <- dashboard %>%
+    dplyr::count(.data$source_id, .data$source_sheet, name = "rows") %>%
+    dplyr::filter(.data$rows > 1L)
+  if (!nrow(duplicated_keys)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "coverage_dashboard_duplicate_worksheets", NA_character_,
+    paste0(
+      nrow(duplicated_keys), " worksheet(s) appear more than once in coverage_dashboard.csv ",
+      "(", nrow(dashboard), " rows for ", nrow(dashboard) - sum(duplicated_keys$rows - 1L),
+      " worksheets). A register keyed (source_id, source_sheet) is being joined without ",
+      "exact-over-wildcard precedence; see wildcard_precedence_join_sql(). Affected: ",
+      paste(utils::head(paste0(
+        duplicated_keys$source_id, "/", duplicated_keys$source_sheet, " x", duplicated_keys$rows
+      ), 10), collapse = "; ")
+    )
+  )
+  invisible(FALSE)
+}
+
+# The audit's section 11.3: "A release should block on unclassified rejected
+# rows."
+#
+# Two things are checked and they fail differently. A rejection reason nobody has
+# declared is an error: the parser is discarding publisher rows for a cause no
+# reviewer has seen, which is the silent-loss defect wearing a label. Rows
+# carrying a declared but `unexpected` reason are a warning: the reason is
+# understood, and its appearance means the publication changed shape.
+#
+# It reads every row of discarded_rows, not only the delimited sources, and the
+# first run proved why that is the right scope: the ICC/EVE and FX-operations
+# parsers have been discarding rows as `non_data_note` since schema 12 under a
+# reason no register described. The audit names the CSV path because that is
+# where rows were vanishing unrecorded; the principle is not about CSVs.
+validate_row_rejection_accounting <- function(con, release_id, root) {
+  if (!database_object_exists(con, "discarded_rows")) return(invisible(FALSE))
+  register <- read_row_rejection_reasons(root)
+  recorded <- DBI::dbGetQuery(con, paste0(
+    "SELECT source_id, reason, count(*) AS rows FROM ",
+    project_qualified_name("discarded_rows"), " GROUP BY 1, 2 ORDER BY 1, 2"
+  ))
+  if (!nrow(recorded)) return(invisible(TRUE))
+  undeclared <- recorded %>% dplyr::filter(!.data$reason %in% .env$register$reason)
+  if (nrow(undeclared)) insert_quality_flag(
+    con, release_id, "error", "row_rejection_reason_undeclared", NA_character_,
+    paste0(
+      sum(undeclared$rows), " row(s) were rejected for ", nrow(undeclared),
+      " reason(s) that config/row_rejection_reasons.csv does not declare. Declare each reason ",
+      "with what it means, or repair the parser: ",
+      paste(utils::head(paste0(
+        undeclared$source_id, "/", undeclared$reason, " (", undeclared$rows, ")"
+      ), 10), collapse = "; ")
+    )
+  )
+  unexpected <- recorded %>%
+    dplyr::inner_join(
+      register %>% dplyr::filter(.data$expected == "unexpected") %>% dplyr::select("reason"),
+      by = "reason"
+    )
+  if (nrow(unexpected)) insert_quality_flag(
+    con, release_id, "warning", "row_rejection_unexpected_reason", NA_character_,
+    paste0(
+      sum(unexpected$rows), " row(s) were rejected for a reason the register marks unexpected. ",
+      "The publication has changed shape or the contract is wrong: ",
+      paste(utils::head(paste0(
+        unexpected$source_id, "/", unexpected$reason, " (", unexpected$rows, ")"
+      ), 10), collapse = "; ")
+    )
+  )
+  invisible(!nrow(undeclared))
+}
+
+read_row_rejection_reasons <- function(root) {
+  path <- file.path(root, "config", "row_rejection_reasons.csv")
+  if (!file.exists(path)) return(tibble(reason = character(), expected = character()))
+  register <- readr::read_csv(
+    path, show_col_types = FALSE, col_types = readr::cols(.default = readr::col_character())
+  )
+  missing <- setdiff(c("reason", "meaning", "expected", "reviewed_by"), names(register))
+  if (length(missing)) stop(
+    "Row-rejection register: missing column(s) ", paste(missing, collapse = ", "), ".", call. = FALSE
+  )
+  blank <- register %>% dplyr::filter(
+    is.na(.data$meaning) | !nzchar(trimws(.data$meaning)) |
+      is.na(.data$reviewed_by) | !nzchar(trimws(.data$reviewed_by))
+  )
+  if (nrow(blank)) stop(
+    "Row-rejection register: ", nrow(blank), " reason(s) declared with no meaning or no reviewer. ",
+    "A reason nobody has written down is not a classification.", call. = FALSE
+  )
+  unsupported <- setdiff(register$expected, c("expected", "unexpected"))
+  if (length(unsupported)) stop(
+    "Row-rejection register: `expected` must be 'expected' or 'unexpected', not: ",
+    paste(unsupported, collapse = ", "), ".", call. = FALSE
+  )
+  # The register and the code vocabulary have to be the same set, in both
+  # directions. A reason a parser can write and the register does not describe is
+  # the defect the register exists to prevent; a reason the register describes and
+  # no parser can write is a claim about a behaviour that does not exist.
+  undeclared <- setdiff(ROW_REJECTION_REASONS, register$reason)
+  if (length(undeclared)) stop(
+    "Row-rejection register: ", length(undeclared), " reason(s) a parser may record are not ",
+    "declared: ", paste(undeclared, collapse = ", "),
+    ". Say what each one means in config/row_rejection_reasons.csv.", call. = FALSE
+  )
+  invented <- setdiff(register$reason, ROW_REJECTION_REASONS)
+  if (length(invented)) stop(
+    "Row-rejection register: ", length(invented), " declared reason(s) no parser can record: ",
+    paste(invented, collapse = ", "),
+    ". Add them to ROW_REJECTION_REASONS or remove them from the register.", call. = FALSE
+  )
+  register
+}
+
 validate_report_agreement <- function(con, release_id, root) {
   if (is.null(root)) return(invisible(FALSE))
   attempt_id <- current_attempt_id(con, release_id)
@@ -1581,6 +1747,200 @@ validate_report_agreement <- function(con, release_id, root) {
     )
   )
   invisible(FALSE)
+}
+
+# The seventh audit's F-03, mechanical half.
+#
+# "Retain every subsequent source vintage" is a monthly commitment and not
+# something code can perform. What code can do is make the retention *checkable*,
+# and until now nothing verified that a vintage the database claims to hold still
+# has its bytes. The whole point-in-time story rests on the archive: a vintage
+# whose archived workbook is gone cannot be re-read, re-parsed or re-checked, and
+# the database would go on reporting its observations as though it could.
+#
+# Every archived file is re-hashed on every release. Measured at 0.38 seconds for
+# all 22 -- 104 MiB -- against a 49-second run, which is cheap enough that
+# sampling or trusting the file size would be a false economy.
+# The seventh audit's section 11.4. A gate that passes vacuously today, which is
+# why it is written now rather than after the first promotion.
+#
+# The register is empty, so there is nothing to reject. That is the point: the
+# first row anybody writes is the one that decides whether "reviewed" means
+# anything, and by then the gate has to already exist. Schema 28 wrote the
+# research-eligibility gate on the same reasoning and for the same reason.
+#
+# Error severity, not warning. A half-completed review is worse than none: it
+# fills the columns the eligibility gate checks, so the series becomes eligible
+# for marts.v_research_series on the strength of a row whose reviewer never
+# finished it.
+# The seventh audit's P2: "Profile missingness generation as vintages accumulate.
+# Prevents expected-grid growth from becoming dominant."
+#
+# The phase builds one row per regular series-period per vintage and then prunes:
+# a period survives only where it is an observation or an explained absence. So
+# the *stored* table is small -- 267,830 rows -- while the phase is the slowest
+# in the run at 24.6 of 82.9 seconds. Both scale linearly in retained vintages,
+# and retaining vintages is what P1 asks for.
+#
+# Worth recording, because the audit's table of core interfaces reports this
+# table at 9,152,525 rows and calls it the largest in the database. It is not:
+# the live database held 267,830 before this round and holds 267,830 after. The
+# nine million is the intermediate the phase constructs before pruning, which is
+# real and is what costs the time -- but it is not a row count anyone can query,
+# and reporting it as one sends a reader looking for a table that is 34 times
+# smaller than described.
+#
+# So the shape is measured rather than assumed, and the seconds lead: rows,
+# retained vintages, contributing vintages and elapsed time together. A warning,
+# not an error -- growth is the consequence of doing the right thing with
+# vintages, and the release should say so rather than block on it.
+EXPECTED_GRID_ROW_BUDGET <- 25e6
+EXPECTED_GRID_SECONDS_BUDGET <- 120
+
+expected_grid_profile <- function(con, attempt_id = NULL) {
+  if (!database_object_exists(con, "expected_observation_grid")) return(NULL)
+  rows <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS grid_rows, count(DISTINCT vintage_id) AS grid_vintages FROM",
+    project_qualified_name("expected_observation_grid")
+  ))
+  vintages <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS retained_vintages FROM", project_qualified_name("source_files")
+  ))$retained_vintages[[1]]
+  seconds <- NA_real_
+  if (database_object_exists(con, "ingestion_stage_timings") && !is.null(attempt_id) &&
+      !is.na(attempt_id)) {
+    measured <- DBI::dbGetQuery(con, paste0(
+      "SELECT sum(elapsed_seconds) AS seconds FROM ",
+      project_qualified_name("ingestion_stage_timings"),
+      " WHERE stage = 'observation_missingness' AND attempt_id = ", sql_string(attempt_id)
+    ))$seconds[[1]]
+    if (length(measured) && !is.na(measured)) seconds <- as.numeric(measured)
+  }
+  list(
+    grid_rows = as.numeric(rows$grid_rows[[1]]),
+    grid_vintages = as.integer(rows$grid_vintages[[1]]),
+    retained_vintages = as.integer(vintages),
+    rows_per_vintage = if (rows$grid_vintages[[1]] > 0) {
+      as.numeric(rows$grid_rows[[1]]) / as.numeric(rows$grid_vintages[[1]])
+    } else NA_real_,
+    seconds = seconds
+  )
+}
+
+validate_expected_grid_growth <- function(con, release_id, attempt_id = NULL) {
+  profile <- expected_grid_profile(con, attempt_id)
+  if (is.null(profile) || !profile$grid_rows) return(invisible(FALSE))
+  over <- character()
+  if (profile$grid_rows > EXPECTED_GRID_ROW_BUDGET) over <- c(over, paste0(
+    format(profile$grid_rows, big.mark = ",", scientific = FALSE), " grid rows against a budget of ",
+    format(EXPECTED_GRID_ROW_BUDGET, big.mark = ",", scientific = FALSE)
+  ))
+  if (!is.na(profile$seconds) && profile$seconds > EXPECTED_GRID_SECONDS_BUDGET) {
+    over <- c(over, sprintf(
+      "%.1f seconds against a budget of %d", profile$seconds, EXPECTED_GRID_SECONDS_BUDGET
+    ))
+  }
+  if (!length(over)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "warning", "expected_grid_growth_budget", NA_character_,
+    paste0(
+      "The expected-observation grid has outgrown its budget: ", paste(over, collapse = "; "),
+      ". It holds ", format(round(profile$rows_per_vintage), big.mark = ","),
+      " rows per vintage across ", profile$retained_vintages,
+      " retained vintages and grows linearly in them. Partition the grid by vintage, or ",
+      "compute missingness only for the vintages a published view can reach."
+    )
+  )
+  invisible(FALSE)
+}
+
+validate_series_review_register <- function(con, release_id, root) {
+  if (is.null(root) || !database_object_exists(con, "series_review")) return(invisible(FALSE))
+  register <- read_series_review_register(root)
+  known <- if (database_object_exists(con, "dim_series")) DBI::dbGetQuery(
+    con, paste("SELECT series_id FROM", project_qualified_name("dim_series"))
+  )$series_id else character()
+  problems <- series_review_problems(register, known, known_series_frequencies(con))
+  if (!nrow(problems)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "series_review_incomplete", NA_character_,
+    paste0(
+      nrow(problems), " problem(s) in config/series_review.csv across ",
+      length(unique(problems$series_id)), " series. **No row of the register has been applied**, ",
+      "because a partly-recorded review would fill exactly the fields the research-eligibility ",
+      "gate reads: ",
+      paste(utils::head(paste0(problems$series_id, ": ", problems$problem), 10), collapse = "; ")
+    )
+  )
+  invisible(FALSE)
+}
+
+validate_archive_integrity <- function(con, release_id, root) {
+  if (is.null(root) || !database_object_exists(con, "source_files")) return(invisible(FALSE))
+  files <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id, vintage_id, source_file, sha256, size_bytes, publication_date,",
+    "ingestion_status,",
+    if ("archive_uri" %in% table_column_names(con, "source_files")) "archive_uri," else "NULL AS archive_uri,",
+    "archive_path FROM", project_qualified_name("source_files"), "ORDER BY source_id, vintage_id"
+  ))
+  if (!nrow(files)) return(invisible(TRUE))
+
+  # The portable URI first, because it means the same thing on anyone's machine;
+  # the run-local absolute path second; and the content-addressed convention
+  # last, which is how a distribution copy with its paths scrubbed still resolves.
+  resolve <- function(i) {
+    candidates <- c(
+      if (!is.na(files$archive_uri[[i]])) file.path(root, files$archive_uri[[i]]),
+      if (!is.na(files$archive_path[[i]])) files$archive_path[[i]],
+      Sys.glob(file.path(
+        root, "input_archive", files$source_id[[i]], paste0(files$sha256[[i]], ".*")
+      ))
+    )
+    found <- candidates[file.exists(candidates)]
+    if (length(found)) found[[1]] else NA_character_
+  }
+
+  status <- vapply(seq_len(nrow(files)), function(i) {
+    path <- resolve(i)
+    if (is.na(path)) return("missing")
+    if (is.na(files$sha256[[i]])) return("unhashed")
+    if (!identical(digest::digest(file = path, algo = "sha256"), files$sha256[[i]])) {
+      return("hash_mismatch")
+    }
+    "verified"
+  }, character(1))
+
+  retained <- as.integer(table(files$source_id)[files$source_id])
+  readr::write_csv(
+    tibble(
+      source_id = files$source_id, vintage_id = files$vintage_id,
+      source_file = files$source_file, sha256 = files$sha256,
+      publication_date = files$publication_date, ingestion_status = files$ingestion_status,
+      archive_status = status, retained_vintages_for_source = retained,
+      # Stated per row rather than left to be inferred, because "one vintage per
+      # source" is the fact behind series_as_of_date() returning nothing, and it
+      # should not take an external audit to discover it.
+      point_in_time_note = ifelse(
+        retained > 1L, "more than one vintage retained; revision and as-of queries have something to compare",
+        "only vintage retained for this source; no revision history and no as-of reconstruction is possible"
+      )
+    ),
+    file.path(root, "outputs", "vintage_retention_status.csv")
+  )
+
+  broken <- files[status %in% c("missing", "hash_mismatch"), , drop = FALSE]
+  broken_status <- status[status %in% c("missing", "hash_mismatch")]
+  if (nrow(broken)) insert_quality_flag(
+    con, release_id, "error", "archived_vintage_unverifiable", NA_character_,
+    paste0(
+      nrow(broken), " retained vintage(s) cannot be verified against their archived bytes. ",
+      "A vintage the database reports but cannot re-read is not retained: ",
+      paste(utils::head(paste0(
+        broken$source_id, "/", broken$vintage_id, " (", broken_status, ")"
+      ), 10), collapse = "; ")
+    )
+  )
+  invisible(!nrow(broken))
 }
 
 validate_source_provenance <- function(con, release_id, root) {
@@ -1695,9 +2055,19 @@ PUBLIC_VIEW_SCOPES <- c("current", "all", "history", "reference", "diagnostic")
 # object's dependants stop descending to anything. That is the property the two
 # previous versions of this lint lacked: a list you forget to extend used to mean
 # an unchecked view, and now it means a blocked release.
-filtered_base_relations <- function(contract) {
+# A declared boundary carrier, of which there are now two kinds.
+#
+# `current` carriers restrict to the one-row active pointer: "what is published
+# now". `history` carriers restrict to every accepted product: "what could have
+# been seen then". They are different populations and a view that took the wrong
+# one would be wrong in a way no row count reveals -- which is the re-audit's
+# RA2-01, where the as-of macros descended from the current carrier and could
+# therefore only ever return today's vintage.
+filtered_base_relations <- function(contract, scope = "current") {
   if (is.null(contract) || !"carries_release_boundary" %in% names(contract)) return(character())
-  contract$object_id[isTRUE_vector(contract$carries_release_boundary)]
+  contract$object_id[
+    isTRUE_vector(contract$carries_release_boundary) & contract$public_scope %in% scope
+  ]
 }
 
 isTRUE_vector <- function(x) !is.na(x) & as.logical(x)
@@ -1771,7 +2141,8 @@ release_filtered_object <- function(name, stored, carriers, seen = character()) 
 # restrict vintages to the active data release. Without this the descent test
 # would be circular -- a list of relations asserted to filter, and a rule that
 # trusts the list.
-validate_filtered_base_relations <- function(con, release_id, stored, carriers) {
+validate_filtered_base_relations <- function(con, release_id, stored, carriers,
+                                             history_carriers = character()) {
   failures <- character()
   for (name in carriers) {
     body <- stored$body[stored$object_name == name]
@@ -1779,13 +2150,34 @@ validate_filtered_base_relations <- function(con, release_id, stored, carriers) 
     restricts <- grepl("active_data_release", body[[1]], fixed = TRUE)
     if (!restricts) failures <- c(failures, name)
   }
-  if (!length(failures)) return(invisible(TRUE))
-  insert_quality_flag(
+  # A history carrier has to restrict to accepted *products* and must not
+  # restrict to the active pointer. Both halves matter: without the first it
+  # would publish blocked builds, and without the second it would be the current
+  # carrier under another name -- which is precisely the state RA2-01 found, an
+  # as-of interface that could only return what is published today.
+  history_failures <- character()
+  for (name in history_carriers) {
+    body <- stored$body[stored$object_name == name]
+    if (!length(body)) next
+    admits_history <- grepl("data_releases", body[[1]], fixed = TRUE)
+    narrows_to_active <- grepl("active_data_release", body[[1]], fixed = TRUE)
+    if (!admits_history || narrows_to_active) history_failures <- c(history_failures, name)
+  }
+  if (!length(failures) && !length(history_failures)) return(invisible(TRUE))
+  if (length(failures)) insert_quality_flag(
     con, release_id, "error", "filtered_base_relation_unrestricted", NA_character_,
     paste0(
       length(failures), " relation(s) declared as filtered bases do not restrict vintages to the ",
       "active data release, so every current view descending from them is unfiltered: ",
       paste(failures, collapse = ", ")
+    )
+  )
+  if (length(history_failures)) insert_quality_flag(
+    con, release_id, "error", "history_base_relation_unrestricted", NA_character_,
+    paste0(
+      length(history_failures), " relation(s) declared as history bases do not restrict vintages ",
+      "to accepted data releases, or narrow them to the active pointer -- either way the as-of ",
+      "interface cannot see a superseded vintage: ", paste(history_failures, collapse = ", ")
     )
   )
   invisible(FALSE)
@@ -1804,9 +2196,11 @@ validate_published_release_filter <- function(con, release_id, root = NULL) {
     ))
   )
   contract <- read_public_view_contract(root)
-  carriers <- filtered_base_relations(contract)
-  validate_filtered_base_relations(con, release_id, stored, carriers)
+  carriers <- filtered_base_relations(contract, "current")
+  history_carriers <- filtered_base_relations(contract, "history")
+  validate_filtered_base_relations(con, release_id, stored, carriers, history_carriers)
   problems <- character()
+  history_required <- character()
   if (is.null(contract)) {
     problems <- c(problems, "config/public_view_contract.csv is missing, so no object declares what it publishes")
     required <- character()
@@ -1827,7 +2221,22 @@ validate_published_release_filter <- function(con, release_id, root = NULL) {
     ))
     required <- contract$object_id[contract$public_scope == "current"]
     required <- intersect(required, stored$object_name)
+    history_required <- contract$object_id[contract$public_scope == "history"]
+    history_required <- intersect(history_required, stored$object_name)
   }
+  # A history object must descend from a history carrier. Descending from the
+  # current one instead is the RA2-01 defect exactly: the object looks filtered,
+  # passes every other rule, and answers a question about the past using only the
+  # present.
+  unhistoried <- history_required[!vapply(
+    history_required,
+    function(name) release_filtered_object(name, stored, history_carriers), logical(1)
+  )]
+  if (length(unhistoried)) problems <- c(problems, paste0(
+    length(unhistoried), " object(s) declared `history` do not descend from a relation carrying ",
+    "the accepted-product boundary, so they cannot see a superseded vintage: ",
+    paste(sort(unhistoried), collapse = ", ")
+  ))
   unfiltered <- required[!vapply(
     required, function(name) release_filtered_object(name, stored, carriers), logical(1)
   )]
@@ -2206,7 +2615,8 @@ validate_governance_drift <- function(con, release_id) {
   invisible(TRUE)
 }
 
-validate_database <- function(con, manifest, release_id, root, db_path = NULL) {
+validate_database <- function(con, manifest, release_id, root, db_path = NULL,
+                              attempt_id = NULL) {
   required <- c("source_files", "source_sheets", "report_sheet_versions", "report_sheet_vintages",
                 "report_cell_values", "report_cells", "dim_series", "fact_series_events",
                 "quality_flags", "dim_entity", "dim_currency", "dim_statement_item",
@@ -2340,6 +2750,9 @@ validate_database <- function(con, manifest, release_id, root, db_path = NULL) {
   validate_source_region_completeness(con, release_id)
   validate_published_identities(con, release_id, root)
   validate_source_provenance(con, release_id, root)
+  validate_archive_integrity(con, release_id, root)
+  validate_series_review_register(con, release_id, root)
+  validate_expected_grid_growth(con, release_id, attempt_id)
   validate_observation_missingness(con, release_id)
   validate_declared_natural_keys(con, release_id, root)
   validate_observation_status_exposure(con, release_id)
@@ -2347,6 +2760,8 @@ validate_database <- function(con, manifest, release_id, root, db_path = NULL) {
   validate_workbook_behaviour(con, release_id, root)
   validate_canonical_membership_agreement(con, release_id)
   validate_direct_panel_aggregation_safety(con, release_id)
+  validate_coverage_dashboard(con, release_id, root)
+  validate_row_rejection_accounting(con, release_id, root)
   # The published interface, checked before the release gate reads the flags.
   validate_stored_object_qualification(con, release_id)
   validate_active_data_release(con, release_id)
@@ -2431,7 +2846,64 @@ write_quality_flag_report <- function(con, release_id, root) {
   invisible(flags)
 }
 
-write_update_report <- function(con, release_id, root, attempt_id = NULL) {
+# What a build was decided to be, and whether it is the one being published.
+#
+# The audit's F-01 changed what "this update" means. A build now runs in a
+# candidate file that becomes the published database only if it is accepted, so a
+# blocked run leaves outputs/ describing a database that is not the live one.
+# That is the right trade -- an operator diagnosing a block needs the blocked
+# build's reports, not the published build's -- but only if the report says so.
+publication_state_lines <- function(con, build_id) {
+  if (is.null(build_id) || is.na(build_id) || !database_object_exists(con, "data_releases")) {
+    return(character())
+  }
+  decided <- DBI::dbGetQuery(con, paste0(
+    "SELECT status FROM ", project_qualified_name("data_releases"),
+    " WHERE data_release_id = ", sql_string(build_id)
+  ))
+  if (!nrow(decided)) return(character())
+  pointer <- DBI::dbGetQuery(con, paste0(
+    "SELECT data_release_id FROM ", project_qualified_name("active_data_release")
+  ))
+  published <- nrow(pointer) == 1L && identical(pointer$data_release_id[[1]], build_id)
+  if (identical(decided$status[[1]], "accepted") && published) c(
+    paste0("**Published.** This build (`", build_id, "`) was accepted and is the database at ",
+           "`database/paraguay_macro_pilot.duckdb`. The build it replaced is retained under ",
+           "`database/backups/paraguay_macro_pilot_pre_swap_*.duckdb`."),
+    ""
+  ) else c(
+    paste0("**Not published.** This build (`", build_id, "`) was decided `",
+           decided$status[[1]], "`, so it was never swapped into place. ",
+           "`database/paraguay_macro_pilot.duckdb` is still the previously published build",
+           if (nrow(pointer) == 1L) paste0(" (`", pointer$data_release_id[[1]], "`)") else "",
+           " and is byte-for-byte unchanged. **The rest of this report describes the blocked ",
+           "build, not the database you have**; it is retained under `database/candidates/` ",
+           "so its `_all` interfaces can be inspected."),
+    ""
+  )
+}
+
+expected_grid_report_lines <- function(con, attempt_id = NULL) {
+  profile <- expected_grid_profile(con, attempt_id)
+  if (is.null(profile) || !profile$grid_rows) return("- No expected-observation grid.")
+  c(
+    if (is.na(profile$seconds)) "- **Seconds this attempt:** not measured (phase skipped, or not timed)"
+    else sprintf("- **Seconds this attempt:** %.2f (budget %d)", profile$seconds,
+                 EXPECTED_GRID_SECONDS_BUDGET),
+    paste0("- Grid rows retained: ", format(profile$grid_rows, big.mark = ",", scientific = FALSE),
+           " (budget ", format(EXPECTED_GRID_ROW_BUDGET, big.mark = ",", scientific = FALSE), ")"),
+    paste0("- Retained source vintages: ", profile$retained_vintages,
+           "; vintages contributing a grid: ", profile$grid_vintages),
+    paste0("- Rows per contributing vintage: ",
+           format(round(profile$rows_per_vintage), big.mark = ",", scientific = FALSE)),
+    paste0("- The stored grid is what survives pruning: a period is kept only where it is an ",
+           "observation or an explained absence. The phase builds a much larger intermediate ",
+           "first — one row per regular series-period per vintage — so **the seconds, not the ",
+           "retained rows, are the cost**, and both grow linearly in retained vintages.")
+  )
+}
+
+write_update_report <- function(con, release_id, root, attempt_id = NULL, build_id = NULL) {
   sources <- DBI::dbGetQuery(con, paste0(
     "SELECT f.source_id, f.source_file, f.vintage_id, f.publication_date, f.publication_date_source, f.ingestion_status FROM source_files f JOIN release_sources r USING (vintage_id) WHERE r.release_id = ", sql_string(release_id), " ORDER BY f.source_id"
   ))
@@ -2483,10 +2955,17 @@ write_update_report <- function(con, release_id, root, attempt_id = NULL) {
     "- **%s / %s:** %.2f seconds", timings$source_id[[i]], timings$stage[[i]], timings$elapsed_seconds[[i]]
   ), character(1)) else "- No timing records."
   lines <- c(
-    "# Paraguay macro database — update report", "", paste("Deterministic release:", release_id), "",
+    "# Paraguay macro database — update report", "",
+    publication_state_lines(con, build_id),
+    paste("Deterministic release:", release_id), "",
+    if (is.null(build_id) || is.na(build_id)) character() else c(paste("Build:", build_id), ""),
     "## Source vintages", "", source_lines, "", "## Semantic coverage", "", coverage_lines, "",
     "## Documented financial mapping coverage", "", mapping_lines, "",
     "## Pipeline timings", "", timing_lines, "",
+    # The four numbers that decide whether the dominant phase stays affordable,
+    # in one place. Reported every run so the curve is readable from the
+    # artifacts rather than by instrumenting a run after it has become a problem.
+    "## Expected-grid cost", "", expected_grid_report_lines(con, attempt_id), "",
     "## Quality flags", "", flag_lines, "",
     "Documented-table sources are analytically queryable. Values whose workbook headers do not identify a unique unit remain explicitly marked as `source_units` pending review."
   )

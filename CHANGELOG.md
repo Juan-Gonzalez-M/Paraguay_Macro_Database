@@ -1,5 +1,350 @@
 # Changelog
 
+## Repository cleanup — 2026-09-03
+
+Schema and published observations are unchanged. Superseded audit narratives, version-specific
+repair notes, stale schema-12/14 CSV exports, obsolete version-1 compatibility wrappers and local
+generated/session artifacts were removed. Living regression tests were retained and renamed by the
+behavior they protect. `revisiones/EMPIRICAL_READINESS_2026-09-03.md` is now the only current audit
+and remediation guide; Git history remains the archive for deleted historical reports.
+
+## v38
+
+Re-audit addendum, roadmap items P2. Changes no observation.
+
+- **The identity could not distinguish the machine, and recorded 19 of 61 packages.** Schema 35
+  narrowed the environment record to the declared set, arguing that a difference three levels down
+  is not actionable from a failure message. That is a good argument for not *failing* on it and none
+  at all for not *looking*: 42 pinned packages went unrecorded, and the narrowing hid something
+  specific. The addendum names five direct packages built under R 4.5.2 while R 4.5.1 runs. Measured
+  here: **all 61 are built under R 4.5.0 or R 4.5.2 and not one under 4.5.1**, including `DBI` and
+  `duckdb`, which write the database. `packageDescription()$Built` is the field that says so and
+  nothing read it. The whole lockfile is now recorded with each package's build, plus
+  `platform` (`aarch64-apple-darwin20`) and `os_release` — before this, an arm64 macOS build and an
+  x86 Linux build produced identical identities. `check_environment()` compares all 61 and fails only
+  on the 19 direct ones, because the transitive ones are still not actionable but should no longer
+  be invisible.
+- **`loadedNamespaces()` is recorded and deliberately not hashed.** A departure from the addendum's
+  wording, with the reason in the code: loaded namespaces differ between `run_update.R` and
+  `run_tests.R`, so folding them into `build_id` would make the same sources on the same machine
+  produce two identities depending on which entry point ran — and "re-running against unchanged
+  inputs reproduces the exact same release" is the property the whole release model rests on.
+- **A locale could have changed a build identity.** Found while fixing the above: the package list
+  feeding the digest was ordered with `sort()`, which is locale-aware — `"DBI"` sorts before `"bit"`
+  under C and after it under `en_US`. Ordering feeds the digest, the digest feeds `build_id`. It is
+  radix-sorted now, which is byte order everywhere and also what DuckDB's `ORDER BY` gives, so the
+  stored rows and the digest agree. A reproducibility defect introduced by the fix for a
+  reproducibility defect, caught by the test that recomputes the digest from the stored table.
+- **An artifact identified by its bytes.** The id hashed a size read while the connection was still
+  open with rows still to be written: **553,136,128 recorded against a shipped 344,993,792, 37.6%
+  out**, so the identifier of a database could not be recomputed from the database. The obstacle is
+  arithmetic, not engineering — *a file cannot contain its own hash*, because writing the row changes
+  the bytes the row describes. So the rule is now stated and followed: **a database records the
+  hashes of artifacts other than itself, and its own lives in a sidecar beside it.** The sidecar is
+  written after close, checkpoint and rename — the one moment the bytes are final — in the format
+  `shasum -a 256 -c` reads. The database it replaced is recorded *inside* it with a real hash, since
+  that file is finished and this build is the only party that can witness it. Compaction registers
+  the same link between what it consumed and what it produced.
+- **38,433 discontinuities in fifteen rows.** The screen summarised by source, which no one can
+  investigate — and the inner CTE already computed every field a reviewer needs before the outer
+  `SELECT` threw it away. `outputs/discontinuity_worklist.csv` and `outputs/gap_worklist.csv` carry
+  series, worksheet, period, previous and current value, the change, the `typical_change` threshold
+  that flagged it, vintage and the A1 source coordinate, ranked by severity and bounded. The first
+  row it surfaces is `financial_indicators` sheet 7 rows 98–99 going 0 → 7,715.471 → 0 in
+  consecutive months, which the source-level count could never have shown.
+- **The last skip is gone.** The production-state defect check switched itself off whenever no
+  worksheet carried a defect — i.e. exactly when the code was clean. It now asserts what it finds.
+  **The suite has no skips.**
+- **A record that survives the process.** `ensure_dirs()` has created `logs/` since the first audit
+  and nothing ever wrote to it. `logs/update_<YYYYMM>.jsonl` now carries one line per event, for the
+  case that justifies it: a run that dies before its candidate can be opened has no database to have
+  recorded anything in, and the message went to stderr and vanished with the session.
+- **9.5 GiB the retention script reported and did not understand.** Twenty-six hand-named copies
+  matched no class. What they are cannot be read from `pre30b_194844.duckdb`, but it can be read from
+  inside them: every DuckDB file states the schema version it was left at. `prune_backups.R
+  --classify` opens each read-only and names it for what it contains — the earliest copy at each
+  schema version is migration evidence and is kept, a second or fifth copy at the same version is a
+  working snapshot and ages out. Result: **19 migration copies retained, 7 working copies (2.8 GiB)
+  now subject to retention, zero unrecognised**. Nothing was deleted; `--apply` would reclaim 4.3 GiB
+  and remains the operator's call.
+
+## v37
+
+Re-audit addendum, roadmap item P1. **Changes a published count.**
+
+- **A trade with an unknown volume is still a trade.** Schema 34 stopped three real corporate-bond
+  purchases vanishing and recorded them as `missing_mandatory_dimension` — right about silent-loss
+  detection, wrong as economics. Their date, broker, ISIN, issuer, instrument, market, operation type
+  and currency are all present and intact; what is absent is one *measure*. Classing the row as
+  unplaceable understated the count of corporate-bond purchases, so a reader summing `transactions`
+  in the daily activity view got a number wrong by three for reasons only the rejection register
+  explained. They are now accepted with a null volume and `volume_status = 'not_reported'`.
+  **The securities snapshot moves from 312,326 to 312,329 rows** — the first change in this sequence
+  of rounds that moves a published count. No monetary total changes: `sum()` already skipped NULLs.
+  `v_securities_daily_activity` reports `transactions_with_volume` beside the sum, so the two
+  denominators are visible rather than assumed equal.
+- A *malformed* volume token is still a rejection, and a blank currency or instrument still is —
+  those are dimensions the grain is built from, not measures hanging off it. The accounting guard
+  changes from a prohibition to a **correspondence**: a null volume is permitted only where the
+  source token was blank, so a measure the parser failed to read still stops the run rather than
+  quietly becoming "not reported". The identity needs no change — both sides are `count(*)` — and the
+  register text that named these three rows as rejected is rewritten, since it became false.
+- **Two updates could publish at once and the last one won.** Because production is only ever
+  *copied* and never opened, DuckDB's own single-writer lock protects nothing between runs: two
+  builds could copy the same database, both be accepted, and both rename over it — the loser
+  disappearing along with its build identity and every diagnostic it produced. A lock at
+  `database/.update.lock`, taken with `dir.create()` because that is atomic where `file.create()` is
+  not, holds pid, host and start time. A lock whose process is gone is reported and taken over: a
+  crashed update must not block the run that fixes it.
+- **And the base is verified, because a lock alone cannot cover it.** The production file's SHA-256
+  is recorded at copy time and re-checked immediately before the swap. A lock inherited from a dead
+  holder, or an operator restoring a backup by hand mid-build, produces a state no lock sees. If it
+  changed, the run refuses and **keeps** its candidate — it is a complete accepted build, and the
+  operator needs it to diff against whatever replaced its base.
+- **The window where neither rename has completed.** Between moving production aside and moving the
+  candidate in, the published pathname does not exist. A soft failure was already rolled back; a hard
+  kill was not, and left no database and nothing saying why. A `.swap_in_progress` marker names both
+  files and what to do with each, and the next run refuses to start until it is resolved.
+
+## v36
+
+Re-audit addendum, roadmap item P0. Changes no observation.
+
+- **The as-of interface ranked over the present and answered about the past.** `release_id` hashes
+  the manifest, so replacing one workbook mints a new bundle whose `release_sources` set omits the
+  vintage it replaced. The as-of macros read `v_series_observations`, which filters to the bundle the
+  one-row pointer names — so a superseded vintage left the ranking population entirely and **no
+  cutoff could return it**, including cutoffs from before its replacement existed. It is the same
+  look-ahead error the interface exists to prevent, in the one place it was least visible.
+- **The manual's own recipe produced exactly that state.** `docs/OPERATIONS.md` told the operator to
+  ingest the historical workbook and then restore the current one — two runs, two bundles, and the
+  historical vintage dropped from the carrier. Following the instructions gave you two vintages and
+  one answer.
+- **The ingredients existed and nothing joined them.** `release_sources` is append-only and
+  many-to-many; `data_releases` holds one immutable decision per product. Their join *is* the set of
+  vintages a researcher could ever have been shown, and nothing in the codebase performed it.
+  `main.v_series_observations_history` does, declared `history` in the view contract — **a scope the
+  contract has declared valid since schema 30 and no object had ever used.** The current views keep
+  the pointer; the two questions stay separate. It reads `data_releases.status`, not
+  `releases.status`, because the latter is the mutable column schema 30 retired and using it here
+  would let a later failure erase history that was genuinely published.
+- **The as-of macros were declared `current`, and that was part of the defect.** The lint requires a
+  `current` object to descend from the active-pointer carrier — so while they were classified that
+  way, the lint was certifying the very thing that made them wrong. They are `history` now, and the
+  lint checks the two boundaries separately: a history carrier must restrict to accepted products and
+  must **not** restrict to the pointer, or it is the current carrier under another name.
+- **Blocking a bundle today no longer erases what it published yesterday.** Current views empty
+  immediately because the pointer moves; as-of keeps answering, because a later failed rebuild does
+  not un-happen an earlier publication. A bundle that was *never* accepted stays invisible at every
+  cutoff. One schema-31 test encoded the opposite coupling and was updated with the reasoning beside
+  it.
+- **The release context was a lexical maximum.** `max(release_id)` over `"release:" || sha256[1:24]`
+  picks whichever hex prefix sorts highest — not the earliest, not the latest, not the active one —
+  and it read the retired `releases.status`, so a failed rebuild of any bundle containing a vintage
+  nulled the label on rows that were still published. It is exposed to researchers in every
+  `v_mart_*_all`. It now names the accepted product that **first admitted** each vintage, with
+  `first_published_at` beside it.
+- **The review register admitted nothing.** Schema 34 wrote it, validated it, published it — and
+  nothing that decided anything read it. `marts.v_research_series` asked only whether every
+  contributing worksheet was `validated`, and the eligibility gate compared six **column values**
+  against two sentinels the derivation layer never writes. A label containing `saldo` and `serie
+  original`, plus a published base year, unit and scale, fills all six with
+  `basis = 'published_label'` — so promoting a single worksheet would have admitted every series on
+  it with no economic review at all, while the documentation said the register was what let them in.
+  **That documentation was mine, written the round before.** The view and every validated mart now
+  join the register, and the gate reads the *basis*: `research_series_evidence_not_reviewed` fires
+  when a series on the research surface carries a field with no reviewed evidence behind it.
+- **Which review is authoritative, answered rather than left implicit.** `table_status` is about a
+  *worksheet* — is its parsing and cell accounting fit to publish. `series_review` is about a
+  *series* — is its economic meaning established. Neither implies the other, and both are required.
+- **A defect the test found, not the reasoning.** `frequency` is a research-eligibility field, and
+  the register carries it and writes it to `dim_series` — but it was missing from the vector of
+  fields `apply_series_review()` records evidence for. Harmless while nothing read the evidence, and
+  immediately fatal once the gate did: a *fully completed* review could not satisfy the check written
+  for it. The two lists are now a union, so they cannot drift again.
+- **Seven further register checks**, each of which passed silently before: frequency vocabulary,
+  strictly positive scale multiplier, plausible four-digit base year, self-parenting and hierarchy
+  cycles, unit/currency coherence, and a review date in the future. `parent_series_id = series_id`
+  used to pass, because the known-series set contains the row's own identifier. The frequency
+  vocabulary is read from the frequencies the database actually holds rather than invented — the
+  project has two frequency lists and they disagree (`EXPECTED_GRID_FREQUENCIES` omits `semiannual`,
+  the marts gap screen includes it), and reconciling those is a real but separate defect the addendum
+  does not raise.
+
+## v35
+
+Seventh technical audit, roadmap item P2. Changes no observation.
+
+- **The build identity could not tell which library built the database.** It hashed `renv.lock`,
+  which is a *declaration*: two builds run against libraries differing from each other and from the
+  lockfile produced the same `build_id`. That is an identity unable to answer the one question it
+  exists for. It now hashes the versions that actually ran, and `audit.build_environment` keeps the
+  list beside the digest — a digest says two builds differ, only the list says which package moved.
+  It goes inside the hash rather than in a column next to it, because a different library **is** a
+  different build. **Every `build_id` changes once, deliberately.**
+- **And the update refuses to build against an environment that differs from the lockfile.**
+  `check_environment(strict = TRUE)` has existed since the first audit and nothing called it.
+  `PARAGUAY_MACRO_ALLOW_ENV_DRIFT=1` is the deliberate override and the build that takes it carries
+  an `environment_drift_overridden` flag saying so: a gate with a silent bypass is not a gate. The
+  quick start moves to `renv::restore()`; `scripts/00_install_packages.R` stays as the fallback
+  without `renv` and now says what it does, which is install by name and check presence, not version.
+- **"Is *this* number a cached formula result?"** Schema 29 recorded formulas and hidden rows per
+  worksheet, closed the per-observation gap for hidden rows and could not close it for formulas: the
+  hidden ranges are coordinates and the formula count was a number. `raw.report_cell_formulas` keeps
+  the coordinates, and `marts.v_observation_source_behaviour` exposes `from_formula_cell` per value.
+  The cost argument recorded at schema 29 — that per-cell formula data would re-hash the entire raw
+  layer — was about storing formula *text* in the content-hashed `report_cell_values`, and does not
+  apply to a side table. The A1 refs were already in hand: the `<f>` node set was being selected and
+  collapsed with `length()`. **91,673 coordinates against 91,673 counted**, in the same pass, no
+  second read of any file. No source is re-ingested — formula position is a property of the archived
+  workbook, recovered from it exactly as schema 29 recovered the counts.
+
+  And the answer is not evenly spread, which is the point of asking it per value:
+  **81,367 of 1,100,840 published documented observations (7.4%) sit on a cell that held a
+  formula**, but `bcp_fx_daily` is **27,224 of 40,836 — two thirds of the daily BCP exchange-rate
+  series** — against 4.6% of the economic annex. A researcher taking daily FX from this database is
+  mostly taking cached results of formulas `readxl` cannot recompute, and until now there was no way
+  to know that from the data. The hidden-row count is unchanged at 15,403, which is the check that
+  the existing measure still means what it did.
+- **The expected grid, measured against a budget — and the audit's number for it corrected.** The
+  report says this table holds 9,152,525 rows and is the largest in the database. It is not: the
+  live database held **267,830** before this round and holds 267,830 after. The phase builds one row
+  per regular series-period per vintage and then prunes, keeping a period only where it is an
+  observation or an explained absence. The nine million is that pre-pruning intermediate — real, and
+  what costs the time, but not a row count anyone can query, and reporting it as one sends a reader
+  looking for a table thirty-four times smaller than described. What is true is that the phase is
+  the slowest in the run, **24.6 of 82.9 seconds**, and that both it and the stored table grow
+  linearly in retained vintages, which is what P1 asks for more of. The update report now leads with
+  the seconds and carries the rows, the retained vintages and the contributing vintages beside them;
+  a warning fires when either budget is passed, naming the two ways out. A warning and not an error:
+  growth is the consequence of doing the right thing with vintages.
+- **34 deprecation warnings, gone, and a test that switched itself off.** `.data$` inside `select()`
+  at four call sites; a static test now expects zero, because in a suite that always prints warnings
+  nobody reads the twenty-ninth. And `test-grain-and-provenance.R` skipped whenever no worksheet
+  carried a defect — it disabled itself exactly when the codebase was clean. A synthetic fixture now
+  builds two worksheets **both validated by an economist**, one that reconciles and one that does
+  not, and asserts only the first reaches the mart.
+- **13 GB of backups nobody was going to delete by hand.** A naming convention per producer, and
+  `prune_backups.R` that reads it: migration and milestone copies are kept, rolling classes keep the
+  most recent few, and **anything it does not recognise is reported and left alone**. Dry-run by
+  default, and the pipeline never calls it — a rule that deletes databases as a side effect of a
+  build will one day delete the copy you needed, and `pre_swap_` exists for the runs where something
+  went wrong. On the current state it identifies four near-identical compaction copies from one
+  afternoon (2.5 GiB) and leaves the 26 hand-named ones untouched.
+
+## v34
+
+Seventh technical audit, roadmap item P1. Changes no observation.
+
+- **Three real securities trades had been disappearing on every run.** Both CSV parsers read with
+  `readr::parse_number()` — which takes the first numeric run out of any string it is handed —
+  dropped whatever came back `NA`, and recorded nothing, so the only loss they could notice was
+  losing *every* row. Measured before touching code: **312,329 rows in the file, 312,326 in the
+  database**. The three are corporate and subordinated bond purchases with a blank volume, at source
+  rows 4747, 29690 and 173494. Every row is now accepted or rejected with a declared reason written
+  to `staging.discarded_rows`; a partial numeric token (`12abc`, `1.2.3`, `5 %`) is a rejection
+  rather than a number; a structurally broken file is refused **whole**, because a file whose shape
+  contradicts its contract is not the file the contract describes; and
+  `source rows = accepted + rejected + documented exclusions` is measured per CSV vintage in the same
+  table the worksheet accounting uses. **An undeclared rejection reason blocks the release.** The
+  machinery was already there and unused: `discarded_rows` since schema 12, and
+  `compute_table_reconciliation()` already summing `rejected_observations` out of it. Measured
+  after: 38,922 = 38,922 + 0 for the bond curves, 312,329 = 312,326 + 3 for the trades, both
+  balanced.
+- **The gate found something on its first run, and it was not in the CSV path.** The ICC/EVE and
+  FX-operations parsers have been discarding rows as `non_data_note` since schema 12 under a reason
+  no register described. The audit names the CSV path because that is where rows were vanishing
+  *unrecorded*; the principle was never about CSVs, so the register covers all of `discarded_rows`
+  and is named for that. And the first attempt to test it was worthless: it compared the register
+  against a grep for `reason = "..."` over the sources, which missed both the ternary in the FX
+  parser and the CSV reasons, which are list names rather than literals. A grep over source is not a
+  vocabulary. `ROW_REJECTION_REASONS` is, a parser cannot record anything outside it, and the
+  register must equal it **in both directions** — a declared reason no parser can write is a claim
+  about a behaviour that does not exist.
+- **This step re-ingests the two delimited sources, and declaring it not to was a defect of its
+  own.** An unchanged source is never re-parsed, so in a reuse build nothing records the rejections
+  and the accounting correctly reported three source rows neither accepted nor rejected — and
+  blocked. Those are the same three trades: they can only be classified by reading the file again. A
+  step that changes what a parser records has to send that parser's sources back through it, which
+  is what `reingests` in `SCHEMA_MIGRATIONS` is for.
+- **A vintage without its bytes is not retained; it is a row claiming to be.** Every archived file is
+  re-hashed on every release, and a missing or mismatched one blocks. **22 of 22 verified in 0.51
+  seconds** over 104 MiB, against a 49-second run — cheap enough that sampling would have been a
+  false economy. `outputs/vintage_retention_status.csv` says per vintage what is held and what it
+  costs: while a source retains one vintage, that row says there is no revision history and no as-of
+  reconstruction. Nobody should need an external audit to discover that.
+- **An economist now has somewhere to write down what they reviewed.** Verified before building it,
+  because the risk was duplicating schemas 28 and 31: rows in `canonical.series_semantic_evidence`
+  whose `basis` is `reviewed` are deliberately preserved across every rebuild while derived ones are
+  deleted and recomputed — and **nothing in the codebase had ever written one**. There was an output
+  worklist naming what was unreviewed and no input for the answers. `config/series_review.csv` is
+  that input, one column per property section 11.4 lists. It is applied *after* the derivation layer,
+  so "reviewed wins" is true by construction rather than by each derivation remembering to check.
+  **A problem in any row applies none of it** — not the good rows with the bad ones reported, because
+  a partly-recorded review fills exactly the columns the research-eligibility gate reads. It ships
+  empty; `marts.v_research_series` stays at 0 rows until somebody writes the first one, and that is
+  correct.
+
+## v33
+
+Seventh technical audit, roadmap item P0. Changes no observation.
+
+- **A failed build could not withdraw the published database. It could still change it.** Schema 30
+  closed the first half; the second needed something no care inside one file can give, because the
+  run and the published database were the same bytes. Three isolation mechanisms existed and none was
+  enough: the per-source transaction stops a half-parsed workbook landing, the release transaction
+  stops a half-rebuilt derived layer landing, and the decision and pointer stop a failed build
+  withdrawing the product — and **all three operate inside the file that is the product**. Published
+  views resolve vintages through the source bundle rather than the build, so every build of one
+  bundle exposes the same rows; sources commit one at a time hundreds of steps before the verdict
+  exists; and worst, `initialize_database()` runs the migrations' `invalidate_v*()` steps, which
+  delete published facts by `source_id` **before the run has begun**. Committed work under a pointer
+  that has not moved is still committed.
+- **So the run and the published database stop being the same bytes.** `run_isolated_update()` copies
+  the database to `database/candidates/`, builds there, and renames the candidate into place only if
+  it is accepted. It is the procedure `compact_database.R` has used for its own swap since schema 22,
+  and `run_manifest_pipeline()` was already parameterised by `db_path`. A blocked build never opens
+  the published file for writing and its candidate is retained, so the `_all` twins and every
+  diagnostic of the failed build stay inspectable. **What this gives:** a build you did not accept
+  cannot have altered the one you did, provable by hashing the file. **What it does not give:** facts
+  are still not versioned per build, so an arbitrary past product cannot be reconstructed from inside
+  one database. That limit is unchanged and is stated rather than implied away.
+- **The regression the audit writes out, step by step.** The previous round's test asserted that the
+  pointer does not move and that the release transaction rolls back. Both passed and neither was the
+  question. This one publishes value 1, starts a build against the same bundle, has it replace that
+  value with 999, fails it after the source commit, and asserts the published file's **SHA-256 is
+  identical** — while the retained candidate does return 999. That last part matters: inside the
+  candidate the *filtered* view returns 999, because the mutated row belongs to a vintage of the
+  bundle that file's own pointer names. The two files answer the same query differently, and that is
+  the whole repair.
+- **It was demonstrated on the first real run, by accident.** The rebuild for this round blocked —
+  on the schema-34 accounting below, correctly — against the live 22-source bundle, with the
+  migrations already applied to the candidate. `database/paraguay_macro_pilot.duckdb` came out
+  **byte-identical**: `c3380f43…f936bf51` before and after. Under the previous code that same run
+  would have executed the invalidation steps against the published file, deleted the two CSV
+  sources' facts, rebuilt the derived layer, committed all of it, and *then* blocked, leaving the
+  published database a mixture of two builds. Nothing was staged for this; it is what the first
+  attempt did.
+- **The coverage dashboard counted direct investment three times.** `config/source_grains.csv` has
+  been keyed by worksheet since schema 32 and the dashboard joined it on `source_id` alone: **256
+  rows for 242 worksheets**, with each of the seven `direct_investment` sheets appearing three times
+  under contradictory grains, so any sum over the file tripled it. The correct idiom sat sixteen lines
+  below, written for `table_status`. Copying it a third time is how the second copy came to be wrong,
+  so it is written once — and writing it once exposed that the second copy was only accidentally
+  right: its inner select dropped the *register's* `source_sheet`, so the tie-break read the
+  worksheet's name, which is never `'*'`, leaving the window's ordering constant and the winner
+  arbitrary wherever a source carries both a wildcard and an exact rule. Five sources and fifteen
+  worksheets are in that position; latent only because all fifteen exact rules currently agree with
+  their wildcard. **256 → 242 rows, 242 distinct keys**, `Cuadro 5` and `Cuadro 7` back to
+  `entity_panel`. The dashboard moves out of the post-decision step, where no gate could see it, and
+  a duplicated worksheet now blocks the release.
+- **The manual told operators to edit a column that does nothing.** `docs/OPERATIONS.md` said to
+  override a decision by updating `audit.releases.status`, "because every published view joins
+  through that table". They have resolved through `audit.active_data_release` since schema 30, so the
+  instruction was wrong twice over. It is replaced by the two interventions that exist — restore the
+  `pre_swap_` copy each accepted swap now leaves, or fix the cause and re-run — and by the statement
+  that there is no supported way to promote a build the gates blocked, which is not an oversight.
+
 ## v32
 
 Sixth technical audit, roadmap item P2. Changes no observation.
@@ -117,7 +462,7 @@ Sixth technical audit, roadmap item P0. **Contains a breaking change to a publis
   one schema earlier and missed in this copy. And the expected grid and missingness carry the vintage
   and build they were computed from, so a diagnostic published in a mart can be release-filtered
   instead of matching on `series_id` and hoping.
-- The acceptance test is adversarial, not the lint: `test-audit6-release-isolation.R` builds a
+- The acceptance test is adversarial, not the lint: `test-release-isolation.R` builds a
   database that genuinely holds a vintage nobody may see, asks every `current` interface for it, and
   asserts the `_all` twins *do* return it so the test cannot pass vacuously.
 
@@ -265,8 +610,8 @@ Fourth technical audit, roadmap item P2. Changes no observation.
 - Documentation: `README.md` and `docs/OPERATIONS.md` drop `completed_with_errors` and explain what a
   blocked release means for the research views; the README's provenance claim is narrowed to what
   each source family actually carries; `docs/VERIFICATION.md` describes the current executable
-  environment instead of asserting that R is unavailable; and `revisiones/README.md` says which notes
-  are historical record, with a banner on each superseded one.
+  environment instead of asserting that R is unavailable. Superseded review notes were later removed
+  from the current distribution and remain available through Git history.
 
 ## v25
 
@@ -306,9 +651,9 @@ Fourth technical audit, roadmap item P1, less the parts that need a human. Chang
 
 ## v24
 
-Fourth technical audit, roadmap item P0. See `revisiones/REVISION_AUDITORIA_4_P0_P1_P2.md` for the
-verification record. Every figure in the audit was re-measured read-only against the live database
-before any code changed; all of them reproduced.
+Fourth technical audit, roadmap item P0. Every figure was re-measured read-only against the live
+database before any code changed; all reproduced. The historical audit narrative remains available
+through Git history.
 
 - **One authoritative publication date per vintage.** The audit found 422 `compensatory_fx_sales`
   facts saying 2026-12-31 while `raw.source_files` said 2026-07-31. Two defects, not one.
@@ -363,8 +708,8 @@ before any code changed; all of them reproduced.
 
 ## v23
 
-Third technical audit, roadmap items P0, P1 and P2. See
-`revisiones/REVISION_AUDITORIA_3_P0_P1_P2.md` for the verification record.
+Third technical audit, roadmap items P0, P1 and P2. The historical audit narrative remains available
+through Git history.
 
 Delivered across schema 22 and 23. Every audit figure was re-verified read-only before any
 code changed; all of them matched. One diagnosis was right about the symptom and wrong about
@@ -418,7 +763,7 @@ the cause, and is recorded rather than worked around.
 - `continuity_map` had a table, a storage assignment and a release gate, and **no writer**.
   `apply_continuity_decisions()` and `config/continuity_decisions.csv` now exist. The canonical
   registers still ship empty; `outputs/canonical_core_candidates.csv` generates the candidate
-  list a reviewer needs, and `revisiones/CANONICAL_CORE_PROPOSAL.md` records the decisions.
+  list a reviewer needs.
 - Golden fixtures for **5,034 recovered cells and 1,089 period corrections**, cut by physical
   source-cell comparison and verified back against the raw cell layer. Zero cells the baseline
   read have stopped being read.
@@ -430,8 +775,8 @@ the cause, and is recorded rather than worked around.
 
 ## v21
 
-Second technical audit, roadmap items P0, P1 and P2. See
-`revisiones/REVISION_AUDITORIA_2_P0_P1_P2.md` for the verification record.
+Second technical audit, roadmap items P0, P1 and P2. The historical audit narrative remains available
+through Git history.
 
 Delivered across schema 15-21. Every audit figure was re-verified read-only before any code
 changed; all of them matched. Two of the audit's diagnoses were right about the symptom and
@@ -490,8 +835,8 @@ publication exists).
 
 ## v14
 
-P1 and P2 of the external technical audit. See `revisiones/REVISION_AUDITORIA_P0_P1_P2.md`
-for the verification record and `AUDITORIA_REGRESIONES.md` R45 for the trade-sheet detail.
+P1 and P2 of the external technical audit. The historical audit narrative and regression register
+remain available through Git history.
 
 - Bounded the horizontal period axis at the last header cell that parses as a period. The fill-right loop ran to the last column of the worksheet, so the seven interannual comparison columns on each foreign-trade sheet inherited the last real period; 6,962 spurious observations, all dated 2026-07-01, are gone and no real value moved.
 - Kept bare provisional-data markers out of series identity. A `*` published over the most recent 24 months was read as a sub-header and cut every product series in two at 2024-08; 22,228 marker-suffixed labels became 0 and `Soja` is one series again. The marker is retained on the observation in `footnote_marker`.
@@ -505,8 +850,8 @@ for the verification record and `AUDITORIA_REGRESIONES.md` R45 for the trade-she
 
 ## v13
 
-P0 of the external technical audit. See `revisiones/REVISION_AUDITORIA_P0_P1_P2.md`
-and `AUDITORIA_REGRESIONES.md` R52.
+P0 of the external technical audit. The historical audit narrative and regression register remain
+available through Git history.
 
 - Added `series_id_migration`, `source_alias` and `continuity_map`, the operator entry point `build_migration_map.R`, and `v_series_id_resolution`, which resolves any identifier the project has ever published to its current series or an explicit retirement. Resolution is transitive across releases; three hops are recorded and no published identifier is left without an outcome.
 - Repaired the credit-survey question-header test. It required a header row to carry no values, but nine of the 73 header rows carry a stray numeric and one is published without a dash after the question number, so each of those headers was consumed as a response of the previous question and the following block inherited the wrong question. 50 positional identities, 25 conflicting question/response groups and 5 spurious one-observation series went to zero; 24 stray cells stopped being read as survey responses.
@@ -518,9 +863,8 @@ and `AUDITORIA_REGRESIONES.md` R52.
 
 ## v12
 
-P0 parser and identity repairs from the external technical audit. See
-`revisiones/REVISION_AUDITORIA_EXTERNA.md` for the verification record and
-`AUDITORIA_REGRESIONES.md` R46-R52 for per-defect detail.
+P0 parser and identity repairs from the external technical audit. The historical audit narrative and
+per-defect register remain available through Git history.
 
 - Bounded each compensatory-FX year block at the next year header in its own column; 36 lane series became 3 measures with zero conflicting months.
 - Made the worksheet slug inside `series_id` a pure function of the sheet name; it was uniquified by position, so an inserted column reassigned the identity of every later series in that sheet.
@@ -595,7 +939,9 @@ P0 parser and identity repairs from the external technical audit. See
 - Added `documented_series_snapshot`, `documented_table_catalog`, `dim_payment_participant` and `dim_exchange_item`.
 - Added latest-source views for the Annex, payments, exchange houses and credit survey plus a documented-series catalogue.
 - Added source contracts, key-series/unit/entity/range validations, parser-helper tests and full-pipeline coverage assertions.
-- Added v4-to-v5 reingestion invalidation and a current `upgrade_v1_to_v5.R` entry point.
+- Added v4-to-v5 reingestion invalidation and the then-current version-5 upgrade entry point. That
+  obsolete compatibility entry point was removed in the 2026-09-03 repository cleanup; its history
+  remains in Git.
 - Retained ambiguous units as explicit `source_units` review items rather than inferring harmonized semantics.
 
 ## Version 4

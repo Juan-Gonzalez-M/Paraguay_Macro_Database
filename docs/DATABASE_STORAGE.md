@@ -161,3 +161,45 @@ DBI::dbGetQuery(con, "
 ```
 
 If `pct_free` is above roughly 20%, compaction will pay for itself. Immediately after a compaction it should be near zero.
+
+## 10. What a run needs on disk, since schema 33
+
+A build no longer writes the published database. It copies it to `database/candidates/`, builds there, and renames the candidate into place only if it is accepted — the seventh audit's F-01, and the reason a blocked build can no longer change what is published. See the operations manual.
+
+The arithmetic that follows from that:
+
+| Moment | On disk |
+|---|---|
+| Idle | one database |
+| During a run | two: the published one, plus the candidate being built |
+| Peak, mid-run | the candidate can reach its own high-water mark under the growth described above, so budget roughly **three times** the database size in free space |
+| After an accepted run | two: the new database, plus its predecessor at `database/backups/paraguay_macro_pilot_pre_swap_<stamp>.duckdb` |
+| After a blocked run | two: the unchanged database, plus the blocked build at `database/candidates/blocked_<stamp>.duckdb` |
+
+Both leftovers are deliberate. The pre-swap copy is the documented rollback path, and the blocked candidate is the only place a failed build's data can still be inspected. Both accumulate, and neither is deleted by the pipeline.
+
+## 11. Backup retention
+
+The repository cleanup on 2026-09-03 removed 39 superseded local backups occupying approximately
+15 GB. The directory is currently empty. Future accepted updates and compactions create new rollback
+copies, so retention remains an operator responsibility.
+
+Backups are now named by what produced them, and the name is what the retention rule reads:
+
+| Prefix | Written by | Rule |
+|---|---|---|
+| `paraguay_macro_pilot_pre_swap_` | an accepted build, before the swap | rolling — keep the most recent few |
+| `paraguay_macro_pilot_pre_compaction_` | `compact_database.R` | rolling — keep the most recent few |
+| `paraguay_macro_pilot_pre_migration_schema<N>_` | a schema step that re-ingests sources | **kept** — one per schema version, permanently |
+| `paraguay_macro_pilot_milestone_<label>` | you, deliberately | **kept** |
+| anything else | — | **reported, never deleted** |
+
+`database/candidates/blocked_` is treated as a rolling class of the same kind.
+
+```bash
+Rscript prune_backups.R            # says what it would delete, deletes nothing
+Rscript prune_backups.R --apply    # does it
+Rscript prune_backups.R --keep=5 --apply
+```
+
+**It is dry-run by default and the pipeline never calls it.** A retention policy that deletes databases as a side effect of a build is a policy that will one day delete the copy you needed, and the whole point of the pre-swap backup is to be there when something has gone wrong.

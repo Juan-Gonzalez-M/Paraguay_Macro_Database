@@ -110,7 +110,17 @@ if (length(failures)) {
        paste(utils::head(failures, 5), collapse = "; "), call. = FALSE)
 }
 
+# The copy is a distributed artifact and should be checkable by whoever receives
+# it. Written last, after the connection is closed and the file is final -- the
+# re-audit's RA2-10, applied here for the same reason: a hash taken while the
+# file is still being written describes nothing anybody can verify.
+source(file.path(root, "scripts", "01_utils.R"))
+distribution_sha256 <- record_published_artifact(
+  target, build_id = NA_character_, schema_version = NA_integer_
+)
+
 message(sprintf(
-  "Distribution copy written: %s\n  %d run-local path value(s) removed; %d files keep their source URI, archive URI and hash.\n  %d views executed from a default connection.\n  The live database is unchanged.",
-  target, scrubbed, kept$files[[1]], nrow(views)
+  "Distribution copy written: %s\n  %d run-local path value(s) removed; %d files keep their source URI, archive URI and hash.\n  %d views executed from a default connection.\n  SHA-256: %s\n  Recorded in %s%s; verify with: shasum -a 256 -c %s%s\n  The live database is unchanged.",
+  target, scrubbed, kept$files[[1]], nrow(views), distribution_sha256,
+  basename(target), ARTIFACT_SIDECAR_SUFFIX, basename(target), ARTIFACT_SIDECAR_SUFFIX
 ))

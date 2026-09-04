@@ -12,6 +12,13 @@ database/*.duckdb
 database/*.wal
 database/*.v1_retired
 database/backups/*
+# Build candidates: a run's working copy, and the blocked builds kept for
+# inspection. Never the published database, and never committed.
+database/candidates/*
+# Structured run logs: one JSONL file per month, written for the failures that
+# never reach the database. Diagnostics, not history that belongs in git.
+logs/*
+!logs/.gitkeep
 outputs/*
 !outputs/.gitkeep
 input_archive/*

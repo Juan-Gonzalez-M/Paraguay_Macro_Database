@@ -330,11 +330,8 @@ invalidate_v10_annex_year_axis <- function(con) {
 # invalidate_v*() takes its source list from here rather than repeating it, and
 # write_migration_runbook() generates docs/SCHEMA_MIGRATIONS.md from it.
 #
-# The audit found why that matters. OPERATIONS.md named upgrade_v1_to_v12.R in
-# one section and upgrade_v1_to_v11.R in another, and its recovery sequence
-# stopped at schema 11 while the database was at 14 -- three statements about the
-# same migrations, hand-maintained, drifting apart. A runbook that is written by
-# hand describes the release it was written for, not the one in front of you.
+# Keeping this declaration executable prevents the generated runbook, migration
+# invalidation and recovery instructions from drifting apart.
 #
 # Versions 2 to 11 predate the registry and keep their bespoke invalidation
 # bodies; they are declared here for the runbook only, and the guard below
@@ -423,7 +420,20 @@ SCHEMA_MIGRATIONS <- list(
   list(version = 31L, reingests = character(), registry_driven = TRUE,
        change = "Reports describe the attempt that produced them rather than every attempt that ever shared the source bundle, and the release compares each generated file with the database beside it, because a report that looks authoritative and is stale misleads more than no report. The provenance queue names, per vintage, which acquisition fields are missing and what each one costs -- separating operator-recorded availability, which every point-in-time claim depends on, from the four fields that only affect re-acquisition. The source-region queue is ordered by the economic weight of the worksheet rather than by how many cells nobody has looked at, so the price index is reviewed before the auction year-sheets. A declared canonical membership is checked for comparability as well as equality: aliases differing in unit, scale or frequency, and aliases that share no period with their primary and have therefore never been tested, block the release. A direct publisher panel reaching an aggregate mart blocks the release while rows that repeat every modelled dimension remain unresolved. Changes no observation."),
   list(version = 32L, reingests = character(), registry_driven = TRUE,
-       change = "Grain is declared per worksheet as well as per source, because one grain for a whole workbook was wrong for direct investment, whose Cuadro 5 and Cuadro 7 are country panels inside a source declared scalar. Whether a value was read from a row the publisher hid, and how many formulas its worksheet carries, are queryable per observation rather than reconstructible from a packed range. Every source is selected by the SHA-256 recorded in the registry rather than by file modification time, which is when a file reached this disk and not when it was published; with one candidate file the rule never fires, and with two it now stops the run and names the fix instead of guessing. The database is a distribution artifact with its own recorded identity, so the commit that carries a rebuilt database stops looking like a provenance mismatch. Changes no observation.")
+       change = "Grain is declared per worksheet as well as per source, because one grain for a whole workbook was wrong for direct investment, whose Cuadro 5 and Cuadro 7 are country panels inside a source declared scalar. Whether a value was read from a row the publisher hid, and how many formulas its worksheet carries, are queryable per observation rather than reconstructible from a packed range. Every source is selected by the SHA-256 recorded in the registry rather than by file modification time, which is when a file reached this disk and not when it was published; with one candidate file the rule never fires, and with two it now stops the run and names the fix instead of guessing. The database is a distribution artifact with its own recorded identity, so the commit that carries a rebuilt database stops looking like a provenance mismatch. Changes no observation."),
+  list(version = 33L, reingests = character(), registry_driven = TRUE,
+       change = "A build no longer writes the published database. Schema 30 stopped a failed build withdrawing the product; it could not stop one changing it, because the run and the published database were the same bytes -- published views resolve vintages through the source bundle rather than the build, sources commit one at a time long before the verdict exists, and the schema migrations delete published facts before a run has begun. The run now copies the database to a candidate file, builds there, and renames the candidate into place only if it is accepted, so a blocked or crashed build leaves the published bytes identical and is retained for inspection. The coverage dashboard resolves worksheet-keyed registers exact-over-wildcard through one shared expression instead of three hand-written copies -- it had 256 rows for 242 worksheets, tripling every direct-investment sheet under contradictory grains -- and a duplicated worksheet now blocks the release. The operations manual stops telling operators to edit a release status that has changed nothing since schema 30. Changes no observation."),
+  list(version = 34L, reingests = c("corporate_bond_curves", "securities_trades"),
+       registry_driven = TRUE,
+       change = "Delimited sources account for every row the publisher supplied. Both CSV parsers read permissively and dropped whatever came back NA, recording nothing, so the only loss they could notice was losing everything: three real corporate-bond purchases with a blank volume had been disappearing on every run since the source was added, 312,329 rows in the file against 312,326 in the database. Every row is now accepted or rejected with a declared reason, a partial numeric token is a rejection rather than a number, a structurally broken file is refused whole, and an undeclared rejection reason blocks the release. Every retained vintage is re-hashed against its archived bytes, because a vintage whose workbook is gone is not retained. And an economist can record the review of a series -- definition and evidence, timing and reference-period convention, stock/flow, unit, scale, currency, valuation, nominal/real, seasonal adjustment, hierarchy role and comparability -- which the research-eligibility gate has required since schema 28 with no way to supply it. The register ships empty and a half-finished row blocks the release instead of half-promoting a series. Changes no observation."),
+  list(version = 35L, reingests = character(), registry_driven = TRUE,
+       change = "Build identity records the package versions that actually ran. It hashed renv.lock, which is a declaration, so two builds against libraries differing from each other and from the lockfile produced the same build_id -- an identity unable to answer the one question it exists for. The update also refuses to build against an environment that differs from the lockfile, with an explicit override that records itself as a flag on the build. Formula cells are recorded per coordinate and exposed per observation: 91,673 cells were a fact about the database, and whether a particular number is a cached formula result was a question the researcher holding it could not ask. No source is re-ingested for it -- formula position is a property of the archived workbook, recovered from it as schema 29 recovered the per-worksheet counts. The expected-grid cost is reported per retained vintage against a budget, so the phase that dominates the run stays measurable as vintages accumulate. Changes no observation."),
+  list(version = 36L, reingests = character(), registry_driven = TRUE,
+       change = "The as-of interface ranks over every vintage that was ever published rather than the ones the active pointer names. release_id hashes the manifest, so replacing one workbook mints a new bundle whose release_sources set omits the vintage it replaced -- and the as-of macros filtered to the active bundle before ranking, so a superseded vintage left the population entirely and no cutoff could return it. The operations manual's own recipe for retaining a historical workbook produced exactly that state. A history carrier joins release_sources to the immutable accepted decisions in data_releases; the as-of macros descend from it, the current views keep the pointer, and the lint distinguishes the two boundaries so a history object filtered through the pointer fails. The release context stops being a lexical maximum over hashed bundle identifiers taken from the mutable releases.status, and names the accepted product that first admitted each vintage. And the series review register becomes binding: v_research_series and every validated mart now require a review row, and the eligibility gate requires each field to rest on evidence whose basis is reviewed rather than merely on a value that is not the not_reviewed sentinel -- which the derivation layer never writes, so promoting one worksheet would have admitted every series on it with no economic review at all. Seven further register checks: frequency vocabulary, positive scale, plausible base year, self-parenting and hierarchy cycles, unit/currency coherence and future review dates. Changes no observation."),
+  list(version = 37L, reingests = "securities_trades", registry_driven = TRUE,
+       change = "A trade with an unknown volume is still a trade. Schema 34 stopped three real corporate-bond purchases vanishing and classified them as a missing mandatory dimension, which was right about silent-loss detection and wrong as economics: their date, broker, ISIN, issuer, instrument, market, operation type and currency are all present, and what is absent is one measure. They are now accepted with a null volume and volume_status = 'not_reported', so the transaction count is complete while the volume sum is unchanged; v_securities_daily_activity reports transactions_with_volume beside the sum so the two denominators are visible rather than assumed equal. A malformed volume token is still a rejection, and a blank currency or instrument still is -- those are dimensions the grain is built from, not measures hanging off it. The update takes a single-writer lock and re-checks the SHA-256 of the production file between copying it and swapping the candidate in, so two concurrent runs cannot silently discard one another's release, and a marker closes the window in which neither rename has completed. **This step changes a published count: the securities snapshot moves from 312,326 to 312,329 rows.**"),
+  list(version = 38L, reingests = character(), registry_driven = TRUE,
+       change = "Reproducibility evidence that matches what actually happened. The environment record covered 19 declared packages out of 61 in the lockfile and no platform at all, so an arm64 macOS build and an x86 Linux build produced identical identities -- and DBI and duckdb, the two packages that write the database, are built under a different R patch release than the one running, which nothing could see. The full lockfile-intersected library is now recorded with each package's Built field, alongside the platform, the OS release and a digest of the loaded namespaces. Distribution artifacts are identified by their bytes: the artifact id hashed a size read while the connection was still open and more rows were still to be written, so the recorded size was 37% out and the identifier was not derivable from the shipped file. The artifact is now recorded after final close with a real SHA-256, and compaction registers the compacted file as a linked transformation of the file it replaced. The discontinuity and gap screens gain row-level worklists -- 38,433 flagged observations summarised into fifteen rows by source could not be investigated. A structured run log survives the process, for the failures that never reach the database. Changes no observation.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -492,10 +502,9 @@ write_migration_runbook <- function(con, root) {
     if (is.na(upgrade_entry)) {
       "No version-1 upgrade script is shipped in this release."
     } else paste0(
-      "`scripts/", upgrade_entry, "` is the entry point; the lower-numbered ",
-      "`scripts/upgrade_v1_to_v*.R` are compatibility stubs that source it. It brings the ",
-      "database to the current schema by running every step above in order. The original is ",
-      "backed up and retained as `.v1_retired`."
+      "`scripts/", upgrade_entry, "` is the version-1 entry point. It brings the database ",
+      "to the current schema by running every step above in order. The original is backed up ",
+      "and retained as `.v1_retired`."
     ),
     "",
     "## Recovery from any applied version",
@@ -631,7 +640,12 @@ STAGING_NATURAL_KEYS <- list(
   ),
   securities_transactions_snapshot = list(
     key = c("vintage_id", "transaction_id"),
-    required = c("vintage_id", "transaction_id", "operation_date", "currency", "instrument")
+    # local_currency_volume is deliberately absent: since schema 37 a trade the
+    # publisher reported without a volume is retained with a null one. What is
+    # required is that the row *says which* it is, so a null measure is always an
+    # explicit statement rather than an absence a reader has to interpret.
+    required = c("vintage_id", "transaction_id", "operation_date", "currency", "instrument",
+                 "volume_status")
   ),
   consumer_confidence_snapshot = list(
     key = c("vintage_id", "series_id", "date"),
@@ -1065,6 +1079,41 @@ invalidate_v27_publication_and_units <- function(con) {
   invalidate_documented_sources(con, affected, "needs_v27_reingestion")
 }
 
+# Schema 34. The delimited parsers now record every row they reject, and a
+# reused vintage is never re-parsed -- so without this the accounting would ask
+# the existing database a question it cannot answer.
+#
+# It is not hypothetical, and the first real run proved it: `securities_trades`
+# offers 312,329 data rows and its snapshot holds 312,326. The three missing ones
+# were dropped by the old parser without a record, so the release correctly
+# reported three source rows neither accepted nor rejected and blocked. The rows
+# can only be classified by reading the file again.
+#
+# This is what `reingests` in SCHEMA_MIGRATIONS is for, and declaring it empty
+# was the mistake: a step that changes what a parser records has to send that
+# parser's sources back through it.
+invalidate_v34_row_accounting <- function(con) {
+  if (!DBI::dbExistsTable(con, "schema_version") || !DBI::dbExistsTable(con, "source_files")) {
+    return(invisible(FALSE))
+  }
+  versions <- DBI::dbGetQuery(con, "SELECT version FROM schema_version")$version
+  if (34L %in% versions) return(invisible(FALSE))
+  invalidate_documented_sources(con, schema_migration_sources(34L), "needs_v34_reingestion")
+}
+
+# Schema 37, the re-audit's RA2-06. The three blank-volume trades this step
+# retains are not in the database to be converted: schema 34 recorded them as
+# rejections in discarded_rows and kept them out of the snapshot. Only reading
+# the file again produces them, so the source goes back through its parser.
+invalidate_v37_trade_retention <- function(con) {
+  if (!DBI::dbExistsTable(con, "schema_version") || !DBI::dbExistsTable(con, "source_files")) {
+    return(invisible(FALSE))
+  }
+  versions <- DBI::dbGetQuery(con, "SELECT version FROM schema_version")$version
+  if (37L %in% versions) return(invisible(FALSE))
+  invalidate_documented_sources(con, schema_migration_sources(37L), "needs_v37_reingestion")
+}
+
 invalidate_v24_parser_repairs <- function(con) {
   if (!DBI::dbExistsTable(con, "schema_version") || !DBI::dbExistsTable(con, "source_files")) {
     return(invisible(FALSE))
@@ -1224,6 +1273,12 @@ DATABASE_TABLE_STATEMENTS <- c(
   "CREATE TABLE IF NOT EXISTS report_sheet_versions (sheet_version_id VARCHAR PRIMARY KEY, source_id VARCHAR, source_sheet VARCHAR, structure_signature VARCHAR, raw_nonempty_cells BIGINT, first_vintage_id VARCHAR, created_at TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS report_sheet_vintages (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_id VARCHAR, source_file VARCHAR, source_sheet VARCHAR, sheet_version_id VARCHAR, PRIMARY KEY (vintage_id, source_sheet))",
   "CREATE TABLE IF NOT EXISTS report_cell_values (sheet_version_id VARCHAR, row_id BIGINT, column_id BIGINT, raw_value_text VARCHAR, raw_value_num DOUBLE, raw_value_date DATE, PRIMARY KEY (sheet_version_id, row_id, column_id))",
+  # Schema 35, the seventh audit's F-07. Which workbook cells hold a formula, in
+  # the worksheet's own A1 coordinates. Keyed by vintage and sheet name rather
+  # than by sheet_version_id, because sheet_version_id hashes the cell *values*
+  # and formula position is a property of the file: putting it inside that hash
+  # would re-key the whole raw layer for a diagnostic.
+  "CREATE TABLE IF NOT EXISTS report_cell_formulas (vintage_id VARCHAR, sheet_name VARCHAR, row_id BIGINT, column_id BIGINT, PRIMARY KEY (vintage_id, sheet_name, row_id, column_id))",
   "CREATE TABLE IF NOT EXISTS documented_table_catalog (vintage_id VARCHAR, source_id VARCHAR, source_sheet VARCHAR, table_title VARCHAR, parser_mode VARCHAR, parse_status VARCHAR, hierarchy_status VARCHAR, raw_nonempty_cells BIGINT, parsed_observations BIGINT, series_count BIGINT, first_period DATE, last_period DATE, unit_summary VARCHAR, coverage_note VARCHAR, PRIMARY KEY (vintage_id, source_sheet))",
   "CREATE TABLE IF NOT EXISTS documented_sheet_drift (vintage_id VARCHAR, previous_vintage_id VARCHAR, source_id VARCHAR, source_sheet VARCHAR, previous_observations BIGINT, current_observations BIGINT, observation_change BIGINT, previous_series BIGINT, current_series BIGINT, series_change BIGINT, drift_status VARCHAR, PRIMARY KEY (vintage_id, source_sheet))",
   "CREATE TABLE IF NOT EXISTS documented_series_continuity (vintage_id VARCHAR, previous_vintage_id VARCHAR, source_id VARCHAR, series_id VARCHAR, source_sheet VARCHAR, change_type VARCHAR, previous_label VARCHAR, current_label VARCHAR, previous_unit VARCHAR, current_unit VARCHAR, previous_scale VARCHAR, current_scale VARCHAR, previous_currency VARCHAR, current_currency VARCHAR, identity_stability VARCHAR, PRIMARY KEY (vintage_id, series_id, change_type))",
@@ -1243,7 +1298,7 @@ DATABASE_TABLE_STATEMENTS <- c(
   "CREATE TABLE IF NOT EXISTS reference_table_loads (vintage_id VARCHAR, source_sheet VARCHAR, source_table VARCHAR, semantic_role VARCHAR, row_count BIGINT, structure_signature VARCHAR, PRIMARY KEY (vintage_id, source_sheet, source_table))",
   "CREATE TABLE IF NOT EXISTS dim_series (series_id VARCHAR PRIMARY KEY, source_id VARCHAR, label VARCHAR, unit VARCHAR, scale VARCHAR, frequency VARCHAR, currency VARCHAR, index_base VARCHAR, hierarchy_level VARCHAR, parent_series_id VARCHAR, is_total BOOLEAN, identity_basis VARCHAR, identity_stability VARCHAR, hierarchy_status VARCHAR, semantic_status VARCHAR, first_vintage_id VARCHAR, price_base_year VARCHAR)",
   "CREATE TABLE IF NOT EXISTS bond_curve_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_file VARCHAR, source_row BIGINT, period DATE, currency VARCHAR, risk_rating VARCHAR, maturity_years DOUBLE, zero_coupon_rate DOUBLE, discount_factor DOUBLE, par_rate DOUBLE, beta0 DOUBLE, beta1 DOUBLE, beta2 DOUBLE, beta3 DOUBLE, lambda1 DOUBLE, lambda2 DOUBLE)",
-  "CREATE TABLE IF NOT EXISTS securities_transactions_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_file VARCHAR, transaction_id VARCHAR, source_row BIGINT, operation_date DATE, broker_tax_id VARCHAR, broker_name VARCHAR, isin VARCHAR, issuer_tax_id VARCHAR, issuer_name VARCHAR, instrument VARCHAR, market VARCHAR, operation_type VARCHAR, local_currency_volume DOUBLE, currency VARCHAR, trading_venue VARCHAR)",
+  "CREATE TABLE IF NOT EXISTS securities_transactions_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_file VARCHAR, transaction_id VARCHAR, source_row BIGINT, operation_date DATE, broker_tax_id VARCHAR, broker_name VARCHAR, isin VARCHAR, issuer_tax_id VARCHAR, issuer_name VARCHAR, instrument VARCHAR, market VARCHAR, operation_type VARCHAR, local_currency_volume DOUBLE, volume_status VARCHAR, currency VARCHAR, trading_venue VARCHAR)",
   "CREATE TABLE IF NOT EXISTS dim_concept (concept_id VARCHAR PRIMARY KEY, concept_label VARCHAR, concept_domain VARCHAR, definition VARCHAR, unit VARCHAR, scale VARCHAR, frequency VARCHAR, mapping_status VARCHAR, first_vintage_id VARCHAR)",
   "CREATE TABLE IF NOT EXISTS map_series_concept (series_id VARCHAR, concept_id VARCHAR, relationship VARCHAR, mapping_status VARCHAR, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, first_vintage_id VARCHAR, PRIMARY KEY (series_id, concept_id))",
   "CREATE TABLE IF NOT EXISTS table_status (source_id VARCHAR, source_sheet VARCHAR, status VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, note VARCHAR, PRIMARY KEY (source_id, source_sheet))",
@@ -1311,7 +1366,13 @@ DATABASE_TABLE_STATEMENTS <- c(
   # same release identifier can name two databases built by different code from
   # the same inputs. release_id keeps that meaning -- "these input files" -- and
   # build_id answers the other question, "this database".
-  "CREATE TABLE IF NOT EXISTS build_identity (build_id VARCHAR PRIMARY KEY, release_id VARCHAR, git_commit VARCHAR, git_dirty BOOLEAN, schema_version INTEGER, config_digest VARCHAR, code_digest VARCHAR, environment_digest VARCHAR, r_version VARCHAR, built_at TIMESTAMP)",
+  "CREATE TABLE IF NOT EXISTS build_identity (build_id VARCHAR PRIMARY KEY, release_id VARCHAR, git_commit VARCHAR, git_dirty BOOLEAN, schema_version INTEGER, config_digest VARCHAR, code_digest VARCHAR, environment_digest VARCHAR, package_versions_digest VARCHAR, r_version VARCHAR, built_at TIMESTAMP)",
+  # Schema 35, the seventh audit's F-09. environment_digest hashes renv.lock --
+  # what the environment was declared to be. This records what it was: one row
+  # per package the project loads, as reported by the running session. A build
+  # against a drifted library is now a different build_id and can also be
+  # diffed against the one before it, package by package.
+  "CREATE TABLE IF NOT EXISTS build_environment (build_id VARCHAR, package VARCHAR, version VARCHAR, recorded_at TIMESTAMP, PRIMARY KEY (build_id, package))",
   # The audit's R6-18. The database file is itself a distributed artifact, and
   # nothing recorded its identity: the commit carrying a rebuilt .duckdb is
   # necessarily later than the build that produced it, which reads as a
@@ -1348,6 +1409,17 @@ DATABASE_TABLE_STATEMENTS <- c(
   # has a regime, the interbank market has a maturity, and columns on
   # dim_series for each family would be null most of the time.
   "CREATE TABLE IF NOT EXISTS series_dimension (series_id VARCHAR, dimension VARCHAR, value VARCHAR, basis VARCHAR, evidence VARCHAR, derived_at TIMESTAMP, PRIMARY KEY (series_id, dimension))",
+  # Schema 34, the seventh audit's section 11.4. The economic review of a series,
+  # as an economist records it.
+  #
+  # series_semantic_evidence has always kept a slot for review -- rows whose basis
+  # is 'reviewed' survive every rebuild, where derived ones are deleted and
+  # recomputed. Nothing ever wrote one, because there was nowhere to write it
+  # from: the project had an output worklist naming what was unreviewed and no
+  # input register for the answers. This is that register, loaded from
+  # config/series_review.csv, and it holds the whole record rather than only the
+  # fields dim_series happens to have columns for.
+  "CREATE TABLE IF NOT EXISTS series_review (series_id VARCHAR PRIMARY KEY, definition VARCHAR, definition_evidence_uri VARCHAR, source_semantics VARCHAR, frequency VARCHAR, reference_period_convention VARCHAR, timing_basis VARCHAR, stock_flow VARCHAR, unit_code VARCHAR, scale_multiplier DOUBLE, currency VARCHAR, valuation VARCHAR, nominal_real VARCHAR, price_base_year VARCHAR, seasonal_adjustment VARCHAR, transformation VARCHAR, hierarchy_role VARCHAR, parent_series_id VARCHAR, methodology_regime_id VARCHAR, comparability VARCHAR, availability_convention VARCHAR, reviewed_by VARCHAR, reviewed_at DATE)",
   # Period bounds are a function of the reference period and the series
   # frequency, so v_series_observations derives them rather than storing them on
   # 1.2 million fact rows. An irregular published interval is the exception: no
@@ -1498,7 +1570,7 @@ initialize_database <- function(con, root = NULL) {
   has_sources <- database_object_exists(con, "source_files")
   has_versions <- database_object_exists(con, "schema_version")
   if (has_sources && !has_versions) {
-    stop("A version-1 database was detected. Run source('scripts/upgrade_v1_to_v11.R') once before updating.", call. = FALSE)
+    stop("A version-1 database was detected. Run source('scripts/upgrade_v1_to_v12.R') once before updating.", call. = FALSE)
   }
   existing_versions <- if (has_versions) {
     DBI::dbGetQuery(con, paste("SELECT version FROM", database_object_qualified_name(con, "schema_version")))$version
@@ -1569,6 +1641,28 @@ initialize_database <- function(con, root = NULL) {
   ensure_table_column(con, "expected_observation_grid", "build_id", "VARCHAR")
   ensure_table_column(con, "observation_missingness", "vintage_id", "VARCHAR")
   ensure_table_column(con, "observation_missingness", "build_id", "VARCHAR")
+  # Schema 35, the seventh audit's F-09. The observed library beside the declared
+  # one. Null on every build recorded before schema 35, which is the honest
+  # answer: those builds did not measure it.
+  ensure_table_column(con, "build_identity", "package_versions_digest", "VARCHAR")
+  # Schema 37, the re-audit's RA2-06. Whether the publisher reported the volume,
+  # beside the volume. Null on rows written before schema 37; the source is
+  # re-ingested by this step, so the null does not survive the migration.
+  ensure_table_column(con, "securities_transactions_snapshot", "volume_status", "VARCHAR")
+  # Schema 38, the re-audit's RA2-10. An artifact identified by its bytes, and
+  # linked to the artifact it was derived from. Null on every row written before
+  # schema 38: those rows recorded a size read from an open connection, which is
+  # why they are 37% short of the file they name.
+  ensure_table_column(con, "distribution_artifacts", "sha256", "VARCHAR")
+  ensure_table_column(con, "distribution_artifacts", "artifact_role", "VARCHAR")
+  ensure_table_column(con, "distribution_artifacts", "derived_from_artifact_id", "VARCHAR")
+  # Schema 38, RA2-09. The library and machine a build actually ran on.
+  ensure_table_column(con, "build_environment", "built_under", "VARCHAR")
+  ensure_table_column(con, "build_environment", "is_direct", "BOOLEAN")
+  ensure_table_column(con, "build_environment", "library_path", "VARCHAR")
+  ensure_table_column(con, "build_identity", "platform", "VARCHAR")
+  ensure_table_column(con, "build_identity", "os_release", "VARCHAR")
+  ensure_table_column(con, "build_identity", "loaded_namespaces_digest", "VARCHAR")
 
   # A vintage can belong to many releases; source_files holds one column, and it
   # is the bundle that first ingested the file. Named as `release_id` beside an
@@ -1812,6 +1906,41 @@ initialize_database <- function(con, root = NULL) {
   }
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 32")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (32, current_timestamp, 'Per-worksheet grain overrides, per-observation formula and hidden-row provenance, hash-based source selection for every source, and a recorded distribution artifact identity')")
+  }
+  # Schema 33 changes no stored data. Build isolation is a property of how the
+  # pipeline is invoked -- the run builds a candidate file and the swap is the
+  # publication -- so there is nothing here to migrate.
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 33")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (33, current_timestamp, 'A build runs in a candidate database and is renamed into place only if it is accepted, so a blocked or crashed run cannot alter the published bytes by any mechanism; the coverage dashboard resolves worksheet-keyed registers exact-over-wildcard and a duplicated worksheet blocks the release; and the release-operations manual describes the publication mechanism the code implements')")
+  }
+  # Schema 34 sends the two delimited sources back through their parsers, because
+  # the rows they now record as rejections were dropped without a record by the
+  # parser that ran before it. Everything else in the step is inert: the review
+  # register is empty and every archived vintage verifies.
+  if (!fresh_bootstrap) invalidate_v34_row_accounting(con)
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 34")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (34, current_timestamp, 'Delimited sources account for every source row as accepted or rejected with a declared reason and fail closed on a partial numeric token; every retained vintage is re-hashed against its archived bytes; and an economist can record the review of a series, which a half-finished row blocks rather than half-applies')")
+  }
+  # Schema 35 re-reads no source: formula coordinates are a property of the
+  # archived workbook and are recovered from it, as schema 29 recovered the
+  # per-worksheet counts.
+  if (!fresh_bootstrap) backfill_formula_cell_coordinates(con)
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 35")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (35, current_timestamp, 'Build identity records the package versions that actually ran rather than only a hash of the lockfile declaring them, and the update refuses an environment that differs from renv.lock; formula cells are recorded per coordinate and exposed per observation; and the expected-grid cost is reported per vintage against a budget')")
+  }
+  # Schema 36 changes no stored data: the as-of carrier and the review gate are
+  # view and validation definitions, rebuilt on every run.
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 36")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (36, current_timestamp, 'The as-of interface ranks over every vintage that was ever published rather than the ones the active pointer names, so a superseded vintage stays answerable at a cutoff before its replacement; the release context names the accepted product that admitted each vintage instead of a lexical maximum over hashed bundle identifiers; and the series review register becomes binding on the research surface, with the eligibility gate reading reviewed evidence rather than a value that is merely not the not_reviewed sentinel')")
+  }
+  # Schema 37 re-ingests the securities source: the three blank-volume trades it
+  # now retains can only be produced by reading the file again.
+  if (!fresh_bootstrap) invalidate_v37_trade_retention(con)
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 37")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (37, current_timestamp, 'A securities trade the publisher reported without a volume is retained with a null volume and an explicit volume_status rather than rejected, because a trade with an unknown size is still a trade; and the update takes a single-writer lock and verifies the production file has not changed between being copied and being replaced')")
+  }
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 38")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (38, current_timestamp, 'The recorded environment covers the whole lockfile with each package build and the running platform; distribution artifacts are identified by a SHA-256 taken after final close and compaction registers a linked artifact; the discontinuity and gap screens gain row-level worklists; and a structured run log survives the process')")
   }
 }
 
@@ -2112,6 +2241,7 @@ record_source_metadata <- function(con, item, dimensions, release_id, root) {
     DBI::dbExecute(con, paste0("DELETE FROM source_sheets WHERE vintage_id = ", sql_string(item$vintage_id)))
     DBI::dbWriteTable(con, "source_sheets", sheet_rows, append = TRUE)
   }
+  record_formula_cell_coordinates(con, item$vintage_id, dimensions)
   # An authoritative date already known before any cell is read is recorded on the
   # archive manifest here, so the manifest, source_files and every mirror agree
   # from the first write rather than after a later repair.
@@ -2119,6 +2249,59 @@ record_source_metadata <- function(con, item, dimensions, release_id, root) {
     update_archive_manifest_date(root, item$source_id, item$sha256, publication_date)
   }
   list(publication_date = publication_date, archive_created = archived$created)
+}
+
+# Schema 35, the seventh audit's F-07. Which cells of the workbook hold a formula,
+# in the worksheet's own A1 coordinates -- the same coordinates every documented
+# observation carries, so the two join directly.
+#
+# The values are untouched. report_cell_values is content-hashed by
+# report_sheet_version_id(), and adding a column there would re-hash the entire
+# raw layer for a diagnostic; a side table costs nothing and re-hashes nothing.
+record_formula_cell_coordinates <- function(con, vintage_id, dimensions) {
+  if (!database_object_exists(con, "report_cell_formulas")) return(invisible(0L))
+  coordinates <- xlsx_formula_cell_coordinates(dimensions)
+  DBI::dbExecute(con, paste0(
+    "DELETE FROM ", project_qualified_name("report_cell_formulas"),
+    " WHERE vintage_id = ", sql_string(vintage_id)
+  ))
+  if (!nrow(coordinates)) return(invisible(0L))
+  DBI::dbWriteTable(con, "report_cell_formulas", tibble::tibble(
+    vintage_id = vintage_id, sheet_name = coordinates$sheet_name,
+    row_id = as.numeric(coordinates$row_id), column_id = as.numeric(coordinates$column_id)
+  ), append = TRUE)
+  invisible(nrow(coordinates))
+}
+
+# The same recovery v29 performed for the per-worksheet counts, at the finer
+# grain. Formula position is a property of the workbook, not of a parsed value,
+# so every already-archived vintage gains it from its own archived file and no
+# source is re-ingested. Idempotent: a vintage whose sheets report formula cells
+# and which already has coordinates is skipped.
+backfill_formula_cell_coordinates <- function(con) {
+  if (!DBI::dbExistsTable(con, "report_cell_formulas")) return(invisible(0L))
+  if (!DBI::dbExistsTable(con, "source_sheets")) return(invisible(0L))
+  pending <- DBI::dbGetQuery(con, paste(
+    "SELECT DISTINCT s.vintage_id, f.archive_path, f.source_path, f.source_format",
+    "FROM", project_qualified_name("source_sheets"), "s",
+    "JOIN", project_qualified_name("source_files"), "f USING (vintage_id)",
+    "WHERE coalesce(s.formula_cells, 0) > 0 AND NOT EXISTS (",
+    "  SELECT 1 FROM", project_qualified_name("report_cell_formulas"), "c",
+    "  WHERE c.vintage_id = s.vintage_id)",
+    "ORDER BY s.vintage_id"
+  ))
+  if (!nrow(pending)) return(invisible(0L))
+  recorded <- 0L
+  for (i in seq_len(nrow(pending))) {
+    if (identical(tolower(pending$source_format[[i]]), "csv")) next
+    path <- pending$archive_path[[i]]
+    if (is.na(path) || !file.exists(path)) path <- pending$source_path[[i]]
+    if (is.na(path) || !file.exists(path)) next
+    dimensions <- tryCatch(xlsx_sheet_dimensions(path), error = function(e) NULL)
+    if (is.null(dimensions)) next
+    recorded <- recorded + record_formula_cell_coordinates(con, pending$vintage_id[[i]], dimensions)
+  }
+  invisible(recorded)
 }
 
 ensure_failed_source_metadata <- function(con, item, release_id, root = NULL) {

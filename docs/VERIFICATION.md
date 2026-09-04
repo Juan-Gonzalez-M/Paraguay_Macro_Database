@@ -49,9 +49,9 @@ The corrected minimum acceptance targets encoded in tests are:
 | Economic Annex documented sheets | At least 93 |
 | Economic Annex observations | At least 100,000 |
 
-## Audit P0 repair targets
+## Source-identity regression targets
 
-`tests/testthat/test-audit-p0-repairs.R` and the cardinality block of `test-full-pipeline-smoke.R` lock the P0 findings of the external technical audit. These are exact counts, not minimums: each is a repaired identity defect, so drift in either direction means a parser or the identity rule regressed. The full verification record is in `revisiones/REVISION_AUDITORIA_EXTERNA.md`.
+`tests/testthat/test-source-identity-regressions.R` and the cardinality block of `test-full-pipeline-smoke.R` lock repaired source-identity defects. These are exact counts, not minimums: drift in either direction means a parser or identity rule regressed. Historical investigation details remain available in Git history; the checks below are the maintained executable evidence.
 
 | Check | Before | After |
 |---|---:|---:|

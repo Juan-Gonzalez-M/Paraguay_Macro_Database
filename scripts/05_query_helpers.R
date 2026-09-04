@@ -9,7 +9,7 @@
 # so `series_latest()` returned "Catalog Error: Table with name dim_series does
 # not exist" rather than data. The file was sourced by neither run_update.R nor
 # the test helper, which is why nothing caught it. Both now source it, and
-# test-audit-p0-remediation.R drives every function through this connection.
+# test-semantic-and-ingestion-contracts.R drives every function through this connection.
 
 open_macro_database <- function(root = getwd(), read_only = TRUE) {
   DBI::dbConnect(duckdb::duckdb(), file.path(root, "database", "paraguay_macro_pilot.duckdb"), read_only = read_only)

@@ -27,8 +27,16 @@ testthat::test_that("sparse series retain changes and explicit removals", {
     hierarchy_level = "indicator", parent_series_id = NA_character_, is_total = FALSE,
     semantic_status = "curated", first_vintage_id = "test:first"
   )
-  first_item <- tibble::tibble(vintage_id = "test:first", source_file = "first.xlsx")
-  second_item <- tibble::tibble(vintage_id = "test:second", source_file = "second.xlsx")
+  # source_id is on the manifest item the pipeline passes, and write_sparse_series()
+  # reads it to scope the removal check to this source's series. Omitting it made
+  # every run of this test print two "Unknown or uninitialised column" warnings
+  # and silently compare against an empty series set.
+  first_item <- tibble::tibble(
+    vintage_id = "test:first", source_id = "test", source_file = "first.xlsx"
+  )
+  second_item <- tibble::tibble(
+    vintage_id = "test:second", source_id = "test", source_file = "second.xlsx"
+  )
   # The pipeline registers a vintage before curating it, and the fact table is
   # keyed on the surrogate key that registration assigns.
   for (item in list(first_item, second_item)) DBI::dbWriteTable(con, "source_files", tibble::tibble(

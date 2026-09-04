@@ -251,11 +251,45 @@ if (length(problems)) {
 # avoid. Flushing first closes it.
 if (nzchar(Sys.which("sync"))) system2("sync")
 
+source(file.path(root, "scripts", "01_utils.R"))
+# The identity of the file this compaction consumed, taken before it is replaced.
+# It is final and closed, so this is its true hash -- and it is the one thing the
+# compacted database can honestly record about a file other than itself.
+# The re-audit's RA2-10.
+before_sha256 <- file_sha256(production)
+
 if (!file.rename(staging, production)) {
   unlink(staging)
   stop("Could not swap the compacted database into place; the original is untouched.", call. = FALSE)
 }
 if (nzchar(Sys.which("sync"))) system2("sync")
+
+# Compaction is a transformation between two artifacts, and until now it left no
+# record of either. The pre-compaction file is registered inside the compacted
+# database with its real hash; the compacted file's own hash goes in the sidecar,
+# because a file cannot contain its own hash and pretending otherwise is what
+# made the previous artifact rows 37% wrong.
+link <- dbConnect(duckdb(), production)
+invisible(try({
+  set_project_search_path(link)
+  compacted_build <- DBI::dbGetQuery(link, paste(
+    "SELECT data_release_id FROM audit.active_data_release"
+  ))
+  compacted_build <- if (nrow(compacted_build)) compacted_build$data_release_id[[1]] else NA_character_
+  superseded <- record_inherited_artifact(
+    link, backup, before_sha256, fresh$schema_version
+  )
+  record_distribution_artifact(
+    link, production, compacted_build, compacted_build, fresh$schema_version, production,
+    sha256 = NA_character_, artifact_role = "compacted_database",
+    derived_from_artifact_id = superseded
+  )
+}, silent = TRUE))
+dbDisconnect(link, shutdown = TRUE)
+
+compacted_sha256 <- record_published_artifact(
+  production, compacted_build, fresh$schema_version, supersedes = before_sha256
+)
 
 after <- mib(production)
 message(sprintf(
@@ -273,3 +307,8 @@ message(sprintf(
   executed
 ))
 message("Backup retained at ", backup)
+message(
+  "Artifact SHA-256: ", compacted_sha256, "\n",
+  "  recorded in ", basename(production), ARTIFACT_SIDECAR_SUFFIX,
+  "; verify with: shasum -a 256 -c ", basename(production), ARTIFACT_SIDECAR_SUFFIX
+)

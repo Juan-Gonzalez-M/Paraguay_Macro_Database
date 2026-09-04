@@ -39,7 +39,7 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
     "SELECT source_id, min(period) AS first_period, max(period) AS last_period ",
     "FROM documented_series_snapshot GROUP BY 1"
   )) %>% dplyr::left_join(
-    contracts %>% dplyr::select(.data$source_id, .data$minimum_date, .data$maximum_future_days),
+    contracts %>% dplyr::select("source_id", "minimum_date", "maximum_future_days"),
     by = "source_id"
   )
   testthat::expect_true(all(as.Date(documented_dates$first_period) >= as.Date(documented_dates$minimum_date)))

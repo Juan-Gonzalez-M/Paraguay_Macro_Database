@@ -174,55 +174,6 @@ documented_parse_row_events <- function(raw, source_sheet, date_header,
   )
 }
 
-documented_parse_date_header_blocks <- function(raw, source_sheet, header_label = "fecha de liquidacion") {
-  text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
-  dates <- documented_date_matrix(raw, text)
-  normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
-  anchors <- which(normalized == normalize_semantic_label(header_label), arr.ind = TRUE)
-  if (!nrow(anchors)) stop("Date-block guard: no '", header_label, "' header in ", source_sheet, ".", call. = FALSE)
-  anchors <- anchors[order(anchors[, "row"], anchors[, "col"]), , drop = FALSE]
-  records <- list(); k <- 0L; titles <- character()
-  for (b in seq_len(nrow(anchors))) {
-    header_row <- anchors[b, "row"]; date_col <- anchors[b, "col"]
-    block_end <- if (b < nrow(anchors)) anchors[b + 1L, "row"] - 1L else nrow(text)
-    candidate_rows <- which(!is.na(dates[, date_col]) & seq_len(nrow(text)) > header_row & seq_len(nrow(text)) <= block_end)
-    if (!length(candidate_rows)) next
-    title <- NA_character_
-    for (title_row in rev(seq.int(max(1L, header_row - 8L), header_row - 1L))) {
-      candidates <- stringr::str_squish(text[title_row, ])
-      candidates <- candidates[!documented_blank(candidates) & nchar(candidates) >= 6L]
-      candidates <- candidates[!stringr::str_detect(
-        normalize_semantic_label(candidates), "^(?:[0-9]{4}[-/][0-9]{2}[-/][0-9]{2}|volver|fecha)"
-      )]
-      if (length(candidates)) { title <- documented_compact_path(candidates); break }
-    }
-    if (is.na(title) || !nzchar(title)) title <- paste0(source_sheet, " block ", b)
-    titles <- c(titles, title)
-    possible_cols <- setdiff(seq_len(ncol(text)), date_col)
-    numeric_density <- colSums(!is.na(numbers[candidate_rows, possible_cols, drop = FALSE]))
-    date_density <- colSums(!is.na(dates[candidate_rows, possible_cols, drop = FALSE]))
-    data_cols <- possible_cols[numeric_density >= 1L & date_density == 0L]
-    for (j in data_cols) {
-      label <- documented_compact_path(text[header_row, j])
-      if (!nzchar(label)) label <- paste0("column_", j)
-      for (r in candidate_rows) {
-        value <- numbers[r, j]; if (is.na(value)) next
-        k <- k + 1L
-        records[[k]] <- documented_record(
-          source_sheet, title, "date_header_blocks", dates[r, date_col],
-          text[r, date_col], "irregular_daily", documented_compact_path(c(title, label)),
-          title, label, value, r, j
-        )
-      }
-    }
-  }
-  observations <- documented_bind_records(records)
-  list(
-    observations = observations, mode = "date_header_blocks", hierarchy_status = "flat",
-    raw_nonempty_cells = sum(!documented_blank(text)), title = documented_compact_path(unique(titles))
-  )
-}
-
 documented_parse_daily_exchange_rates <- function(raw, source_sheet, item) {
   text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
   normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
@@ -462,10 +413,31 @@ documented_parse_compensatory_sales <- function(raw, source_sheet) {
 }
 
 read_guarded_delimited <- function(con, item, release_id, expected_headers) {
-  data <- readr::read_delim(
-    item$path, delim = ";", col_types = readr::cols(.default = readr::col_character()),
-    locale = readr::locale(encoding = "UTF-8"), trim_ws = TRUE, show_col_types = FALSE,
-    name_repair = "minimal", progress = FALSE
+  # readr's own "one or more parsing issues" warning is muffled and replaced by
+  # the error below, which names the row, the column and what was expected. A
+  # warning that says to go and call problems() yourself, followed by a stop that
+  # already did, is one message too many.
+  data <- withCallingHandlers(
+    readr::read_delim(
+      item$path, delim = ";", col_types = readr::cols(.default = readr::col_character()),
+      locale = readr::locale(encoding = "UTF-8"), trim_ws = TRUE, show_col_types = FALSE,
+      name_repair = "minimal", progress = FALSE
+    ),
+    warning = function(w) {
+      if (grepl("parsing issue", conditionMessage(w), fixed = TRUE)) invokeRestart("muffleWarning")
+    }
+  )
+  # The audit's F-05. readr records what it could not read in an attribute nobody
+  # was reading, and every column here is col_character(), so a problem can only
+  # mean a structural one -- a row with the wrong number of fields, an unclosed
+  # quote, an encoding failure. That is not a row to filter out later; it is a
+  # file that is not the file the contract describes.
+  problems <- readr::problems(data)
+  if (nrow(problems)) stop(
+    "CSV structure guard: ", nrow(problems), " parsing problem(s) reading ", item$source_file,
+    ". The delimited file does not match its declared shape and no part of it is accepted. ",
+    "First: row ", problems$row[[1]], ", column ", problems$col[[1]], " -- expected ",
+    problems$expected[[1]], ", got ", problems$actual[[1]], ".", call. = FALSE
   )
   names(data)[[1]] <- sub("^\\ufeff", "", names(data)[[1]])
   check <- assert_same_structure(expected_headers, names(data), item$source_id, "data", "headers")
@@ -473,15 +445,133 @@ read_guarded_delimited <- function(con, item, release_id, expected_headers) {
   data
 }
 
+# --- CSV row accounting ------------------------------------------------------
+# The audit's F-05 and its section 11.3:
+#
+#   source data rows = accepted rows + rejected rows with an explicit reason
+#
+# The Excel path has had this since the first audit, at cell grain: every numeric
+# source cell is an observation, a classified non-observation or a recorded
+# discard, and an unexplained one blocks the release. The CSV path had none of
+# it. It parsed permissively with readr::parse_number(), which takes the first
+# numeric run out of any string it is handed, dropped whatever came back NA with
+# dplyr::filter(), and recorded nothing -- so the only defect that could be
+# noticed was losing *every* row.
+#
+# It was not hypothetical. Three securities trades -- real corporate-bond
+# purchases at source rows 4747, 29690 and 173494, with a blank volume -- have
+# been disappearing on every run since the source was added. 312,329 rows in the
+# file, 312,326 in the database, and nothing anywhere said so.
+#
+# The machinery to fix it already existed and was unused here: discarded_rows
+# (schema 12) and the rejected_observations column that compute_table_reconciliation()
+# already sums out of it.
+
+# What a number may look like: digits with an optional decimal comma, with or
+# without '.' thousands groups. Neither source uses grouping today; accepting it
+# costs nothing and refusing "12abc", "1.2.3" and "5 %" is the point.
+CSV_NUMERIC_TOKEN <- "^[+-]?(([0-9]{1,3}(\\.[0-9]{3})+)|[0-9]+)(,[0-9]+)?$"
+
+csv_blank_token <- function(x) is.na(x) | !nzchar(trimws(x))
+
+# Present, and not a number. Distinguished from blank because they are different
+# publisher acts with different reasons: a missing value versus a value written
+# in a form this parser will not silently reinterpret.
+csv_invalid_numeric_token <- function(x) {
+  !csv_blank_token(x) & !grepl(CSV_NUMERIC_TOKEN, trimws(x))
+}
+
 parse_decimal_comma <- function(x) readr::parse_number(
   x, locale = readr::locale(decimal_mark = ",", grouping_mark = "."), na = c("", "NA", "N/A")
 )
+
+# Every rejected row carries one reason -- the first that applies, in the order
+# the caller lists them, so a row with an unreadable date and a blank volume is
+# reported once under the defect a reviewer would look at first rather than
+# twice.
+csv_row_rejections <- function(raw, tests) {
+  # A reason no register describes is the silent-loss defect wearing a label, so
+  # it is refused here rather than caught three phases later by the release gate.
+  unsupported <- setdiff(names(tests), ROW_REJECTION_REASONS)
+  if (length(unsupported)) stop(
+    "Row-rejection guard: unsupported reason(s) ", paste(unsupported, collapse = ", "),
+    ". Add them to ROW_REJECTION_REASONS and to config/row_rejection_reasons.csv.", call. = FALSE
+  )
+  reason <- rep(NA_character_, nrow(raw))
+  for (name in names(tests)) {
+    hit <- is.na(reason) & tests[[name]]
+    reason[hit] <- name
+  }
+  rejected <- which(!is.na(reason))
+  tibble::tibble(
+    source_row = raw$source_row[rejected],
+    reason = reason[rejected],
+    raw_label = csv_row_label(raw[rejected, , drop = FALSE])
+  )
+}
+
+# Enough of the row to recognise it in the source file without copying the file
+# into the database.
+csv_row_label <- function(rows) {
+  if (!nrow(rows)) return(character())
+  columns <- setdiff(names(rows), "source_row")
+  vapply(seq_len(nrow(rows)), function(i) {
+    values <- vapply(columns, function(column) {
+      value <- as.character(rows[[column]][[i]])
+      if (is.na(value)) "" else value
+    }, character(1))
+    substr(paste(values, collapse = ";"), 1L, 300L)
+  }, character(1))
+}
+
+record_csv_rejections <- function(con, item, release_id, rejections) {
+  DBI::dbExecute(con, paste0(
+    "DELETE FROM discarded_rows WHERE vintage_id = ", sql_string(item$vintage_id)
+  ))
+  if (!nrow(rejections)) return(invisible(0L))
+  rows <- rejections %>% dplyr::transmute(
+    discard_id = vapply(paste(
+      item$vintage_id, "data", .data$source_row, .data$reason, sep = "|"
+    ), digest::digest, character(1), algo = "sha256", serialize = FALSE),
+    release_id = release_id, vintage_id = item$vintage_id, source_id = item$source_id,
+    source_sheet = "data", row_id = as.numeric(.data$source_row),
+    reason = .data$reason, raw_label = .data$raw_label
+  )
+  DBI::dbWriteTable(con, "discarded_rows", rows, append = TRUE)
+  invisible(nrow(rows))
+}
+
+# The accounting identity itself is computed release-wide, in
+# compute_csv_row_reconciliation() (scripts/08_reconciliation.R), not here. Two
+# reasons, both structural: apply_table_reconciliation() empties
+# table_reconciliation and rebuilds it every release, so a row written during
+# ingestion would not survive to be read; and an unchanged source is never
+# re-parsed, so a parse-time count would go missing on exactly the runs where
+# most sources are reused. Everything the identity needs is durable -- the source
+# row count is on raw.source_sheets, the accepted rows are the snapshot, and the
+# rejections are the rows this file writes.
 
 curate_bond_curves_csv <- function(con, item, release_id, root, publication_date) {
   headers <- c("Periodo", "Moneda", "Calificación de Riesgo", "Plazo (años)", "Tasa cupon cero",
                "Factor de descuento", "Tasa Par", "beta0", "beta1", "beta2", "beta3", "lambda1", "lambda2")
   raw <- read_guarded_delimited(con, item, release_id, headers) %>% dplyr::mutate(source_row = dplyr::row_number() + 1L)
-  snapshot <- raw %>% dplyr::transmute(
+  # Every row is either accepted or rejected with a reason. The order of the
+  # tests is the order a reviewer would want them attributed, and each row gets
+  # the first that applies.
+  numeric_columns <- c("Plazo (años)", "Tasa cupon cero", "Factor de descuento", "Tasa Par",
+                       "beta0", "beta1", "beta2", "beta3", "lambda1", "lambda2")
+  rejections <- csv_row_rejections(raw, list(
+    invalid_date = csv_blank_token(raw$Periodo) |
+      is.na(lubridate::dmy(substr(raw$Periodo, 1L, 10L), quiet = TRUE)),
+    invalid_numeric_token = Reduce(`|`, lapply(
+      numeric_columns, function(column) csv_invalid_numeric_token(raw[[column]])
+    )),
+    missing_mandatory_dimension = csv_blank_token(raw$`Plazo (años)`) |
+      csv_blank_token(raw$Moneda) | csv_blank_token(raw$`Calificación de Riesgo`)
+  ))
+  record_csv_rejections(con, item, release_id, rejections)
+  accepted <- raw %>% dplyr::filter(!.data$source_row %in% .env$rejections$source_row)
+  snapshot <- accepted %>% dplyr::transmute(
     vintage_id = item$vintage_id, release_id = release_id, publication_date = as.Date(publication_date),
     source_file = item$source_file, source_row, period = lubridate::dmy(substr(.data$Periodo, 1L, 10L), quiet = TRUE),
     currency = .data$Moneda, risk_rating = .data$`Calificación de Riesgo`,
@@ -492,7 +582,14 @@ curate_bond_curves_csv <- function(con, item, release_id, root, publication_date
     beta1 = parse_decimal_comma(.data$beta1), beta2 = parse_decimal_comma(.data$beta2),
     beta3 = parse_decimal_comma(.data$beta3), lambda1 = parse_decimal_comma(.data$lambda1),
     lambda2 = parse_decimal_comma(.data$lambda2)
-  ) %>% dplyr::filter(!is.na(.data$period), !is.na(.data$maturity_years))
+  )
+  # Nothing may reach the snapshot that the rejection tests did not clear. The
+  # filter this replaces *was* the classification; keeping it as an assertion is
+  # what stops the two drifting apart.
+  if (any(is.na(snapshot$period) | is.na(snapshot$maturity_years))) stop(
+    "Bond-curve accounting guard: a row survived classification with an unusable period or ",
+    "maturity. The rejection tests and the parse disagree.", call. = FALSE
+  )
   if (!nrow(snapshot)) stop("Bond-curve guard: no valid observations.", call. = FALSE)
   assert_plausible_dates(snapshot$period, item$source_id, "data", minimum = as.Date("2000-01-01"))
   if (any(snapshot$maturity_years <= 0, na.rm = TRUE) ||
@@ -508,6 +605,10 @@ curate_bond_curves_csv <- function(con, item, release_id, root, publication_date
   DBI::dbExecute(con, paste0("DELETE FROM bond_curve_snapshot WHERE vintage_id = ", sql_string(item$vintage_id)))
   DBI::dbWriteTable(con, "bond_curve_snapshot", snapshot, append = TRUE)
   measures <- c(zero_coupon_rate = "proportion", discount_factor = "ratio", par_rate = "proportion")
+  # This filter is not a row rejection and must not be recorded as one. The row
+  # is accepted and stored in the snapshot; what is absent is one measure of a
+  # curve node, which is what a sparse fact layer is for. No row is lost, and no
+  # cell of this source is currently blank in any case.
   observations <- snapshot %>% tidyr::pivot_longer(dplyr::all_of(names(measures)), names_to = "measure", values_to = "value") %>%
     dplyr::filter(!is.na(.data$value)) %>% dplyr::mutate(
       series_key = paste(.data$currency, .data$risk_rating, format(.data$maturity_years, trim = TRUE), .data$measure, sep = "|"),
@@ -522,7 +623,7 @@ curate_bond_curves_csv <- function(con, item, release_id, root, publication_date
       identity_stability = "semantic", hierarchy_status = "flat", semantic_status = "curated",
       first_vintage_id = item$vintage_id
     )
-  events <- write_sparse_series(con, observations %>% dplyr::select(.data$series_id, .data$period, .data$value), meta, item, publication_date)
+  events <- write_sparse_series(con, observations %>% dplyr::select("series_id", "period", "value"), meta, item, publication_date)
   create_market_views(con)
   list(curated_rows = nrow(snapshot), event_rows = events, publication_date = publication_date, source_sheet = "data")
 }
@@ -531,7 +632,40 @@ curate_securities_trades_csv <- function(con, item, release_id, root, publicatio
   headers <- c("Fecha Operacion", "Ruc Casa Bolsa", "Casa Bolsa", "Isin Identificador", "Ruc Emisor", "Emisor",
                "Instrumento", "Mercado", "Tipo Operacion", "Volumen Moneda Local", "Moneda", "Mercado Negociacion")
   raw <- read_guarded_delimited(con, item, release_id, headers) %>% dplyr::mutate(source_row = dplyr::row_number() + 1L)
-  snapshot <- raw %>% dplyr::transmute(
+  # The audit's F-05, in the place it actually cost something: three real
+  # corporate-bond purchases with a blank volume have been dropped here on every
+  # run since this source was added, leaving 312,326 rows in the database for
+  # 312,329 in the file and no record of the difference anywhere.
+  # A trade with an unknown volume is still a trade. The re-audit's RA2-06.
+  #
+  # Schema 34 stopped these three rows vanishing and classified them as
+  # `missing_mandatory_dimension` -- correct as far as silent-loss detection
+  # goes, and wrong as economics. Their date, broker, ISIN, issuer, instrument,
+  # market, operation type and currency are all present and intact; what is
+  # absent is one *measure*. Rejecting the row understates the count of corporate
+  # bond purchases, so a reader summing `transactions` in the daily activity view
+  # got a number that was wrong by three for reasons only the rejection register
+  # explained.
+  #
+  # A blank volume is therefore accepted with a NULL value and an explicit
+  # status. A *malformed* volume is still a rejection: "12abc" is not an absent
+  # measure, it is a token this parser will not silently reinterpret, and the
+  # file already models that distinction. Blank currency or instrument is still a
+  # rejection too -- those are dimensions the grain is built from, not measures
+  # hanging off it.
+  #
+  # This is the same shape the bond-curve parser above already uses for an absent
+  # measure on a present node.
+  volume_missing <- csv_blank_token(raw$`Volumen Moneda Local`)
+  rejections <- csv_row_rejections(raw, list(
+    invalid_date = csv_blank_token(raw$`Fecha Operacion`) |
+      is.na(lubridate::dmy(raw$`Fecha Operacion`, quiet = TRUE)),
+    invalid_numeric_token = csv_invalid_numeric_token(raw$`Volumen Moneda Local`),
+    missing_mandatory_dimension = csv_blank_token(raw$Moneda) | csv_blank_token(raw$Instrumento)
+  ))
+  record_csv_rejections(con, item, release_id, rejections)
+  snapshot <- raw %>% dplyr::filter(!.data$source_row %in% .env$rejections$source_row) %>%
+    dplyr::transmute(
     vintage_id = item$vintage_id, release_id = release_id, publication_date = as.Date(publication_date),
     source_file = item$source_file,
     transaction_basis = paste(.data$`Fecha Operacion`, .data$`Ruc Casa Bolsa`, .data$`Isin Identificador`,
@@ -542,18 +676,42 @@ curate_securities_trades_csv <- function(con, item, release_id, root, publicatio
     issuer_tax_id = .data$`Ruc Emisor`, issuer_name = .data$Emisor, instrument = .data$Instrumento,
     market = .data$Mercado, operation_type = .data$`Tipo Operacion`,
     local_currency_volume = parse_decimal_comma(.data$`Volumen Moneda Local`), currency = .data$Moneda,
-    trading_venue = .data$`Mercado Negociacion`
-  ) %>% dplyr::filter(!is.na(.data$operation_date), !is.na(.data$local_currency_volume)) %>%
+    trading_venue = .data$`Mercado Negociacion`,
+    # Whether the publisher reported the measure, said beside the value rather
+    # than left for a reader to infer from a NULL.
+    volume_status = dplyr::if_else(
+      csv_blank_token(.data$`Volumen Moneda Local`), "not_reported", "reported"
+    )
+  ) %>%
     dplyr::group_by(.data$transaction_basis) %>% dplyr::mutate(duplicate_ordinal = dplyr::row_number()) %>% dplyr::ungroup() %>%
     dplyr::mutate(transaction_id = paste0("trade:", substr(vapply(paste(.data$transaction_basis, .data$duplicate_ordinal, sep = "|"),
       digest::digest, character(1), algo = "sha256", serialize = FALSE), 1L, 24L))) %>%
     dplyr::select(-dplyr::all_of(c("transaction_basis", "duplicate_ordinal"))) %>%
     dplyr::select(
-      .data$vintage_id, .data$release_id, .data$publication_date, .data$source_file,
-      .data$transaction_id, .data$source_row, .data$operation_date, .data$broker_tax_id, .data$broker_name,
-      .data$isin, .data$issuer_tax_id, .data$issuer_name, .data$instrument, .data$market,
-      .data$operation_type, .data$local_currency_volume, .data$currency, .data$trading_venue
+      "vintage_id", "release_id", "publication_date", "source_file",
+      "transaction_id", "source_row", "operation_date", "broker_tax_id", "broker_name",
+      "isin", "issuer_tax_id", "issuer_name", "instrument", "market",
+      "operation_type", "local_currency_volume", "volume_status", "currency", "trading_venue"
     )
+  # Same assertion as the bond curves: the classification decides what is
+  # accepted, and the parse must agree with it. Where a silent filter stood, an
+  # error stands.
+  #
+  # The volume half is now a *correspondence* rather than a prohibition. A NULL
+  # volume is permitted, and only where the source token was blank -- so a token
+  # the parser failed to read for any other reason still stops the run instead of
+  # quietly becoming a "not reported" measure.
+  if (any(is.na(snapshot$operation_date))) stop(
+    "Securities-trades accounting guard: a row survived classification with an unusable date. ",
+    "The rejection tests and the parse disagree.", call. = FALSE
+  )
+  if (!identical(is.na(snapshot$local_currency_volume), snapshot$volume_status == "not_reported")) {
+    stop(
+      "Securities-trades accounting guard: a NULL volume does not correspond to a blank source ",
+      "token. A measure the parser failed to read is not a measure the publisher did not report.",
+      call. = FALSE
+    )
+  }
   if (!nrow(snapshot)) stop("Securities-trades guard: no valid transactions.", call. = FALSE)
   assert_plausible_dates(snapshot$operation_date, item$source_id, "data", minimum = as.Date("2000-01-01"))
   if (any(snapshot$local_currency_volume < 0, na.rm = TRUE)) stop(
@@ -593,9 +751,16 @@ create_market_views <- function(con) {
     "SELECT t.* FROM securities_transactions_snapshot t JOIN",
     latest_accepted_vintage("securities_trades")
   ))
+  # `transactions` counts trades; `local_currency_volume` sums the ones that
+  # report a volume. Those are different denominators whenever the publisher
+  # omits a measure, so the second count says how many rows are behind the sum
+  # rather than leaving a reader to assume it is all of them. The re-audit's
+  # RA2-06: three corporate-bond purchases are in the count and not in the sum.
   create_project_view(con, "v_securities_daily_activity", paste(
     "SELECT operation_date, currency, instrument, market,",
-    "operation_type, trading_venue, count(*) AS transactions, sum(local_currency_volume) AS local_currency_volume",
+    "operation_type, trading_venue, count(*) AS transactions,",
+    "count(local_currency_volume) AS transactions_with_volume,",
+    "sum(local_currency_volume) AS local_currency_volume",
     "FROM v_securities_transactions_latest GROUP BY 1,2,3,4,5,6"
   ))
   invisible(TRUE)

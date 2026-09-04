@@ -47,6 +47,29 @@ Since schema 13 a `validated` row additionally requires all six evidence columns
 
 Since schema 28 a second gate sits alongside it, on the series rather than the table. A series may not enter a validated mart without `unit_code`, `scale_multiplier`, `frequency`, `stock_flow`, `nominal_real` and `seasonal_adjustment` — and `not_reviewed` or `UNRESOLVED_SOURCE_UNITS` does not count as a value. These are not metadata niceties. Without them a transformation is a guess that looks like arithmetic: deflating a series nobody has marked nominal, summing a stock, annualising a rate, or comparing a seasonally adjusted series with an original one is in each case a technically valid query and an economically invalid answer. The gate passes vacuously today because nothing is promoted, which is the point of writing it now — writing it after the first promotion would be writing it too late.
 
+**Schema 34 supplies the missing half: somewhere to record the answers.** Rows in `series_semantic_evidence` whose `basis` is `reviewed` have always been preserved across every rebuild while derived ones are deleted and recomputed — and nothing in the codebase had ever written one. There was an output worklist naming what was unreviewed and no input register.
+
+`canonical.series_review`, loaded from `config/series_review.csv`, is that register: one row per series, carrying the published definition and its evidence URI, the source table and row semantics, frequency and reference-period convention, timing basis (end-of-period, average, total, cumulative), stock/flow, unit, scale, currency, valuation, nominal/real with base year, seasonal adjustment, transformation, hierarchy role and parent, methodology regime, comparability, availability convention, reviewer and date. `main.v_series_review` publishes it.
+
+It is applied **after** the derivation layer, never before: several of those derivations are unconditional `UPDATE`s that would otherwise overwrite a reviewed value. "Reviewed wins" is true by construction rather than by each derivation remembering to check. The values land on `dim_series`, where every existing query already reads them; the reviewer's sentence lands in `series_semantic_evidence` with `basis = 'reviewed'`, so `v_series_measurement` goes on distinguishing "the publisher's label says so" from "an economist checked".
+
+**A problem in any row applies none of the register.** Not the good rows with the bad ones reported: a partly-recorded review fills exactly the columns the gate above reads, so a series would become promotable on the strength of a row its reviewer never finished. `series_review_incomplete` is an error and blocks. The register ships empty and `marts.v_research_series` is 0 rows until somebody writes the first one.
+
+### Which review is authoritative — both, and they answer different questions
+
+Until schema 36 the paragraph above was true of the register and **false of the gate**, and this document said otherwise. `marts.v_research_series` required only that every worksheet a series was assembled from carried `table_status = 'validated'`; it did not mention `canonical.series_review` at all. The eligibility check beside it inspected six *column values* on `dim_series` for the sentinels `not_reviewed` and `UNRESOLVED_SOURCE_UNITS` — which the derivation layer never writes. A label reading `saldo` yields `stock_flow = 'stock'` with `basis = 'published_label'`; a published price base year yields `nominal_real = 'real'`. Every field would have been populated, none of them by an economist, and promoting a single worksheet would have admitted every series on it. The re-audit's RA2-02.
+
+The two reviews are not competing claims about the same object:
+
+| Register | Object | Question |
+| --- | --- | --- |
+| `config/table_status.csv` → `audit.table_status` | a **worksheet** | is this source table's parsing and cell accounting fit to publish? |
+| `config/series_review.csv` → `canonical.series_review` | a **series** | is this series' economic meaning established — unit, scale, timing, stock/flow, nominal/real, adjustment, hierarchy? |
+
+Neither implies the other. A series can sit on a perfectly reconciled worksheet with no established meaning, and a reviewed series can sit on a worksheet whose cells do not add up. **Both are required**, by `marts.v_research_series` and by every `marts.v_mart_*`.
+
+And the gate reads the *basis*, not the value: `validate_research_eligibility_metadata()` raises `research_series_evidence_not_reviewed` when a series on the research surface carries an eligibility field with no `series_semantic_evidence` row at `basis = 'reviewed'`. The view requires the register row; the validator requires the evidence that row produces. They diverge only when a row reaches the table without going through `apply_series_review()` — which is the case where "reviewed" would otherwise be a claim with nothing behind it.
+
 ## Cross-release identity
 
 Parser repairs move identifiers. `series_id_migration` records, for each pair of releases, how every identifier moved: `identical`, `renamed`, `merged`, `split`, `split_and_merged`, `dropped` or `new`, with the evidence that established it. The primary evidence is the physical source cell — the same file, sheet, row, column and period in both releases — because labels and identities are exactly what a repair changes, while the cell does not move.
@@ -60,6 +83,10 @@ Parser repairs move identifiers. `series_id_migration` records, for each pair of
 `table_reconciliation` answers, per worksheet and vintage, whether every numeric source cell became an observation. Two measures matter. `cell_reuse` is accepted observations minus distinct consumed cells and must be zero — it is the invariant the compensatory-FX defect violated. `unmapped_in_region` counts numeric cells inside the rectangle the parser actually consumed that became neither an observation nor a recorded discard; it is what silently dropped data looks like from the outside. Cells outside that rectangle are period-axis headers, numeric row labels and footnote markers, recorded as `out_of_region_cells` but deliberately outside the balance, since the parser never claimed them. Every unmapped cell must resolve to exactly one rule in `config/reconciliation_cell_rules.csv`, which maps coordinate rectangles to a classification (`header_or_label`, `subtotal_or_formula`, `report_layout_derived`, `out_of_scope_block`, `parser_defect`, `observation_expected`) with the worksheet evidence quoted and a named reviewer; `reconciliation_cell_classification` records which rule explained which cell, so the total can be audited rather than trusted. A cell matching no rule blocks the release; a `parser_defect` rule keeps its worksheet out of every research view until the parser is repaired.
 
 The two storage layers do not share a coordinate system. `report_cell_values` stores each worksheet cropped to its used range and numbers it from 1; the parsers work on the uncropped sheet and record A1 coordinates. **Join the layers through `v_report_cells_a1`, never directly** — comparing them untranslated is what produced 13,041 phantom unexplained cells before schema 16.
+
+**Since schema 34 the two delimited sources are in this table too, with a row where a worksheet has a cell.** Their unit is the source row rather than the source cell — `source data rows = accepted + rejected + documented exclusions`, with `source_sheet = 'data'` — but the identity, the status vocabulary and the release-blocking residual are the same. Source rows come from the recorded content bounds, accepted rows from the snapshot, rejected rows from `staging.discarded_rows`.
+
+Until then neither CSV source was in the accounting at all, and both parsers read permissively and dropped whatever failed to parse: **three securities trades with a blank volume had been disappearing on every run since the source was added**, 312,329 rows in the file against 312,326 in the database, with nothing anywhere recording the difference. Every recorded rejection now carries a reason from `ROW_REJECTION_REASONS`, `config/row_rejection_reasons.csv` says what each means and whether seeing it is expected, and an undeclared reason blocks the release. The register covers every writer of `discarded_rows`, not only the delimited path — which the gate demonstrated on its first run by finding that the ICC/EVE and FX-operations parsers had been discarding rows under an undeclared reason since schema 12.
 
 ## Ingestion completeness outside the parser's region
 
@@ -84,7 +111,7 @@ Since schema 30 there are three identities, because one identifier was being ask
 | Identity | What it hashes | What it means |
 | --- | --- | --- |
 | `release_id` (source bundle) | every source file's SHA-256 | "these input files" |
-| `build_id` | the release, the Git commit and dirty flag, the schema version, and digests of `config/`, `scripts/` and `renv.lock` | "this code, on those files" |
+| `build_id` | the release, the Git commit and dirty flag, the schema version, digests of `config/` and `scripts/`, a digest of `renv.lock`, **and the package versions that actually ran** | "this code, in this environment, on those files" |
 | `data_release_id` | the two above, as a decided product | "this database" |
 
 `release_id` hashes the sources and nothing else, which makes it deterministic and makes it the wrong thing to publish from: the same bundle had **fourteen attempts spanning schemas 26 to 29**, with materially different observations, and `audit.releases` kept only the latest status for the one row they shared. One of those attempts ended blocked. Because every published view joined `releases.status = 'accepted'`, **a failed rebuild withdrew the entire published database** — not the data it produced, the data it failed to replace.
@@ -98,7 +125,13 @@ The release-wide phases run inside **one transaction** (schema 30). Without it t
 
 **Every transaction in the project goes through that register**, including the explicit one the per-source ingestion opens across a `tryCatch` boundary: `project_begin_transaction()`, `project_commit_transaction()`, `project_rollback_transaction()`. A bare `DBI::dbBegin()` would leave the register saying nothing is open, so the first unit inside that asked for a transaction would try to open a second — and the failed `BEGIN` would abort the source's own transaction, reporting a transaction error from code that never wrote one. That path only runs on a full ingest, which is why it has to be tested by building a database from the real workbooks rather than by reusing vintages.
 
-**What this does not give you.** Facts are not versioned per build. The guarantee is that a failed build cannot withdraw or corrupt the published one — not that any past build's output can be reconstructed from the database. Reconstructing an arbitrary past product would need a fact namespace per build, which is a much larger change and is not attempted. `audit.data_releases` preserves the decisions; the data under a superseded decision is gone.
+**A build runs in its own file (schema 33).** Everything above operates *inside* the database it is protecting, and that is why it was not enough. Published views resolve vintages through the source bundle rather than the build, so every build of one bundle exposes the same rows; the ingestion commits source by source hundreds of steps before the verdict exists; and `initialize_database()` runs the migrations' invalidation steps, which delete published facts by `source_id` before the run has begun. Committed work under a pointer that has not moved is still committed, so a failed build could not withdraw the published database but could change it.
+
+`run_isolated_update()` copies the database to `database/candidates/`, runs the whole pipeline there, and renames the candidate into place only if the build is accepted. The pointer, the decision and the release transaction are all still there and still do their jobs; what the file boundary adds is that **a build you did not accept cannot have altered the one you did, provably, by hashing the file**.
+
+**What this does not give you.** Facts are still not versioned per build. Reconstructing an arbitrary past product from inside one database would need a fact namespace per build, which is a much larger change and is not attempted. `audit.data_releases` preserves the decisions; the data under a superseded decision is gone — though since schema 33 the database that held it is retained as `database/backups/paraguay_macro_pilot_pre_swap_<stamp>.duckdb` until the retention rule reclaims it.
+
+**`audit.build_environment` (schema 35)** records the version of every package the project loaded, one row per package, beside the build it produced. `environment_digest` hashes `renv.lock`, which is a *declaration*; before schema 35 that was the only environment input to `build_id`, so two builds run against libraries differing from each other and from the lockfile produced the same identifier. The digest of the observed versions is now part of the hash — a different library is a different build — and the list is kept beside it, because a digest can say two builds differ and only the list can say which package moved.
 
 Every filtered view has an unfiltered `_all` twin. Those exist for diagnostics and for the ingestion path, which compares a new vintage against what the database already holds and must see a release that has not been accepted yet. **An `_all` view is not a research interface.**
 
@@ -122,7 +155,7 @@ Both failed concretely. `v_series_observations` read the whole fact table and `L
 
 Neither question is inferred any more. Scope is declared. Filtering is decided by **descent**: an object qualifies if it carries the boundary in its own body — declared per object as `carries_release_boundary`, and verified against the stored SQL — or if it reads something that does. An `_all` twin is never followed. Forgetting to declare a new filtering view makes the lint *fail*, not pass.
 
-`blocked_release_visible` reports any of it. The row invariant is checked too, but the structural test is the real guarantee: a view rewritten without the filter would publish a blocked build while every row test kept passing, because during a normal run the unpublishable rows do not exist yet. That is why the acceptance test for this is adversarial — `tests/testthat/test-audit6-release-isolation.R` builds a database that genuinely holds a vintage nobody may see, asks every `current` object for it, and asserts the `_all` twins *do* return it so the test cannot pass vacuously.
+`blocked_release_visible` reports any of it. The row invariant is checked too, but the structural test is the real guarantee: a view rewritten without the filter would publish a blocked build while every row test kept passing, because during a normal run the unpublishable rows do not exist yet. That is why the acceptance test for this is adversarial — `tests/testthat/test-release-isolation.R` builds a database that genuinely holds a vintage nobody may see, asks every `current` object for it, and asserts the `_all` twins *do* return it so the test cannot pass vacuously.
 
 ## Measurement semantics
 
@@ -141,6 +174,30 @@ The derivation has one rule worth stating because it was got wrong. **A unit sta
 The operational consequence, stated plainly because the mechanism looks complete and the data is not:
 
 - **`series_as_of_date()` is snapshot-limited, not real-time.** There is one retained vintage per source and no recorded revision, so `series_as_of_date('2020-12-31')` returns **zero rows** despite the database holding history back to 1945. The macro answers the right question; the evidence to answer it does not exist yet.
+
+### The carrier as-of ranks over (schema 36)
+
+Until schema 36 the macro also answered the right question over the **wrong population**, and it would have failed silently the moment the evidence above arrived.
+
+`accepted_release_vintages_sql()` resolves through `audit.active_data_release`, a one-row pointer at the current source bundle. That is the correct filter for "what is published now" and the wrong one for "what could have been seen then", and the as-of macros read a view built on it. Since `release_id` is a hash of the manifest, replacing a single workbook mints a new bundle whose `release_sources` set omits the vintage it replaced — so a superseded vintage stayed in `fact_series_events`, in `source_files` and in `input_archive/`, and **left the population being ranked**. No cutoff could return it, including cutoffs from before its replacement existed. Retaining a workbook would have produced two vintages and one answer, which is the same look-ahead error the interface exists to prevent, in the place it was least visible.
+
+The ingredients for the right population already existed and nothing joined them: `audit.release_sources` is append-only and many-to-many, and `audit.data_releases` records one immutable decision per product. Their join is every vintage that was ever published.
+
+| Carrier | Vintages | Question | Scope |
+| --- | --- | --- | --- |
+| `main.v_series_observations` | of the bundle the active pointer names | what is published now | `current` |
+| `main.v_series_observations_history` | of **any** accepted data release | what could have been seen then | `history` |
+| `main.v_series_observations_all` | every vintage in the database | ingestion diagnostics | `all` |
+
+`series_as_of_date()` and `series_statement_as_of_date()` descend from the history carrier and are declared `history` in `config/public_view_contract.csv` — a scope the contract has declared valid since schema 30 and no object had ever used. Their previous `current` classification was itself part of the defect: the release lint requires a `current` object to descend from the active-pointer carrier, so it was certifying precisely what made them wrong. The lint now checks the two boundaries separately, and a history carrier that restricts to the pointer fails.
+
+It reads `data_releases.status`, **not** `releases.status` — the latter is the mutable per-bundle column schema 30 retired, and using it here would let a later failed rebuild erase history that was genuinely published.
+
+Three consequences, stated because they are not symmetrical:
+
+- **A superseded vintage stays answerable.** That is what makes retaining workbooks worth doing.
+- **A build that was never accepted is never knowable**, at any cutoff. It was not published, so nobody could have read it.
+- **Blocking a bundle today does not erase what it published yesterday.** Current views empty immediately, because the pointer moves. As-of keeps answering, because a later failed rebuild does not un-happen an earlier publication.
 - **No real-time claim should be made from this database** — no forecast evaluation, no nowcasting backtest, no monetary-policy event study that depends on what was knowable on a date — until `official_release_date` and `retrieved_at` are recorded in `config/source_vintages.csv` and every new vintage is retained beside its predecessor.
 - `publication_date_inferred_from_content` and `publication_date_source_contradicts_content` report both conditions at every release.
 
@@ -187,6 +244,22 @@ Neither is a defect, and `workbook_cached_formulas_and_hidden_state` is a warnin
 Both columns are read from the workbook rather than from a parsed value, so a vintage archived before schema 29 gains them from its own archived file without being re-parsed and without an observation moving.
 
 Since schema 32 the same facts are queryable **per observation** through `marts.v_observation_source_behaviour`: `from_hidden_row` and `sheet_formula_cells` beside each value's coordinate. Recording them per worksheet was the right grain for the drift test — a sheet that has begun hiding a block has changed behaviour — and the wrong grain for a researcher holding a number. "15,403 observations come from hidden rows" is a fact about the database; "is *this* value one of them" was a question you could only answer by unpacking a packed range yourself. The view derives it rather than storing it: the ranges are on the worksheet and the coordinate is on the observation, so the join is the answer, and copying a flag onto 1.2 million rows would only create something to keep in step.
+
+Schema 32 could close that gap for hidden rows and not for formulas, because the hidden ranges are coordinates and the formula count is a number. **`raw.report_cell_formulas` (schema 35)** keeps the coordinates — `(vintage_id, sheet_name, row_id, column_id)`, in the worksheet's own A1 coordinates, the same ones every documented observation carries — so `from_formula_cell` joins directly and the question becomes answerable per value.
+
+It is a side table by design. `report_cell_values` is content-hashed by `report_sheet_version_id()`, and putting formula data inside that hash would re-key the entire raw layer for a diagnostic; keyed by vintage and sheet name instead, it re-hashes nothing. The A1 refs cost no extra work: `xlsx_sheet_dimensions()` was already selecting the `<f>` node set and collapsing it with `length()`, and the refs are on the parent `<c>` in the same pass. As with schema 29's counts, no source is re-ingested — formula position is a property of the archived workbook and is recovered from it.
+
+**And the answer is concentrated, which is why the per-value grain matters.** 81,367 of 1,100,840 published documented observations — 7.4% — sit on a cell that held a formula, but they are not spread evenly:
+
+| Source | Observations on a formula cell | Of |
+| --- | ---: | ---: |
+| `bcp_fx_daily` | 27,224 | 40,836 (**67%**) |
+| `interbank_market` | 16,323 | 81,474 (20%) |
+| `economic_annex` | 30,079 | 656,179 (4.6%) |
+| `financial_indicators` | 4,232 | 158,038 (2.7%) |
+| `payments` | 2,843 | 51,830 (5.5%) |
+
+Two thirds of the daily BCP exchange-rate series are cached results of formulas `readxl` cannot recompute. That is not a defect and it is not a reason to distrust the values; it is a fact about their provenance that a researcher could not previously establish for any individual number.
 
 ## Documented complex-report model
 
@@ -314,6 +387,21 @@ per family would be null most of the time. `v_series_dimensions` pivots them for
 `source_files.source_uri` and `archive_uri` are repository-relative and are the durable
 identity of an ingested file. `source_path` and `archive_path` remain as run metadata: true of
 the machine that ingested the file, and of nothing else.
+
+**And the archive is verified, not assumed (schema 34).** `validate_archive_integrity()` re-hashes
+every archived file on every release against the SHA-256 recorded for its vintage, and raises the
+release-blocking `archived_vintage_unverifiable` if one is missing or has changed. The whole
+point-in-time story rests on the archive: a vintage whose workbook is gone cannot be re-read,
+re-parsed or re-checked, and the database would go on reporting its observations as though it could.
+A vintage without its bytes is not retained; it is a row claiming to be. Measured at **0.51 seconds
+for all 22 files, 104 MiB**, against a 49-second run — cheap enough that sampling, or trusting the
+file size, would be a false economy.
+
+`outputs/vintage_retention_status.csv` reports per vintage the archive state and how many vintages
+that source holds. While a source holds one — which is all of them today — the row says so and says
+what it costs: no revision history, and no as-of reconstruction. That is why
+`series_as_of_date('2020-12-31')` returns zero rows, and it should not take an external audit to
+find it out.
 
 ## Publication date, and which layer owns it
 
