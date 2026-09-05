@@ -20,7 +20,17 @@ What this buys a researcher or analyst working with Paraguayan macro/financial d
 - **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `release_blocked` produced error-severity flags, is never published through the research views, and stops the caller with a nonzero status.
 - **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
 
-The schema is at version 38. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. The current readiness limitations and remediation plan are in `revisiones/EMPIRICAL_READINESS_2026-09-03.md`.
+The schema is at version 39. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. The current readiness limitations and remediation plan are in `revisiones/EMPIRICAL_READINESS_2026-09-03.md`.
+
+**What is and is not research-ready, as of schema 39.** The extraction interface, the temporal
+contract and the known unit defects are closed: a cross-source monthly sample can now be built
+through the documented path without silently returning nothing, and the exchange-rate units mean what
+they say. The **economic review is not done**. `config/series_review.csv` is empty, so
+`marts.v_research_series` is 0 rows — which is the fail-closed design working, not an outage. Of the
+7,229 scalar series, stock/flow is established for 9%, nominal/real for 0.5%, seasonal adjustment for
+0.2%, and hierarchy for 6%. Until a series has been reviewed, this database gives you the publisher's
+number with its provenance attached, and no claim at all about whether two of them may be added,
+deflated or compared.
 
 ## What the three interfaces promise
 
@@ -31,13 +41,16 @@ Three access paths answer three different questions, and using the wrong one is 
 | `v_series_latest`, `v_*_latest`, `v_latest_raw_*` | "What is the current data?" | The newest **published** vintage of each series, **realized observations only**. A staged or blocked build is invisible here; the `_all` twins exist for ingestion diagnostics and are not a research interface. |
 | `v_publisher_statement_latest` | "What does the publisher currently say?" | The same, **including the 343 published projections**. Not an estimation sample. `marts.v_series_projections` is the projections on their own. |
 | `series_as_of_date(d)` | "What did the database say on date `d`?" | Point-in-time, realized observations only; `series_statement_as_of_date(d)` includes projections. Ranks over **every vintage that was ever published**, not the ones currently published. **Snapshot-limited today** — see below. |
+| `main.v_series_research` | "What is this number, and may I use it?" | Every value on the current path, with the label, the **published table title**, normalized period bounds, unit, scale, currency, review status and availability beside it. Realized observations only. It rescales nothing, deflates nothing and splices nothing. **Start here.** |
 | `marts.v_research_series` and the validated marts | "What has an economist signed off on?" | Only series that an economist has reviewed in `config/series_review.csv` **and** whose worksheets are `validated` — two different reviews of two different objects, both required. **This is currently 0 rows by design**: no series has been through that review yet. |
 
-Three things a researcher has to know:
+Four things a researcher has to know:
+
+- **Do not join monthly series on `period`.** `period` is the date the publisher printed, and the sources do not agree on which day of the month that is: 2,057 monthly series are dated to month end, 1,757 to day 1, and **164 alternate inside a single series**. Joining the price index to the exchange rate on `period` returns **zero rows, with no error**. Join on `period_start`, which every published observation interface has carried since schema 39. [docs/TEMPORAL_CONTRACT.md](docs/TEMPORAL_CONTRACT.md) is the full statement; `series_wide()` refuses to guess the key for you.
 
 - **The realized/statement split is new, and it is a breaking change.** Until schema 30, `v_series_latest` held the projections too and exposed `observation_status` beside them. That was defensible and the naming was not: `v_series_latest` is the obvious default, and a researcher who never read the column got 2028 forecasts in an estimation sample. Nothing is hidden — `v_publisher_statement_latest` is the full statement and `v_series_latest_observed` still works as an alias — but the default is now the safe one.
 - **`latest` is not `validated`.** Everything outside the marts is the publisher's number with its provenance attached, not a reviewed economic series. Units, stock/flow and comparability across sources have not been adjudicated.
-- **`as-of` is not real-time.** There is one retained vintage per source, no recorded revision, and no operator-recorded availability, so `series_as_of_date('2020-12-31')` returns **zero rows** despite history back to 1945. The mechanism is complete; the acquisition evidence is not. Do not make a real-time claim from this database until `config/source_vintages.csv` is filled in — `outputs/source_provenance_worklist.csv` says exactly what is missing per vintage.
+- **`as-of` is not real-time.** There is one retained vintage per source and no recorded revision, so `series_as_of_date('2020-12-31')` returns **zero rows** despite history back to 1945. Since schema 39 every vintage carries an availability timestamp, but all 22 are `availability_quality = 'inferred_upper_bound'` — taken from the moment the file entered the immutable archive, not from a publisher's release. That bound is safe in the conservative direction (an as-of query sees *less* than a researcher could have, never more) and it is **not** evidence of when a publication appeared. Do not make a real-time claim from it. `outputs/source_provenance_worklist.csv` says exactly what is missing per vintage; [docs/ACQUISITION_RUNBOOK.md](docs/ACQUISITION_RUNBOOK.md) is the procedure that fixes it going forward, and states plainly which history is irrecoverable.
 
   Until schema 36 the mechanism was *not* complete, and it would have failed quietly the moment a second vintage arrived: the as-of macros ranked over the bundle the active pointer names, so a superseded vintage left the population entirely and no cutoff could return it. Retaining a workbook would have produced two vintages and one answer. It now ranks over every vintage belonging to any accepted data release, which is the population a point-in-time question is about.
 
@@ -191,6 +204,44 @@ concept_catalogue(con)
 # series_by_concept(con, "concept:bcp:reviewed_identifier")
 ```
 
+## Building an estimation sample
+
+`series_latest()` answers "what is the current value". It returns the value and its provenance and
+nothing that says what the value *means*. For research, use `series_research()`, which carries the
+label, the published table title, the unit, the scale, the normalized period bounds and the review
+status on one row:
+
+```r
+source("scripts/05_query_helpers.R")
+con <- open_macro_database()
+
+# Discovery. A label that names more than one series is an error naming the
+# candidates, not an arbitrary choice among them -- 4,015 of the 7,229 scalar
+# series share a label with another, and `PIB a precios de comprador` names
+# thirteen across thirteen worksheets.
+series_research(con, label = "IMAEP")
+
+# Extraction, by stable id.
+cpi <- series_research(con, series_id = "economic_annex:cuadro_60b:293a83a82f814b7fc49afadc")
+
+# One column per series, one row per period, on the canonical key. `key` has no
+# default: choosing it is the decision that goes wrong, so this function will
+# not make it for you.
+sample <- series_wide(
+  con,
+  c("economic_annex:cuadro_60b:293a83a82f814b7fc49afadc",  # IPC, index
+    "exchange_rates:usd_prom:190c4a9509f6c233bdc28928"),   # PYG/USD, monthly average
+  key = "period_start"
+)
+```
+
+`series_wide()` refuses an unstated join key, refuses `period` by name, refuses to combine
+frequencies without an explicit alignment rule, and refuses to pivot a series with two observations
+in one normalized period. Each refusal is a place where a value would otherwise be chosen for you.
+
+Before citing a result, freeze what it was computed from: `outputs/build_manifest.json` records the
+schema version, build id, database SHA-256 and governed table counts of the database you read.
+
 ## Tests
 
 Run the complete test suite from the project root:
@@ -230,6 +281,9 @@ This creates `database/paraguay_macro_rebuilt_from_archive.duckdb` and never ove
 - `docs/SEMANTIC_REFERENCE.md`: exact reference tables, mappings and coverage behavior.
 - `docs/DOCUMENTED_SOURCES.md`: parser orientations, series identity, hierarchy, units, all expanded sources and review queries.
 - `docs/CONCEPT_GOVERNANCE.md`: safe cross-source mapping workflow and review contract.
+- `docs/ECONOMIST_DECISION_WORKBOOK.md`: source-review, minimal-catalogue, coverage, and release approvals required before implementation handoff.
+- `docs/TEMPORAL_CONTRACT.md`: what a period means per frequency, which column you may join on, and why `period` is not it.
+- `docs/ACQUISITION_RUNBOOK.md`: how a publication is retained, what must be recorded about it, and what real-time history is irrecoverable.
 - `docs/OPERATIONS.md`: replacement procedure, acceptance checklist and recovery.
 - `docs/VERIFICATION.md`: verified workbook facts, test targets and environment limitation.
 - `docs/SCHEMA_MIGRATIONS.md`: generated from the migration registry on every run — which version the database is at, what each step changed, and which sources it re-ingested.

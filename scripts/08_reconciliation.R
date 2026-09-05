@@ -854,7 +854,82 @@ write_source_region_report <- function(con, root, classified = NULL) {
     classified[classified$classification == "unreviewed", , drop = FALSE],
     file.path(root, "outputs", "source_region_review_worklist.csv")
   )
+  write_out_of_region_cell_regions(con, root, classified)
   invisible(report)
+}
+
+# The audit's ER-07.1: "group the worklist by workbook, sheet, contiguous region
+# and structural pattern rather than reviewing cells independently."
+#
+# 6,522 unreviewed cells is not 6,522 decisions. A worksheet's out-of-region
+# numbers are almost always a handful of rectangles -- a footnote block, a
+# repeated display panel, a year axis the parser stopped short of -- and a
+# reviewer who classifies one rectangle has classified every cell in it. The
+# row-level file above stays, because a rule has to be written against
+# coordinates; this is the file somebody actually works through.
+#
+# Contiguity is computed the standard way: rows and columns that follow one
+# another with no gap belong to the same run. A rectangle is reported with the
+# bounds a rule in config/source_region_rules.csv would use, so the output of the
+# review is a copy-paste away from the register that records it.
+write_out_of_region_cell_regions <- function(con, root, classified) {
+  if (is.null(root) || is.null(classified) || !nrow(classified)) return(invisible(NULL))
+  unreviewed <- classified[classified$classification == "unreviewed", , drop = FALSE]
+  if (!nrow(unreviewed)) return(invisible(NULL))
+  unreviewed <- unreviewed[order(
+    unreviewed$source_id, unreviewed$source_sheet, unreviewed$column_id, unreviewed$row_id
+  ), , drop = FALSE]
+  # One group per (sheet, column-run, row-run): a new group starts wherever the
+  # sheet changes, the column is not the previous column, or the row skips.
+  key <- paste(unreviewed$source_id, unreviewed$source_sheet, unreviewed$column_id, sep = "")
+  starts <- c(TRUE, key[-1] != key[-length(key)] |
+                diff(unreviewed$row_id) != 1L)
+  unreviewed$column_run <- cumsum(starts)
+  runs <- unreviewed %>%
+    dplyr::group_by(.data$source_id, .data$source_sheet, .data$column_run) %>%
+    dplyr::summarise(
+      column_from = min(.data$column_id), column_to = max(.data$column_id),
+      row_from = min(.data$row_id), row_to = max(.data$row_id),
+      cells = dplyr::n(), .groups = "drop"
+    )
+  # Adjacent columns whose row spans are identical are one rectangle, not one
+  # per column: a footnote block three columns wide is a single decision.
+  regions <- runs %>%
+    dplyr::arrange(.data$source_id, .data$source_sheet, .data$row_from, .data$row_to, .data$column_from) %>%
+    dplyr::group_by(.data$source_id, .data$source_sheet, .data$row_from, .data$row_to) %>%
+    dplyr::summarise(
+      column_from = min(.data$column_from), column_to = max(.data$column_to),
+      columns = dplyr::n(), cells = sum(.data$cells), .groups = "drop"
+    ) %>%
+    dplyr::mutate(
+      rows = .data$row_to - .data$row_from + 1L,
+      # The shape is the first thing a reviewer reads, and it usually names the
+      # structural pattern outright: one row across many columns is an axis or a
+      # total line, one column down many rows is an unparsed data column, and a
+      # single cell is almost always a footnote marker.
+      shape = dplyr::case_when(
+        .data$cells == 1L ~ "single_cell",
+        .data$rows == 1L ~ "row_band",
+        .data$columns == 1L ~ "column_band",
+        TRUE ~ "block"
+      ),
+      suggested_rule = paste0(
+        "source_region_rules.csv: ", .data$source_id, ",", .data$source_sheet, ",",
+        .data$row_from, ",", .data$row_to, ",", .data$column_from, ",", .data$column_to,
+        ",<classification>,", .data$cells
+      )
+    ) %>%
+    dplyr::arrange(dplyr::desc(.data$cells))
+  weight <- source_region_review_weight(con)
+  regions <- regions %>%
+    dplyr::left_join(weight, by = c("source_id", "source_sheet")) %>%
+    dplyr::mutate(
+      published_series = dplyr::coalesce(.data$published_series, 0L),
+      domain = dplyr::coalesce(.data$domain, "undeclared")
+    ) %>%
+    dplyr::arrange(dplyr::desc(.data$published_series), dplyr::desc(.data$cells))
+  readr::write_csv(regions, file.path(root, "outputs", "out_of_region_cells_worklist.csv"))
+  invisible(regions)
 }
 
 # Consulted by apply_table_status(): a table family cannot be promoted to

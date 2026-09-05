@@ -433,7 +433,9 @@ SCHEMA_MIGRATIONS <- list(
   list(version = 37L, reingests = "securities_trades", registry_driven = TRUE,
        change = "A trade with an unknown volume is still a trade. Schema 34 stopped three real corporate-bond purchases vanishing and classified them as a missing mandatory dimension, which was right about silent-loss detection and wrong as economics: their date, broker, ISIN, issuer, instrument, market, operation type and currency are all present, and what is absent is one measure. They are now accepted with a null volume and volume_status = 'not_reported', so the transaction count is complete while the volume sum is unchanged; v_securities_daily_activity reports transactions_with_volume beside the sum so the two denominators are visible rather than assumed equal. A malformed volume token is still a rejection, and a blank currency or instrument still is -- those are dimensions the grain is built from, not measures hanging off it. The update takes a single-writer lock and re-checks the SHA-256 of the production file between copying it and swapping the candidate in, so two concurrent runs cannot silently discard one another's release, and a marker closes the window in which neither rename has completed. **This step changes a published count: the securities snapshot moves from 312,326 to 312,329 rows.**"),
   list(version = 38L, reingests = character(), registry_driven = TRUE,
-       change = "Reproducibility evidence that matches what actually happened. The environment record covered 19 declared packages out of 61 in the lockfile and no platform at all, so an arm64 macOS build and an x86 Linux build produced identical identities -- and DBI and duckdb, the two packages that write the database, are built under a different R patch release than the one running, which nothing could see. The full lockfile-intersected library is now recorded with each package's Built field, alongside the platform, the OS release and a digest of the loaded namespaces. Distribution artifacts are identified by their bytes: the artifact id hashed a size read while the connection was still open and more rows were still to be written, so the recorded size was 37% out and the identifier was not derivable from the shipped file. The artifact is now recorded after final close with a real SHA-256, and compaction registers the compacted file as a linked transformation of the file it replaced. The discontinuity and gap screens gain row-level worklists -- 38,433 flagged observations summarised into fifteen rows by source could not be investigated. A structured run log survives the process, for the failures that never reach the database. Changes no observation.")
+       change = "Reproducibility evidence that matches what actually happened. The environment record covered 19 declared packages out of 61 in the lockfile and no platform at all, so an arm64 macOS build and an x86 Linux build produced identical identities -- and DBI and duckdb, the two packages that write the database, are built under a different R patch release than the one running, which nothing could see. The full lockfile-intersected library is now recorded with each package's Built field, alongside the platform, the OS release and a digest of the loaded namespaces. Distribution artifacts are identified by their bytes: the artifact id hashed a size read while the connection was still open and more rows were still to be written, so the recorded size was 37% out and the identifier was not derivable from the shipped file. The artifact is now recorded after final close with a real SHA-256, and compaction registers the compacted file as a linked transformation of the file it replaced. The discontinuity and gap screens gain row-level worklists -- 38,433 flagged observations summarised into fifteen rows by source could not be investigated. A structured run log survives the process, for the failures that never reach the database. Changes no observation."),
+  list(version = 39L, reingests = character(), registry_driven = TRUE,
+       change = "The research interface the readiness audit found missing. Monthly series do not share a day convention -- 2,057 dated to month end, 1,757 to day 1, and 164 alternating inside a single series -- and the normalisation that resolves it existed only on v_series_observations, while the documented read path pointed at v_series_latest, which did not carry it. Joining the price index to the exchange rate on `period` therefore returned zero rows with no error and no warning. Both current-value carriers now publish period_start and period_end, `period` keeps the date the publisher printed, the temporal contract is written down, and the release blocks on an unordered bound or a duplicate canonical period. The documented helper returned seven columns with no label, unit or frequency, so v_series_research publishes the full interpretable record on the path researchers are told to use -- including the published table title, the only field separating 1,599 labels that name more than one series, and until now reachable only through a staging table. A wide extraction refuses to guess its join key, and a label that names more than one series is an error rather than a silent choice among the 4,015 scalar series that share one. Exchange-rate units are corrected against the published worksheet titles: the five CUADRO 60c series tagged as a price of foreign currency are index numbers based on January 1995, and the CUADRO 60a euro, Argentine-peso and Brazilian-real quotations do not have a US dollar denominator. Acquisition time is recorded per vintage with the quality of that evidence beside it, so a conservative upper bound is distinguishable from a publisher's release timestamp instead of passing as one. And a release built from an uncommitted tree blocks, with the same explicit override the environment check already had. Changes no observation.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -1427,7 +1429,22 @@ DATABASE_TABLE_STATEMENTS <- c(
   # publishes 83 of them. Only those rows are stored, with the published label
   # they were read from, and the view falls back to the derived bound everywhere
   # else -- so the fact table, its grain and its primary key are untouched.
-  "CREATE TABLE IF NOT EXISTS series_period_bounds (series_id VARCHAR, period DATE, period_start DATE NOT NULL, basis VARCHAR, evidence VARCHAR, derived_at TIMESTAMP, PRIMARY KEY (series_id, period))"
+  "CREATE TABLE IF NOT EXISTS series_period_bounds (series_id VARCHAR, period DATE, period_start DATE NOT NULL, basis VARCHAR, evidence VARCHAR, derived_at TIMESTAMP, PRIMARY KEY (series_id, period))",
+  # The published table title at series grain. It is carried per observation on
+  # documented_series_snapshot, which is a staging table, so the one field that
+  # separates `PIB a precios de comprador` on CUADRO 6 from the same label on
+  # CUADRO 7 was unreachable from the documented read path. Resolved to one row
+  # per series here, with a flag where the publisher's own title changed between
+  # vintages, so the join into the research view stays one-to-one. Schema 39.
+  "CREATE TABLE IF NOT EXISTS series_titles (series_id VARCHAR PRIMARY KEY, table_title VARCHAR, source_sheet VARCHAR, title_varies_by_vintage BOOLEAN, distinct_titles BIGINT, resolved_from_vintage_id VARCHAR)",
+  # Reviewed unit, currency and index-base corrections, keyed to the series.
+  # Units are inherited at worksheet level, so a worksheet whose columns are not
+  # all in the same unit mislabels every column on it -- CUADRO 60c tagged five
+  # index numbers as a price of foreign currency. Correcting that through
+  # series_review would require asserting the whole economic record for series
+  # nobody has reviewed, so the narrow correction gets its own narrow register.
+  # Schema 39.
+  "CREATE TABLE IF NOT EXISTS unit_overrides (series_id VARCHAR PRIMARY KEY, source_id VARCHAR, source_sheet VARCHAR, unit_code VARCHAR, currency VARCHAR, index_base VARCHAR, scale_multiplier DOUBLE, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE)"
 )
 
 # The declared DDL names its tables unqualified; the storage layer each belongs
@@ -1674,6 +1691,11 @@ initialize_database <- function(con, root = NULL) {
   # operator. Distinct from the publication date, which is derived from the file,
   # and from first_ingested_at, which is when this project happened to read it.
   ensure_table_column(con, "source_provenance", "available_at", "TIMESTAMP")
+  # How good the availability evidence is, beside the timestamp it qualifies. A
+  # publisher's release timestamp and an archive time that merely bounds the
+  # acquisition from above are both dates in the same column, and a point-in-time
+  # claim that cannot tell them apart is overstating what it knows. Schema 39.
+  ensure_table_column(con, "source_provenance", "availability_quality", "VARCHAR")
   # What the publisher wrote in the cell, where there was no number to read. The
   # reason column alone says the status; this says which token produced it, so a
   # reviewer can go from the classification back to the worksheet.
@@ -1942,6 +1964,13 @@ initialize_database <- function(con, root = NULL) {
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 38")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (38, current_timestamp, 'The recorded environment covers the whole lockfile with each package build and the running platform; distribution artifacts are identified by a SHA-256 taken after final close and compaction registers a linked artifact; the discontinuity and gap screens gain row-level worklists; and a structured run log survives the process')")
   }
+  # Schema 39 re-reads no source. The temporal bounds are derived in the view,
+  # the table titles are resolved from a snapshot already in the database, and
+  # the unit corrections are metadata applied over the derivation -- none of them
+  # touches a parsed value, so nothing goes back through a parser.
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 39")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (39, current_timestamp, 'The current-value views carry normalized period bounds, so a cross-source monthly join stops returning an empty sample without saying so; v_series_research publishes the interpretable record, table title included, on the documented read path; the extraction helpers refuse an ambiguous label and an unstated join key; reviewed unit and currency corrections outrank the worksheet default; acquisition time carries the quality of its evidence; and a release built from an uncommitted tree blocks')")
+  }
 }
 
 # The migration's one job that is not DDL: keep the database published.
@@ -2112,13 +2141,36 @@ create_series_views <- function(con) {
   # is hidden and nothing is lost; marts.v_series_projections is still the
   # complement, and v_series_latest_observed remains as a deprecated alias so
   # existing queries keep working and keep meaning the same thing.
+  # period_start and period_end travel with the row.
+  #
+  # The readiness audit's first blocker. The bounds that make a monthly join
+  # convention-independent were computed on v_series_observations and nowhere
+  # else, while README.md and scripts/05_query_helpers.R send every researcher to
+  # v_series_latest -- which carried `period` alone. Joining the price index,
+  # dated to day 1, to the exchange rate, dated to month end, therefore returned
+  # zero rows through the documented read path: no error, no warning, an empty
+  # estimation sample. 164 monthly series alternate between the two conventions
+  # inside a single series, which produces wrong lags and wrong differences in
+  # any time-series package without ever looking wrong.
+  #
+  # `period` is untouched. It is the observation key and it is the date the
+  # publisher printed; the normalisation is published beside it, not over it.
+  # The expression is series_period_bounds_sql(), shared with the observations
+  # carrier, because two copies of an interval rule are two answers waiting to
+  # disagree.
   latest_body <- function(filter) paste0(
     "WITH ranked AS (SELECT *, row_number() OVER (PARTITION BY series_id, period ",
     "ORDER BY publication_date DESC NULLS LAST, vintage_id DESC) AS rn FROM fact_series_events",
-    filter, ") SELECT series_id, period, value, vintage_id, publication_date, source_file, ",
-    "CASE WHEN publication_date IS NOT NULL AND period > publication_date ",
+    filter, ") SELECT f.series_id, f.period, ", series_period_bounds_sql(), ", ",
+    "f.value, f.vintage_id, f.publication_date, f.source_file, ",
+    "CASE WHEN f.publication_date IS NOT NULL AND f.period > f.publication_date ",
     "     THEN 'after_publication' ELSE 'observed' END AS observation_status ",
-    "FROM ranked WHERE rn = 1 AND NOT is_deleted"
+    # Inner, exactly as v_series_observations joins it: a fact row without a
+    # series dimension is a referential defect the release gate blocks, not a
+    # row this view should quietly publish with a null frequency.
+    "FROM ranked f JOIN dim_series d ON d.series_id = f.series_id ",
+    "LEFT JOIN series_period_bounds b ON b.series_id = f.series_id AND b.period = f.period ",
+    "WHERE f.rn = 1 AND NOT f.is_deleted"
   )
   # The unfiltered twin, on the project's existing `_all` convention: it is what
   # the ingestion path compares a new vintage against to detect a revision, and
@@ -2465,9 +2517,34 @@ apply_source_provenance <- function(con, root) {
       release_identifier = blank_to_na(.data$release_identifier),
       retrieved_at = blank_to_na(.data$retrieved_at),
       retrieval_method = blank_to_na(.data$retrieval_method),
-      # The acquisition timestamp doubles as the availability timestamp: the
-      # earliest moment this project can evidence the figure was obtainable.
-      available_at = suppressWarnings(as.POSIXct(blank_to_na(.data$retrieved_at), tz = "UTC")),
+      # Availability, and how good the evidence for it is, decided together.
+      #
+      # This used to be the acquisition timestamp alone. The audit's ER-04 asks
+      # for the publisher's release timestamp where it is documented and the
+      # retrieval time with a lower-quality flag where it is not -- because both
+      # arrive as a date in one column, and a real-time claim that cannot tell
+      # them apart is claiming more than it knows. The release date wins when
+      # recorded; the acquisition time is the fallback and says so.
+      #
+      # Nothing here ever reads publication_date. That is derived from the file
+      # and describes the period the bulletin covers, not the moment anyone could
+      # have had it, and inferring availability from a reference period is
+      # precisely the look-ahead this column exists to prevent.
+      available_at = dplyr::coalesce(
+        suppressWarnings(as.POSIXct(
+          blank_to_na(.data$official_release_date), tz = "UTC", format = "%Y-%m-%d"
+        )),
+        suppressWarnings(as.POSIXct(blank_to_na(.data$retrieved_at), tz = "UTC"))
+      ),
+      availability_quality = dplyr::case_when(
+        !is.na(blank_to_na(.data$official_release_date)) ~ "official_release",
+        is.na(blank_to_na(.data$retrieved_at)) ~ NA_character_,
+        # The operator declares the weaker reading by naming the method. An
+        # archive time bounds acquisition from above; it is not a retrieval.
+        blank_to_na(.data$availability_quality) %in% AVAILABILITY_QUALITY_VALUES ~
+          blank_to_na(.data$availability_quality),
+        TRUE ~ "retrieval_time"
+      ),
       license = blank_to_na(.data$license),
       evidence = blank_to_na(.data$evidence),
       recorded_at = Sys.time()
@@ -2476,7 +2553,7 @@ apply_source_provenance <- function(con, root) {
   create_project_view(con, "v_source_provenance", paste(
     "SELECT f.source_id, f.vintage_id, f.source_file, f.sha256, f.publication_date,",
     "f.publication_date_source, p.official_release_date, p.official_url, p.release_identifier,",
-    "p.retrieved_at, p.retrieval_method, p.license,",
+    "p.retrieved_at, p.retrieval_method, p.available_at, p.availability_quality, p.license,",
     "CASE WHEN p.official_url IS NULL OR p.release_identifier IS NULL",
     "       OR p.retrieved_at IS NULL OR p.retrieval_method IS NULL",
     "     THEN 'incomplete' ELSE 'complete' END AS provenance_status",

@@ -364,12 +364,27 @@ run_quality_screens <- function(con, release_id, root) {
       expected_step, "AS expected_step",
       "  FROM ordered WHERE previous_start IS NOT NULL",
       ")",
-      "SELECT series_id, source_id, source_sheet, frequency, unit_code, vintage_id,",
-      "  previous_start AS gap_after, period_start AS resumes_at,",
-      "  observed_step AS months_between, expected_step AS months_expected,",
-      "  (observed_step / expected_step) - 1 AS missing_periods",
-      "FROM steps WHERE observed_step > expected_step",
-      "ORDER BY missing_periods DESC, series_id, resumes_at"
+      "), episodes AS (",
+      "  SELECT series_id, source_id, source_sheet, frequency, unit_code, vintage_id,",
+      "    previous_start AS gap_after, period_start AS resumes_at,",
+      "    observed_step AS months_between, expected_step AS months_expected,",
+      "    (observed_step / expected_step) - 1 AS missing_periods",
+      "  FROM steps WHERE observed_step > expected_step",
+      ")",
+      # Ranked the same way as the discontinuities, and for the same reason. A
+      # worksheet that stops publishing for six months stops for all of its
+      # series at once, which is a publication pattern; a single series that
+      # pauses while its neighbours continue is where an omission hides.
+      "SELECT *, count(*) OVER (PARTITION BY source_sheet, gap_after, resumes_at) - 1",
+      "         AS related_series_gapped_same_span,",
+      "  CASE WHEN EXISTS (SELECT 1 FROM marts.v_research_series r",
+      "                    WHERE r.series_id = episodes.series_id)",
+      "       THEN '1_research_eligible'",
+      "       WHEN count(*) OVER (PARTITION BY source_sheet, gap_after, resumes_at) = 1",
+      "       THEN '2_gaps_alone'",
+      "       ELSE '3_gaps_with_worksheet' END AS review_priority",
+      "FROM episodes",
+      "ORDER BY review_priority, missing_periods DESC, series_id, resumes_at"
     ))
     insert_quality_flag(
       con, release_id, "warning", "regular_period_gaps", NA_character_,
@@ -423,23 +438,40 @@ run_quality_screens <- function(con, release_id, root) {
       "  SELECT *, median(abs(change)) OVER (PARTITION BY series_id) AS typical_change,",
       "    count(*) OVER (PARTITION BY series_id) AS observations",
       "  FROM ordered WHERE change IS NOT NULL",
+      # The audit's ER-09.1 asks for the queue to be ranked by research
+      # relevance, magnitude, core status and "whether related series move
+      # similarly" -- and the last of those is the one that separates the two
+      # explanations. A jump the rest of its worksheet takes at the same moment
+      # is a rebase, a devaluation or a definition change; a series that jumps
+      # alone is where a parser defect looks like economics. Magnitude alone
+      # cannot tell them apart, and magnitude alone is how this was ordered.
+      "), flagged AS (",
+      "  SELECT * FROM scaled",
+      "  WHERE observations >= 24 AND typical_change > 0 AND abs(change) > 10 * typical_change",
       ")",
       "SELECT series_id, source_id, source_sheet, period, previous_value, value, change,",
       "  typical_change, 10 * typical_change AS threshold,",
       "  abs(change) / nullif(typical_change, 0) AS times_typical_change,",
       "  observations, unit_code, vintage_id,",
+      "  count(*) OVER (PARTITION BY source_sheet, period) - 1",
+      "    AS related_series_flagged_same_period,",
+      "  CASE WHEN EXISTS (SELECT 1 FROM marts.v_research_series r",
+      "                    WHERE r.series_id = flagged.series_id)",
+      "       THEN '1_research_eligible'",
+      "       WHEN count(*) OVER (PARTITION BY source_sheet, period) = 1",
+      "       THEN '2_moves_alone'",
+      "       ELSE '3_moves_with_worksheet' END AS review_priority,",
       # The coordinate lives on the snapshot, not on the observation view, and a
       # plain join would multiply a series published on several worksheets. A
       # scalar subquery returns one row per observation by construction.
       "  (SELECT any_value(n.source_row) FROM", project_qualified_name("documented_series_snapshot"), "n",
-      "   WHERE n.vintage_id = scaled.vintage_id AND n.series_id = scaled.series_id",
-      "     AND n.period = scaled.period) AS source_row,",
+      "   WHERE n.vintage_id = flagged.vintage_id AND n.series_id = flagged.series_id",
+      "     AND n.period = flagged.period) AS source_row,",
       "  (SELECT any_value(n.source_column) FROM", project_qualified_name("documented_series_snapshot"), "n",
-      "   WHERE n.vintage_id = scaled.vintage_id AND n.series_id = scaled.series_id",
-      "     AND n.period = scaled.period) AS source_column",
-      "FROM scaled",
-      "WHERE observations >= 24 AND typical_change > 0 AND abs(change) > 10 * typical_change",
-      "ORDER BY times_typical_change DESC"
+      "   WHERE n.vintage_id = flagged.vintage_id AND n.series_id = flagged.series_id",
+      "     AND n.period = flagged.period) AS source_column",
+      "FROM flagged",
+      "ORDER BY review_priority, times_typical_change DESC"
     ))
     insert_quality_flag(
       con, release_id, "warning", "discontinuity_screen", NA_character_,

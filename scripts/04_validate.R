@@ -1363,7 +1363,79 @@ write_direct_panel_duplicate_worklist <- function(con, root) {
   }
   report <- dplyr::bind_rows(rows)
   readr::write_csv(report, file.path(root, "outputs", "direct_panel_duplicate_keys.csv"))
+  # Only the tables the summary just found duplicates in. The row-level pass
+  # ranks over every dimension of a panel, which is not free, and running it over
+  # the seventeen panels that have nothing to report would cost the build a
+  # measurable amount to produce empty output.
+  affected <- if (!nrow(report)) character() else {
+    report$table_name[!is.na(report$rows_affected) & report$rows_affected > 0]
+  }
+  write_direct_panel_duplicate_rows(con, root, tables = affected)
   invisible(report)
+}
+
+# A screen counts; a worklist names -- the project's own lesson from the
+# discontinuity screen, applied to the panels.
+#
+# The audit's ER-08.1 asks for the 411 duplicate groups themselves, "with all
+# source dimensions, provenance cells, entity, period, measure, labels and
+# values", because the question a reviewer has to answer is what the publisher is
+# varying between two rows that look identical -- and that question cannot be
+# asked of a count. The rows are exported with every dimension the grouping used
+# and every measure it excluded, side by side: if the measures differ, the rows
+# are two different figures the model cannot tell apart, and if they do not, the
+# publisher printed the same record twice.
+DIRECT_PANEL_WORKLIST_LIMIT <- 5000L
+
+write_direct_panel_duplicate_rows <- function(con, root, tables = NULL,
+                                              limit = DIRECT_PANEL_WORKLIST_LIMIT) {
+  if (is.null(root)) return(invisible(NULL))
+  panels <- names(direct_panel_natural_keys(con))
+  if (!is.null(tables)) panels <- intersect(panels, tables)
+  if (!length(panels)) return(invisible(NULL))
+  rows <- list()
+  for (table_name in panels) {
+    columns <- table_column_names(con, table_name)
+    provenance <- intersect(
+      c("source_row", "release_id", "publication_date", "source_file", "first_ingested_at"), columns
+    )
+    dimensions <- setdiff(columns, provenance)
+    measures <- grep("^(saldo|monto|importe|cantidad|total|valor)", dimensions, value = TRUE)
+    dimensions <- setdiff(dimensions, measures)
+    if (length(dimensions) < 3L) next
+    quote_all <- function(x) paste(vapply(
+      x, function(name) as.character(DBI::dbQuoteIdentifier(con, name)), character(1)
+    ), collapse = ", ")
+    found <- tryCatch(DBI::dbGetQuery(con, paste0(
+      "SELECT ", sql_string(table_name), " AS table_name,",
+      " dense_rank() OVER (ORDER BY ", quote_all(dimensions), ") AS duplicate_group,",
+      " count(*) OVER (PARTITION BY ", quote_all(dimensions), ") AS rows_in_group, *",
+      " FROM ", project_qualified_name(table_name),
+      " QUALIFY count(*) OVER (PARTITION BY ", quote_all(dimensions), ") > 1",
+      " ORDER BY duplicate_group, ",
+      if (length(provenance)) quote_all(intersect("source_row", provenance)) else "1"
+    )), error = function(e) NULL)
+    if (is.null(found) || !nrow(found)) next
+    found$repeated_dimensions <- paste(dimensions, collapse = ", ")
+    found$measures_compared <- paste(measures, collapse = ", ")
+    # Whether the publisher printed two different numbers under one identity, or
+    # the same number twice. They call for opposite repairs: the first is a
+    # missing dimension, the second is a duplicated display row.
+    found$measures_differ <- if (!length(measures)) NA else {
+      vapply(seq_len(nrow(found)), function(i) {
+        group <- found[found$duplicate_group == found$duplicate_group[[i]], measures, drop = FALSE]
+        any(vapply(measures, function(m) length(unique(group[[m]])) > 1L, logical(1)))
+      }, logical(1))
+    }
+    rows[[table_name]] <- found
+  }
+  worklist <- dplyr::bind_rows(rows)
+  if (!nrow(worklist)) return(invisible(NULL))
+  total <- nrow(worklist)
+  worklist <- utils::head(worklist, limit)
+  worklist$worklist_of_total <- total
+  readr::write_csv(worklist, file.path(root, "outputs", "panel_duplicate_worklist.csv"))
+  invisible(worklist)
 }
 
 validate_declared_natural_keys <- function(con, release_id, root = NULL) {
@@ -1966,9 +2038,13 @@ validate_source_provenance <- function(con, release_id, root) {
   if (!is.null(root)) {
     fields <- c("official_url", "release_identifier", "retrieved_at", "retrieval_method")
     available <- DBI::dbGetQuery(con, paste(
-      "SELECT vintage_id, available_at FROM", project_qualified_name("source_provenance")
+      "SELECT vintage_id, available_at, availability_quality FROM",
+      project_qualified_name("source_provenance")
     ))
     status$available_at <- available$available_at[match(status$vintage_id, available$vintage_id)]
+    status$availability_quality <- available$availability_quality[
+      match(status$vintage_id, available$vintage_id)
+    ]
     dated <- DBI::dbGetQuery(con, paste(
       "SELECT vintage_id, publication_date, publication_date_source FROM",
       project_qualified_name("source_files")
@@ -1983,7 +2059,14 @@ validate_source_provenance <- function(con, release_id, root) {
       publication_date = dated$publication_date[match(status$vintage_id, dated$vintage_id)],
       publication_date_source = dated$publication_date_source[
         match(status$vintage_id, dated$vintage_id)
-      ]
+      ],
+      # Beside what is missing, how good what is present actually is. Schema 39
+      # fills retrieved_at for every vintage from the moment the file entered
+      # the immutable archive, which bounds acquisition from above and is
+      # therefore safe -- but it is not the publisher's release timestamp, and a
+      # worklist that stopped naming the difference would read as though the
+      # provenance question had been answered.
+      availability_quality = status$availability_quality
     )
     worklist$consequence <- ifelse(
       grepl("available_at", worklist$missing_fields, fixed = TRUE) &
@@ -1992,7 +2075,15 @@ validate_source_provenance <- function(con, release_id, root) {
       ifelse(
         grepl("available_at", worklist$missing_fields, fixed = TRUE),
         "as-of ranking falls back to the publication date read from the filename",
-        "the vintage cannot be independently re-acquired"
+        ifelse(
+          worklist$availability_quality %in% "inferred_upper_bound",
+          paste(
+            "the vintage cannot be independently re-acquired, and availability is an upper",
+            "bound taken from the archive time rather than the publisher's release timestamp,",
+            "so an as-of query sees this vintage later than a researcher really could have"
+          ),
+          "the vintage cannot be independently re-acquired"
+        )
       )
     )
     worklist <- worklist[nzchar(worklist$missing_fields), , drop = FALSE]
@@ -2022,6 +2113,414 @@ validate_source_provenance <- function(con, release_id, root) {
     )
   )
   invisible(!length(blocking))
+}
+
+# How good the availability evidence is, checked as evidence rather than counted
+# as presence. The audit's ER-04 asks for availability to be defined
+# conservatively and for the weaker definition to declare itself, because a
+# point-in-time result computed from an archive timestamp and one computed from
+# a publisher's release timestamp are different claims that arrive in the same
+# column.
+#
+# An undeclared value blocks: a vocabulary nobody enforces is a vocabulary two
+# operators will spell differently. An inferred bound warns, once, with the count
+# -- it is the honest state of a database whose vintages predate any acquisition
+# procedure, and it must stay visible without stopping every build until history
+# that cannot be recreated has been recreated.
+validate_availability_quality <- function(con, release_id) {
+  if (!database_object_exists(con, "source_provenance")) return(invisible(FALSE))
+  if (!"availability_quality" %in% table_column_names(con, "source_provenance")) {
+    return(invisible(FALSE))
+  }
+  quality <- DBI::dbGetQuery(con, paste(
+    "SELECT vintage_id, source_id, available_at, availability_quality FROM",
+    project_qualified_name("source_provenance")
+  ))
+  if (!nrow(quality)) return(invisible(TRUE))
+  undeclared <- quality[
+    !is.na(quality$available_at) &
+      !quality$availability_quality %in% AVAILABILITY_QUALITY_VALUES, , drop = FALSE
+  ]
+  if (nrow(undeclared)) insert_quality_flag(
+    con, release_id, "error", "availability_quality_undeclared", NA_character_,
+    paste0(
+      nrow(undeclared), " vintage(s) carry an availability timestamp with no declared quality, or ",
+      "one outside the published vocabulary (",
+      paste(AVAILABILITY_QUALITY_VALUES, collapse = ", "),
+      "). Availability decides what a point-in-time query may return, so how it was established ",
+      "is part of the answer and not an optional annotation: ",
+      paste(utils::head(unique(undeclared$source_id), 10), collapse = ", ")
+    )
+  )
+  inferred <- sum(quality$availability_quality %in% "inferred_upper_bound", na.rm = TRUE)
+  if (inferred) insert_quality_flag(
+    con, release_id, "warning", "availability_inferred_upper_bound", NA_character_,
+    paste0(
+      inferred, " of ", nrow(quality), " vintage(s) date availability from the moment the file ",
+      "entered the immutable archive rather than from a publisher's release timestamp. The bound ",
+      "is safe -- it is later than real availability, so an as-of query sees less than a ",
+      "researcher could have seen and never more -- but it is not evidence of when the ",
+      "publication appeared, and a real-time claim must not be made from it. ",
+      "outputs/source_provenance_worklist.csv names the missing field per vintage; ",
+      "docs/ACQUISITION_RUNBOOK.md is the procedure that stops this recurring for future releases."
+    )
+  )
+  invisible(!nrow(undeclared))
+}
+
+# --- The temporal contract ---------------------------------------------------
+# The audit's ER-02, enforced rather than described.
+#
+# docs/TEMPORAL_CONTRACT.md states what a published period means per frequency.
+# This is the half of it a document cannot do: the bounds are ordered and
+# contain the parsed date, and the canonical key is unique, on every observation
+# of every release. Measured on schema 38 before the contract existed, all three
+# already held for 1.2 million observations -- which is what makes them safe as
+# blocking checks rather than warnings, and what makes a future violation a
+# genuine regression rather than a backlog.
+#
+# The convention check is the one that cannot block, and deliberately so. 164
+# monthly series alternate between month-start and month-end dating inside a
+# single series; that is a real and unresolved property of the sources, the
+# bounds are what make it harmless, and blocking the release over it would stop
+# the database being published in order to protest about the database. It is a
+# warning with a worklist, and an error only where it reaches a research
+# surface, which is where a wrong lag would actually reach an estimate.
+validate_temporal_contract <- function(con, release_id, root = NULL) {
+  if (!database_object_exists(con, "v_series_observations")) return(invisible(FALSE))
+  scalar <- function(sql) DBI::dbGetQuery(con, sql)$n[[1]]
+  gate <- function(check_name, detail) insert_quality_flag(
+    con, release_id, "error", check_name, NA_character_, detail
+  )
+  unordered <- scalar(paste(
+    "SELECT count(*) AS n FROM main.v_series_observations",
+    "WHERE period_start IS NULL OR period_end IS NULL",
+    "   OR period_end < period_start OR period < period_start OR period > period_end"
+  ))
+  if (unordered) gate("temporal_bounds_unordered", paste0(
+    unordered, " observation(s) carry a period interval that is null, reversed, or does not ",
+    "contain the date the publisher printed. The bounds are the join key every cross-source ",
+    "monthly sample is built on; an interval that does not contain its own observation cannot ",
+    "carry one."
+  ))
+  duplicated_keys <- scalar(paste(
+    "SELECT count(*) AS n FROM (SELECT 1 FROM main.v_series_observations",
+    "WHERE NOT is_deleted GROUP BY series_id, period_start HAVING count(*) > 1)"
+  ))
+  if (duplicated_keys) gate("temporal_canonical_key_duplicated", paste0(
+    duplicated_keys, " series-period key(s) occur more than once after normalisation. The ",
+    "canonical period is what a researcher joins and lags on, so two observations sharing one ",
+    "would silently become whichever the optimiser returned -- the failure the normalisation ",
+    "exists to prevent, one layer further in."
+  ))
+  # The mixed-convention series, ranked and exported rather than merely counted.
+  mixed <- tryCatch(DBI::dbGetQuery(con, paste(
+    "WITH o AS (",
+    "  SELECT o.series_id, o.frequency, o.period,",
+    "    CASE WHEN day(o.period) = 1 THEN 'month_start'",
+    "         WHEN day(o.period) >= 28 THEN 'month_end' ELSE 'other' END AS convention",
+    "  FROM main.v_series_observations o",
+    "  WHERE o.frequency IN ('monthly', 'monthly_survey') AND NOT o.is_deleted",
+    ")",
+    "SELECT o.series_id, count(DISTINCT o.convention) AS conventions,",
+    "  count(*) FILTER (WHERE o.convention = 'month_start') AS observations_month_start,",
+    "  count(*) FILTER (WHERE o.convention = 'month_end') AS observations_month_end,",
+    "  count(*) FILTER (WHERE o.convention = 'other') AS observations_other,",
+    "  min(o.period) AS first_period, max(o.period) AS last_period, count(*) AS observations",
+    "FROM o GROUP BY 1 HAVING count(DISTINCT o.convention) > 1"
+  )), error = function(e) NULL)
+  if (is.null(mixed)) return(invisible(TRUE))
+  if (nrow(mixed) && !is.null(root)) {
+    catalogue <- DBI::dbGetQuery(con, paste(
+      "SELECT series_id, label, source_id, unit_code FROM",
+      project_qualified_name("dim_series")
+    ))
+    sheets <- tryCatch(DBI::dbGetQuery(con, paste(
+      "SELECT series_id, string_agg(DISTINCT source_sheet, '; ') AS source_sheet FROM",
+      project_qualified_name("documented_series_snapshot"), "GROUP BY series_id"
+    )), error = function(e) NULL)
+    eligible <- temporal_research_series(con)
+    worklist <- mixed %>%
+      dplyr::left_join(catalogue, by = "series_id")
+    worklist$source_sheet <- if (is.null(sheets)) NA_character_ else {
+      sheets$source_sheet[match(worklist$series_id, sheets$series_id)]
+    }
+    # Ranked by what a wrong lag would cost, not by how many observations the
+    # series happens to have: a series on the research surface first, then one
+    # that changes convention often enough that the change is structural rather
+    # than a single stray date.
+    worklist$review_priority <- ifelse(
+      worklist$series_id %in% eligible, "1_research_eligible",
+      ifelse(
+        pmin(worklist$observations_month_start, worklist$observations_month_end) > 1L,
+        "2_structural_change", "3_isolated_dates"
+      )
+    )
+    worklist <- worklist[order(worklist$review_priority, -worklist$observations), , drop = FALSE]
+    readr::write_csv(worklist, file.path(root, "outputs", "temporal_convention_worklist.csv"))
+  }
+  blocking <- intersect(mixed$series_id, temporal_research_series(con))
+  if (length(blocking)) gate("temporal_convention_mixed_on_research_series", paste0(
+    length(blocking), " research-eligible series change day convention inside their own history. ",
+    "A series whose time index alternates between the first and the last day of the month ",
+    "produces wrong lags and wrong differences in any time-series package, silently, and a ",
+    "reviewed series is one an estimate is entitled to be built on: ",
+    paste(utils::head(blocking, 10), collapse = ", ")
+  )) else if (nrow(mixed)) insert_quality_flag(
+    con, release_id, "warning", "temporal_convention_mixed", NA_character_,
+    paste0(
+      nrow(mixed), " monthly series change day convention inside their own history. The ",
+      "normalised bounds make a join over them safe, so this does not block; what it does mean ",
+      "is that the raw `period` column of these series is not a regular index and must not be ",
+      "differenced or lagged directly. Ranked in outputs/temporal_convention_worklist.csv."
+    )
+  )
+  invisible(!length(blocking))
+}
+
+# Series a reviewer has admitted to the research surface. Empty until the review
+# register is filled in, which is why the convention check above cannot be an
+# error today and will become one for exactly the series that matter.
+temporal_research_series <- function(con) {
+  if (!database_object_exists(con, "v_research_series")) return(character())
+  tryCatch(
+    DBI::dbGetQuery(con, "SELECT series_id FROM marts.v_research_series")$series_id,
+    error = function(e) character()
+  )
+}
+
+# --- Build reproducibility ---------------------------------------------------
+# The audit's ER-12.3: "make dirty-tree publication fail closed or require an
+# explicit development override that cannot be confused with a research
+# release."
+#
+# `git_dirty` has been recorded on every build since schema 26 and read by
+# nothing. It is folded into build_id, so a dirty build is at least
+# distinguishable from a clean one after the fact -- but nothing stopped one
+# being published, and a citable release built from code that is not in the
+# history cannot be reproduced by anybody, including its author.
+#
+# The override is the same shape as the environment check's, deliberately: the
+# environment variable is spelled out, it cannot be set by accident, and taking
+# it records a warning on the build that says it was taken. A release with that
+# flag on it is visibly a development build.
+#
+# A git call that fails is NA, never FALSE, and NA blocks. A dirtiness check that
+# cannot tell whether the tree is clean must not answer "clean".
+validate_build_reproducibility <- function(con, release_id, root) {
+  if (is.null(root)) return(invisible(FALSE))
+  state <- git_build_state(root)
+  if (is.na(state$dirty)) {
+    insert_quality_flag(
+      con, release_id, "warning", "build_git_state_unknown", NA_character_,
+      paste0(
+        "Whether the code that produced this build is committed could not be determined -- ",
+        root, " does not answer as a git checkout. The build is recorded with git_dirty = NA, ",
+        "and it cannot be cited as reproducible from a commit."
+      )
+    )
+    return(invisible(TRUE))
+  }
+  if (!isTRUE(state$dirty)) return(invisible(TRUE))
+  overridden <- identical(Sys.getenv("PARAGUAY_MACRO_ALLOW_DIRTY_BUILD"), "1")
+  insert_quality_flag(
+    con, release_id, if (overridden) "warning" else "error",
+    if (overridden) "dirty_tree_build_overridden" else "dirty_tree_build", NA_character_,
+    if (overridden) paste0(
+      "PARAGUAY_MACRO_ALLOW_DIRTY_BUILD=1: this database was built from a working tree with ",
+      "uncommitted tracked changes at commit ", state$commit, ". It is a development build. The ",
+      "code that produced it is not in the history, so the build cannot be reproduced from the ",
+      "commit it names, and it must not be cited as a research release."
+    ) else paste0(
+      "This database would be built from a working tree with uncommitted tracked changes at ",
+      "commit ", state$commit, ", so nothing could reproduce it -- the code that made it is not ",
+      "in the history. Commit the tree and re-run. If this is deliberately a development build, ",
+      "PARAGUAY_MACRO_ALLOW_DIRTY_BUILD=1 proceeds and records the fact on the build. ",
+      "The database file itself is excluded from this test: a run writes it, so counting it ",
+      "would make every build dirty by construction."
+    )
+  )
+  invisible(overridden)
+}
+
+# --- The queryable hierarchy -------------------------------------------------
+# The audit's ER-06.4: "validate that each child has the intended parent by
+# regime and that queryable hierarchies are acyclic."
+#
+# series_review_problems() already refuses a cycle declared in the review
+# register. This is the other half: the hierarchy actually stored on
+# dim_series.parent_series_id, which is what a recursive query would walk. A
+# cycle there is not a data-quality opinion -- it makes any roll-up either
+# non-terminating or double-counting, and the answer it produces is wrong in a
+# way no reviewer would see in the output.
+#
+# 20 series carry a parent today, none self-parenting, none dangling and none in
+# a cycle. That is what makes this an error rather than a queue: it holds now, so
+# a violation is a regression somebody just introduced.
+validate_series_hierarchy_acyclic <- function(con, release_id) {
+  if (!database_object_exists(con, "dim_series")) return(invisible(FALSE))
+  if (!"parent_series_id" %in% table_column_names(con, "dim_series")) return(invisible(FALSE))
+  series <- project_qualified_name("dim_series")
+  gate <- function(check_name, detail) insert_quality_flag(
+    con, release_id, "error", check_name, NA_character_, detail
+  )
+  dangling <- DBI::dbGetQuery(con, paste0(
+    "SELECT d.series_id, d.parent_series_id FROM ", series, " d",
+    " WHERE d.parent_series_id IS NOT NULL AND NOT EXISTS (",
+    "   SELECT 1 FROM ", series, " p WHERE p.series_id = d.parent_series_id)"
+  ))
+  if (nrow(dangling)) gate("series_parent_missing", paste0(
+    nrow(dangling), " series name a parent that is not in the catalogue, so the component would ",
+    "be excluded from its own total by a join that returns no error: ",
+    paste(utils::head(paste0(dangling$series_id, " -> ", dangling$parent_series_id), 5),
+          collapse = "; ")
+  ))
+  # Depth-bounded, because an unbounded recursion over a cycle is the failure it
+  # is looking for. Anything still walking at 50 levels is cyclic or is a
+  # hierarchy nobody intended.
+  cyclic <- tryCatch(DBI::dbGetQuery(con, paste0(
+    "WITH RECURSIVE walk(root, node, depth) AS (",
+    "  SELECT series_id, parent_series_id, 1 FROM ", series,
+    "  WHERE parent_series_id IS NOT NULL",
+    "  UNION ALL",
+    "  SELECT w.root, d.parent_series_id, w.depth + 1 FROM walk w",
+    "  JOIN ", series, " d ON d.series_id = w.node",
+    "  WHERE d.parent_series_id IS NOT NULL AND w.depth < 50",
+    ") SELECT DISTINCT root FROM walk WHERE node = root"
+  )), error = function(e) NULL)
+  if (!is.null(cyclic) && nrow(cyclic)) gate("series_hierarchy_cycle", paste0(
+    nrow(cyclic), " series sit in a parent cycle. Summing a component into a total that is ",
+    "already one of its own ancestors double-counts by an amount nothing in the result reveals: ",
+    paste(utils::head(cyclic$root, 5), collapse = "; ")
+  ))
+  invisible(!nrow(dangling) && (is.null(cyclic) || !nrow(cyclic)))
+}
+
+# --- The unit register and the unit-family check -----------------------------
+
+# A reviewed correction that applies to nothing is worse than no correction: the
+# reviewer believes the defect is fixed and it is not. apply_unit_overrides()
+# refuses to apply a register with any problem in it, and this is how the
+# operator finds out -- with the row and the reason, not a silent no-op.
+validate_unit_overrides <- function(con, release_id, root) {
+  register <- tryCatch(read_unit_override_register(root), error = function(e) NULL)
+  if (is.null(register)) {
+    insert_quality_flag(
+      con, release_id, "error", "unit_override_register_unreadable", NA_character_,
+      "config/unit_overrides.csv could not be read. A register that cannot be parsed applies none of its corrections."
+    )
+    return(invisible(FALSE))
+  }
+  if (!nrow(register)) return(invisible(TRUE))
+  problems <- unit_override_problems(register, unit_override_series_placement(con))
+  if (!nrow(problems)) return(invisible(TRUE))
+  insert_quality_flag(
+    con, release_id, "error", "unit_override_register_incomplete", NA_character_,
+    paste0(
+      nrow(problems), " problem(s) in config/unit_overrides.csv. None of its corrections has been ",
+      "applied -- a half-applied set of unit corrections is a database in a state no reviewer ",
+      "approved. ",
+      paste(utils::head(paste0(problems$series_id, ": ", problems$problem), 10), collapse = " ")
+    )
+  )
+  invisible(FALSE)
+}
+
+# The Spanish currency vocabulary the publisher writes in its column headers,
+# longest first so "Dólar Canadiense" is not read as the US dollar.
+#
+# `peso` on its own is deliberately absent. CUADRO 60a's third column is headed
+# exactly that and is the Argentine peso, which the arithmetic against the
+# dollar column shows and the header does not -- so an unqualified `peso` is
+# ambiguous, and an ambiguous label is not evidence of a contradiction any more
+# than it is evidence of agreement.
+UNIT_CURRENCY_LABEL_PATTERNS <- c(
+  "dolar canadiense" = "CAD", "dolar australiano" = "AUD",
+  "peso argentino" = "ARS", "peso uruguayo" = "UYU", "peso chileno" = "CLP",
+  "peso boliviano" = "BOB", "corona sueca" = "SEK", "corona danesa" = "DKK",
+  "libra esterlina" = "GBP", "franco suizo" = "CHF",
+  "euro" = "EUR", "\\breal\\b" = "BRL", "\\byen\\b" = "JPY",
+  "\\busd\\b|dolar americano|\\bdolar\\b" = "USD", "guarani" = "PYG"
+)
+
+# Wording that says a column is an index number, whatever unit the worksheet
+# assigned it. "= 100" is the decisive one: a base statement is not something a
+# price of foreign currency has.
+UNIT_INDEX_LABEL_PATTERN <- "=\\s*100|\\bindice\\b|tipo de cambio real|\\btcr\\b"
+
+# The audit's ER-01.5: compare the declared unit family with what the table and
+# column actually say, and treat magnitude as a warning rather than proof.
+#
+# Both halves of the finding are reproducible from this check. On CUADRO 60a the
+# euro and real columns declared a US-dollar denominator while their headers name
+# a different currency; on CUADRO 60c five index columns declared a currency pair
+# under a title reading "(enero 1995 = 100)". Neither is inferred from the
+# numbers -- the publisher wrote both facts down, in the header and in the title,
+# and the parser's worksheet-level unit inheritance overwrote them.
+#
+# Warning severity throughout, on purpose. This reads free text, and free text
+# produces false positives; a check that reads prose and stops the release is a
+# check somebody will delete. The fail-closed consequence is carried where it
+# belongs -- an unresolved series cannot pass the research-eligibility gate --
+# and here the job is to put the question in front of a reviewer.
+validate_unit_family_plausibility <- function(con, release_id) {
+  if (!database_object_exists(con, "dim_series")) return(invisible(FALSE))
+  series <- tryCatch(DBI::dbGetQuery(con, paste(
+    "SELECT d.series_id, d.label, d.unit_code, d.currency,",
+    "  coalesce(t.table_title, '') AS table_title, coalesce(t.source_sheet, '') AS source_sheet",
+    "FROM", project_qualified_name("dim_series"), "d",
+    "LEFT JOIN (SELECT series_id, any_value(table_title) AS table_title,",
+    "                  any_value(source_sheet) AS source_sheet",
+    "           FROM", project_qualified_name("documented_series_snapshot"),
+    "           GROUP BY series_id) t ON t.series_id = d.series_id",
+    "WHERE d.unit_code IS NOT NULL"
+  )), error = function(e) NULL)
+  if (is.null(series) || !nrow(series)) return(invisible(TRUE))
+  # The same folding the derivation layer applies, so a pattern that matches a
+  # published label here matches it there.
+  folded <- function(x) normalize_semantic_label(ifelse(is.na(x), "", x))
+  label <- folded(series$label)
+  title <- folded(series$table_title)
+  pair <- grepl("^[A-Z]{3}_PER_[A-Z]{3}$", series$unit_code)
+  denominator <- ifelse(pair, sub("^[A-Z]{3}_PER_", "", series$unit_code), NA_character_)
+
+  # What currency does the column header name, where it names one at all?
+  named <- rep(NA_character_, nrow(series))
+  for (pattern in names(UNIT_CURRENCY_LABEL_PATTERNS)) {
+    hit <- is.na(named) & grepl(pattern, label)
+    named[hit] <- UNIT_CURRENCY_LABEL_PATTERNS[[pattern]]
+  }
+  contradicted <- pair & !is.na(named) & named != "PYG" & named != denominator
+  if (any(contradicted)) insert_quality_flag(
+    con, release_id, "warning", "unit_currency_contradicts_label", NA_character_,
+    paste0(
+      sum(contradicted), " series declare a currency pair whose denominator is not the currency ",
+      "their own column header names. A worksheet unit is inherited by every column on the sheet, ",
+      "so one heterogeneous table mislabels all of it: ",
+      paste(utils::head(paste0(
+        series$source_sheet[contradicted], " / ", series$label[contradicted],
+        " declared ", series$unit_code[contradicted], ", header names ", named[contradicted]
+      ), 10), collapse = "; ")
+    )
+  )
+
+  # And the reverse defect: a column the publisher describes as an index,
+  # carrying a unit that measures a price.
+  indexed <- pair & (grepl(UNIT_INDEX_LABEL_PATTERN, title) | grepl(UNIT_INDEX_LABEL_PATTERN, label))
+  if (any(indexed)) insert_quality_flag(
+    con, release_id, "warning", "unit_family_contradicts_index_wording", NA_character_,
+    paste0(
+      sum(indexed), " series declare a currency pair while the published table title or column ",
+      "header describes an index number. An index has a base, not a denominator, and filtering ",
+      "by the currency-pair unit returns both index points and real quotations as though they ",
+      "were the same measure: ",
+      paste(utils::head(paste0(
+        series$source_sheet[indexed], " / ", series$label[indexed],
+        " (", series$unit_code[indexed], ")"
+      ), 10), collapse = "; ")
+    )
+  )
+  invisible(!any(contradicted) && !any(indexed))
 }
 
 # The audit's R6-01, and the second time this lint has been rebuilt.
@@ -2750,8 +3249,14 @@ validate_database <- function(con, manifest, release_id, root, db_path = NULL,
   validate_source_region_completeness(con, release_id)
   validate_published_identities(con, release_id, root)
   validate_source_provenance(con, release_id, root)
+  validate_availability_quality(con, release_id)
   validate_archive_integrity(con, release_id, root)
   validate_series_review_register(con, release_id, root)
+  validate_unit_overrides(con, release_id, root)
+  validate_unit_family_plausibility(con, release_id)
+  validate_temporal_contract(con, release_id, root)
+  validate_series_hierarchy_acyclic(con, release_id)
+  validate_build_reproducibility(con, release_id, root)
   validate_expected_grid_growth(con, release_id, attempt_id)
   validate_observation_missingness(con, release_id)
   validate_declared_natural_keys(con, release_id, root)

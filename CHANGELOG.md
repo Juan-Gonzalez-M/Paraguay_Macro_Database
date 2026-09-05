@@ -1,5 +1,90 @@
 # Changelog
 
+## v39
+
+Empirical-readiness remediation, `revisiones/EMPIRICAL_READINESS_2026-09-03.md`, items ER-01, ER-02,
+ER-04, ER-05, ER-06, ER-07, ER-08, ER-09 and ER-12. Changes no observation.
+
+- **A cross-source monthly join returned zero rows, silently.** Monthly series do not share a day
+  convention: **2,057 are dated to the last day of the month, 1,757 to the first, 14 to neither**,
+  and **164 alternate between conventions inside a single series** — including `M2 — Billetes y
+  monedas en circulación` and `Activos Internos Netos (AIN) — Total`. Joining the price index, dated
+  day 1, to the monthly average PYG/USD rate, dated month end, through the documented read path
+  produced **378 CPI observations, 451 exchange-rate observations and 0 joined rows**. No error, no
+  warning, an empty estimation sample. The normalisation that fixes it — `period_start` and
+  `period_end`, which describe the same month whichever day the source printed — existed since
+  schema 14 on `v_series_observations`, while `README.md` and `scripts/05_query_helpers.R` sent every
+  researcher to `v_series_latest`, which did not carry it. Both current-value carriers now publish
+  the bounds; the same join returns **378 rows**. `period` is untouched: it is half the observation
+  key and it is what the publisher wrote. The rule lives in one function shared by both carriers,
+  the contract is written down in `docs/TEMPORAL_CONTRACT.md`, and the release blocks on an
+  unordered interval or a duplicate canonical period — both of which already held for all 1.2
+  million observations, which is what makes them safe as blocking checks rather than a backlog.
+- **Five index numbers were tagged as a price of US dollars.** Units are inherited at worksheet
+  level, so a table whose columns are not all in the same unit mislabels every column on it. CUADRO
+  60c is titled *"Tipo de cambio real bilateral — (enero 1995 = 100)"* and its five series — IPC,
+  TCN, TCR USA, TCR Br, TCR Arg — all carried `PYG_PER_USD` and currency `PYG/USD`. The sibling
+  worksheet CUADRO 60b publishes the same series under the same labels and **the same identity
+  hashes**, correctly coded `INDEX` with no currency, which is as close to a control case as a
+  metadata defect gets. On CUADRO 60a the euro, Argentine-peso and Brazilian-real quotations also
+  declared a dollar denominator; only one of the four columns can have one, and the arithmetic
+  against the dollar column on the same rows confirms each (2024-01: euro 7,945.71 against USD
+  7,283.00 is EUR/USD 1.091; peso 8.90 is ARS/USD 818; real 1,483.44 is BRL/USD 4.91). Eight
+  corrections are recorded in `config/unit_overrides.csv` with the worksheet title and the
+  cross-rate as evidence. **`PYG_PER_USD` falls from 23 series to 15 and `INDEX` rises from 175 to
+  180**; filtering by the currency-pair unit no longer returns index points. A new check compares the
+  declared unit family with what the table title and column header say, at warning severity because
+  it reads free text — the fail-closed consequence stays where it belongs, on research eligibility.
+  `USD Fin Mes` (annual, 1945–1969, 3.12 to 147.50) was inspected and is **correct**: that is the
+  guaraní's real path through the 1951 devaluation, not a unit error. What it needs is a methodology
+  regime before it is spliced to the modern series, and that is recorded as open.
+- **The documented read path returned no metadata.** `series_latest()` returned seven columns — no
+  label, no unit, no frequency — and the join that fixes that lands on a label which names more than
+  one series **1,599 times**, covering **4,015 of 7,229 scalar series**. `main.v_series_research`
+  publishes the interpretable record on the path researchers are told to use, including the
+  published table title, which is often the only field separating two series and lived only on a
+  staging table at observation grain. It is resolved to one row per series in `canonical.series_titles`
+  — **12,625 series, 12 of which the publisher has retitled between vintages**, flagged rather than
+  fanned out. `series_research()` refuses an ambiguous label and names the candidates instead of
+  choosing one; `series_wide()` has **no default join key**, rejects `period` by name with the
+  reason, and refuses to combine frequencies without an explicit alignment rule.
+- **Availability was recorded without saying how it was established.** All 22 vintages now carry
+  `retrieved_at` and a new `availability_quality`, so a publisher's release timestamp and an archive
+  time that merely bounds acquisition from above are distinguishable instead of arriving in the same
+  column. All 22 are currently `inferred_upper_bound`, dated from the immutable archive — safe in the
+  conservative direction, since an as-of query then sees less than a researcher could have, never
+  more — and the build warns that no real-time claim may rest on them. `docs/ACQUISITION_RUNBOOK.md`
+  is the forward procedure; the history that was never retained is documented as **irrecoverable**
+  rather than marked resolved.
+- **A release built from an uncommitted tree could be published.** `git_dirty` has been recorded on
+  every build since schema 26 and read by nothing. It now blocks, with the same explicit override the
+  environment check already had, which records itself as a flag so a development build cannot later
+  be mistaken for a research release. `outputs/build_manifest.json` records what a result was
+  computed from, naming the fields a second clean rebuild is not expected to reproduce rather than
+  quietly dropping them.
+- **The reported `Rcpp` environment drift does not exist.** The lockfile records CRAN's spelling of a
+  revision, `1.1.1-1.1`; `packageVersion()` parses that and prints it back as `1.1.1.1.1`, because R
+  has always treated `-` and `.` as the same separator in a package version. The check compared the
+  two **strings**, and so reported a difference between a version and itself — for every package whose
+  maintainer has ever issued a revision, on every build. Versions are now compared as versions, and
+  the environment matches the lockfile exactly.
+- **Five review queues that name rows instead of counting them.** The audit's standing complaint,
+  applied to what was left: `exchange_rate_unit_worklist.csv` (every series on a worksheet assigning
+  a currency-pair unit, with the decision taken against each), `unit_resolution_worklist.csv` (the
+  4,057 unresolved units partitioned into true unknowns, mixed-unit sheets, missing column rules and
+  non-measure records), `identity_stability_worklist.csv` (the positional identities, each with the
+  repair its own label evidence supports), `out_of_region_cells_worklist.csv` (the 6,522 flagged
+  cells collapsed into contiguous rectangles with the register row that would classify each) and
+  `panel_duplicate_worklist.csv` (the duplicate groups themselves, with every dimension and whether
+  the measures differ). The discontinuity and gap queues stop being ranked by magnitude alone: a jump
+  the rest of its worksheet takes at the same moment is a rebase or a devaluation, one that happens
+  alone is where a parser defect looks like economics, and only the second ordering separates them.
+
+The economic review the audit's ER-03, ER-06 and ER-11 call for is **not** in this release.
+`config/series_review.csv` and the canonical registers remain empty, so `marts.v_research_series` is
+still 0 rows — by design, and it is the fail-closed principle working rather than a gap. Evidence-
+backed proposals and the sign-off command that promotes them are the next step.
+
 ## Repository cleanup — 2026-09-03
 
 Schema and published observations are unchanged. Superseded audit narratives, version-specific

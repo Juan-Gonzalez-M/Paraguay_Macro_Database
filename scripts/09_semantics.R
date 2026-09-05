@@ -155,6 +155,196 @@ SERIES_EVIDENCE_CONTEXT_CHARACTERS <- 90L
 # default to 1: a wrong multiplier is worse than a missing one.
 SERIES_SCALE_MULTIPLIERS <- c(units = 1, thousands = 1e3, millions = 1e6, billions = 1e9)
 
+# --- Reviewed unit and currency corrections ----------------------------------
+# The readiness audit's ER-01, and the narrowest register that can close it.
+#
+# Units are inherited at worksheet level. A worksheet whose columns are not all
+# in the same unit therefore mislabels every column on it, and the audit found
+# the clear case: CUADRO 60c is a real-exchange-rate table titled
+# "(enero 1995 = 100)" whose five index series -- IPC, TCN, TCR USA, TCR Br,
+# TCR Arg -- were all tagged as a price of US dollars. Its sibling CUADRO 60b
+# publishes the same series under the same labels and identity hashes, correctly
+# coded INDEX with no currency, which is as close to a control case as a
+# metadata defect gets. On CUADRO 60a the euro, Argentine-peso and Brazilian-real
+# quotations all carried a US-dollar denominator; only one of the four columns
+# can have one.
+#
+# Why this is not config/series_review.csv: that register asserts the whole
+# economic record of a series -- definition, timing, stock/flow, comparability --
+# and a row in it makes the series research-eligible. Correcting a unit is not a
+# claim that anybody has reviewed the economics, and requiring the second in
+# order to do the first would either block the correction or launder an unreviewed
+# series onto the research surface. The narrow correction gets a narrow register.
+#
+# Why it runs *before* the derivations rather than after, which is the opposite
+# of apply_series_review(): unit_code and transformation are pure functions of
+# `unit`, recomputed on every build. Overriding the derived output would leave
+# `unit` saying one thing and `unit_code` another; overriding the *input* makes
+# every consequence follow coherently, and is what makes the corrected 60c row
+# come out identical to the 60b row that was right all along.
+UNIT_OVERRIDE_COLUMNS <- c(
+  "series_id", "source_id", "source_sheet",
+  "unit", "unit_code", "scale", "currency", "index_base",
+  "evidence", "reviewed_by", "reviewed_at"
+)
+
+# The reviewer states the whole measurement, not a patch. A blank currency or
+# index base means the series has none -- which is the answer for an index
+# number, and the answer this register exists to be able to give. Everything
+# else is required, because a row that leaves the unit or the scale unsaid is
+# not a correction, it is a half-finished thought.
+UNIT_OVERRIDE_REQUIRED_FIELDS <- c(
+  "series_id", "source_id", "source_sheet", "unit", "unit_code", "scale",
+  "evidence", "reviewed_by", "reviewed_at"
+)
+
+read_unit_override_register <- function(root) {
+  empty <- tibble::as_tibble(stats::setNames(
+    rep(list(character()), length(UNIT_OVERRIDE_COLUMNS)), UNIT_OVERRIDE_COLUMNS
+  ))
+  if (is.null(root)) return(empty)
+  path <- file.path(root, "config", "unit_overrides.csv")
+  if (!file.exists(path)) return(empty)
+  register <- readr::read_csv(
+    path, show_col_types = FALSE, col_types = readr::cols(.default = readr::col_character())
+  )
+  missing <- setdiff(UNIT_OVERRIDE_COLUMNS, names(register))
+  if (length(missing)) stop(
+    "Unit override register: missing column(s) ", paste(missing, collapse = ", "),
+    call. = FALSE
+  )
+  register[UNIT_OVERRIDE_COLUMNS]
+}
+
+# The same normalisation apply_series_semantics() applies to every other series,
+# written once so a reviewed unit and a parsed one cannot normalise differently.
+normalize_unit_code <- function(unit) {
+  unit <- trimws(as.character(unit))
+  dplyr::case_when(
+    is.na(unit) | !nzchar(unit) ~ NA_character_,
+    tolower(unit) == "source_units" ~ "UNRESOLVED_SOURCE_UNITS",
+    tolower(unit) == "mixed_physical_units" ~ "MIXED_PHYSICAL_UNITS",
+    TRUE ~ toupper(unit)
+  )
+}
+
+# Everything wrong with the register, as rows a person can work through -- the
+# same shape series_review_problems() returns, so the release gate can report
+# both the same way.
+unit_override_problems <- function(register, known_series = tibble::tibble(
+  series_id = character(), source_id = character(), source_sheet = character()
+)) {
+  if (!nrow(register)) return(tibble::tibble(series_id = character(), problem = character()))
+  blank <- function(x) is.na(x) | !nzchar(trimws(x))
+  problems <- list()
+  add <- function(rows, problem) {
+    if (any(rows)) problems[[length(problems) + 1L]] <<- tibble::tibble(
+      series_id = register$series_id[rows], problem = problem
+    )
+  }
+  for (field in UNIT_OVERRIDE_REQUIRED_FIELDS) {
+    add(blank(register[[field]]), paste0("`", field, "` is blank and is required."))
+  }
+  add(duplicated(register$series_id), "the series appears more than once in the register.")
+  add(
+    !blank(register$unit_code) & !blank(register$unit) &
+      register$unit_code != normalize_unit_code(register$unit),
+    "`unit_code` is not the normalisation of `unit`; they would disagree after the build."
+  )
+  add(
+    !blank(register$scale) & !tolower(trimws(register$scale)) %in% names(SERIES_SCALE_MULTIPLIERS),
+    paste0(
+      "`scale` is outside the published vocabulary (",
+      paste(names(SERIES_SCALE_MULTIPLIERS), collapse = ", "),
+      "), so the multiplier would be null and value_in_base_units unusable."
+    )
+  )
+  # A correction aimed at a series that does not exist is not inert: it is a
+  # correction that silently does nothing, which is the failure mode this whole
+  # register exists to stop. Identity is positional on many worksheets, so a
+  # rebuild can move it -- and the reviewer must be told, not quietly ignored.
+  if (nrow(known_series)) {
+    add(
+      !register$series_id %in% known_series$series_id,
+      "no series with this id exists, so the correction would silently apply to nothing."
+    )
+    placed <- merge(
+      register[c("series_id", "source_id", "source_sheet")],
+      known_series, by = "series_id", suffixes = c("", "_actual")
+    )
+    misplaced <- placed$series_id[
+      placed$source_id != placed$source_id_actual |
+        placed$source_sheet != placed$source_sheet_actual
+    ]
+    add(
+      register$series_id %in% misplaced,
+      "the recorded source or worksheet is not where this series actually lives."
+    )
+  }
+  if (!length(problems)) return(tibble::tibble(series_id = character(), problem = character()))
+  dplyr::bind_rows(problems)
+}
+
+# The series the register can be checked against: one row per series, with the
+# worksheet it was read from. A series published across several worksheets --
+# twelve bcp_fx_daily series span fourteen annual sheets -- is left out of the
+# placement check rather than reported as misplaced against whichever sheet
+# sorted first.
+unit_override_series_placement <- function(con) {
+  empty <- tibble::tibble(series_id = character(), source_id = character(), source_sheet = character())
+  if (!database_object_exists(con, "documented_series_snapshot")) return(empty)
+  tryCatch(DBI::dbGetQuery(con, paste(
+    "SELECT series_id, any_value(source_id) AS source_id, any_value(source_sheet) AS source_sheet",
+    "FROM", project_qualified_name("documented_series_snapshot"),
+    "GROUP BY series_id HAVING count(DISTINCT source_sheet) = 1"
+  )), error = function(e) empty)
+}
+
+apply_unit_overrides <- function(con, root) {
+  if (!DBI::dbExistsTable(con, "dim_series")) return(invisible(0L))
+  register <- read_unit_override_register(root)
+  if (DBI::dbExistsTable(con, "unit_overrides")) {
+    DBI::dbExecute(con, "DELETE FROM unit_overrides")
+  }
+  if (!nrow(register)) return(invisible(0L))
+  # A register with a problem in it applies nothing, exactly as the series
+  # review register behaves: a half-applied set of unit corrections is a
+  # database in a state no reviewer ever approved. validate_unit_overrides()
+  # reports the problems and blocks the release.
+  if (nrow(unit_override_problems(register, unit_override_series_placement(con)))) {
+    return(invisible(0L))
+  }
+  blank_to_na <- function(x) {
+    x <- trimws(as.character(x))
+    x[!nzchar(x)] <- NA_character_
+    x
+  }
+  applied <- register %>% dplyr::transmute(
+    series_id, source_id, source_sheet,
+    unit = trimws(.data$unit), unit_code = trimws(.data$unit_code),
+    scale = tolower(trimws(.data$scale)),
+    currency = blank_to_na(.data$currency), index_base = blank_to_na(.data$index_base),
+    evidence, reviewed_by, reviewed_at = suppressWarnings(as.Date(.data$reviewed_at))
+  )
+  if (DBI::dbExistsTable(con, "unit_overrides")) DBI::dbWriteTable(
+    con, "unit_overrides",
+    applied[c("series_id", "source_id", "source_sheet", "unit_code", "currency",
+              "index_base", "evidence", "reviewed_by", "reviewed_at")] %>%
+      dplyr::mutate(scale_multiplier = unname(SERIES_SCALE_MULTIPLIERS[applied$scale])),
+    append = TRUE
+  )
+  for (i in seq_len(nrow(applied))) {
+    DBI::dbExecute(con, paste0(
+      "UPDATE ", project_qualified_name("dim_series"), " SET unit = ", sql_string(applied$unit[[i]]),
+      ", scale = ", sql_string(applied$scale[[i]]),
+      ", currency = ", if (is.na(applied$currency[[i]])) "NULL" else sql_string(applied$currency[[i]]),
+      ", index_base = ", if (is.na(applied$index_base[[i]])) "NULL" else sql_string(applied$index_base[[i]]),
+      " WHERE series_id = ", sql_string(applied$series_id[[i]])
+    ))
+  }
+  invisible(nrow(applied))
+}
+
 apply_series_semantics <- function(con) {
   if (!DBI::dbExistsTable(con, "dim_series")) return(invisible(0L))
   cases <- paste(vapply(names(SERIES_SCALE_MULTIPLIERS), function(scale) paste0(
@@ -192,6 +382,7 @@ apply_series_semantics <- function(con) {
   derive_series_semantics_from_text(con)
   derive_series_dimensions(con)
   apply_series_period_bounds(con)
+  apply_series_titles(con)
   create_semantic_views(con)
   invisible(TRUE)
 }
@@ -814,37 +1005,55 @@ semantic_evidence_snippet <- function(haystack, patterns) {
   }, character(1))
 }
 
+# --- The published table title, at series grain ------------------------------
+# The audit's ER-05.2, and the reason it is a table rather than a join.
+#
+# `PIB a precios de comprador` appears on thirteen worksheets, and 4,015 of the
+# 7,229 scalar series share a label with at least one other series. On CUADRO 6
+# and CUADRO 7 two of them are indistinguishable on every field a researcher can
+# see -- same unit, same frequency, same base year, means differing by 23 in 39
+# million -- and the only field that separates them is the title the publisher
+# printed above the table.
+#
+# That title has always been in the database, on documented_series_snapshot, at
+# (vintage_id, series_id, period) grain in the staging layer. Joining it at query
+# time would mean telling researchers to read a staging table, and would fan a
+# series out over its vintages and periods. So it is resolved once, here, to one
+# row per series, with the count of distinct titles kept beside it: a publisher
+# who retitles a table between vintages is a fact worth seeing, not a reason for
+# the join to start returning two rows.
+apply_series_titles <- function(con) {
+  if (!DBI::dbExistsTable(con, "series_titles")) return(invisible(0L))
+  if (!database_object_exists(con, "documented_series_snapshot")) return(invisible(0L))
+  DBI::dbExecute(con, "DELETE FROM series_titles")
+  DBI::dbExecute(con, paste(
+    "INSERT INTO series_titles",
+    "WITH ranked AS (",
+    "  SELECT n.series_id, n.table_title, n.source_sheet, n.vintage_id,",
+    "    count(*) AS observations,",
+    # The current vintage's wording wins, and the count of distinct titles
+    # travels with it so nobody has to trust that it was the only one.
+    "    row_number() OVER (PARTITION BY n.series_id",
+    "      ORDER BY max(n.publication_date) DESC NULLS LAST, count(*) DESC, n.vintage_id DESC)",
+    "      AS rn",
+    "  FROM", project_qualified_name("documented_series_snapshot"), "n",
+    "  WHERE n.table_title IS NOT NULL AND n.table_title <> ''",
+    "  GROUP BY n.series_id, n.table_title, n.source_sheet, n.vintage_id",
+    "),",
+    "titles AS (",
+    "  SELECT series_id, count(DISTINCT table_title) AS distinct_titles",
+    "  FROM", project_qualified_name("documented_series_snapshot"),
+    "  WHERE table_title IS NOT NULL AND table_title <> '' GROUP BY 1",
+    ")",
+    "SELECT r.series_id, r.table_title, r.source_sheet,",
+    "  t.distinct_titles > 1 AS title_varies_by_vintage, t.distinct_titles, r.vintage_id",
+    "FROM ranked r JOIN titles t USING (series_id) WHERE r.rn = 1"
+  ))
+  invisible(DBI::dbGetQuery(con, "SELECT count(*) AS n FROM series_titles")$n[[1]])
+}
+
 create_semantic_views <- function(con) {
-  # Period bounds. The database deliberately keeps `period` exactly as parsed --
-  # it is part of the observation key and rewriting it would retire every
-  # identifier in the catalogue. The mixed monthly convention the audit found
-  # (587,516 observations on day 1, 256,487 on month end) is resolved here
-  # instead: period_start and period_end describe the same interval whichever
-  # convention the source used, so a join on them cannot lose observations or
-  # shift a lag by a month.
-  # A stored bound wins over a derived one. Only an irregular published interval
-  # has one, so this changes nothing for any series whose frequency already says
-  # what its interval is.
-  bounds <- paste(
-    "coalesce(b.period_start, CASE d.frequency",
-    "  WHEN 'annual' THEN date_trunc('year', f.period)",
-    "  WHEN 'semiannual' THEN CASE WHEN month(f.period) <= 6",
-    "    THEN date_trunc('year', f.period)",
-    "    ELSE date_trunc('year', f.period) + INTERVAL 6 MONTH END",
-    "  WHEN 'quarterly' THEN date_trunc('quarter', f.period)",
-    "  WHEN 'monthly' THEN date_trunc('month', f.period)",
-    "  WHEN 'monthly_survey' THEN date_trunc('month', f.period)",
-    "  ELSE f.period END) AS period_start,",
-    "CASE d.frequency",
-    "  WHEN 'annual' THEN date_trunc('year', f.period) + INTERVAL 1 YEAR - INTERVAL 1 DAY",
-    "  WHEN 'semiannual' THEN CASE WHEN month(f.period) <= 6",
-    "    THEN date_trunc('year', f.period) + INTERVAL 6 MONTH - INTERVAL 1 DAY",
-    "    ELSE date_trunc('year', f.period) + INTERVAL 1 YEAR - INTERVAL 1 DAY END",
-    "  WHEN 'quarterly' THEN date_trunc('quarter', f.period) + INTERVAL 3 MONTH - INTERVAL 1 DAY",
-    "  WHEN 'monthly' THEN last_day(f.period)",
-    "  WHEN 'monthly_survey' THEN last_day(f.period)",
-    "  ELSE f.period END AS period_end"
-  )
+  bounds <- series_period_bounds_sql()
   # available_at is the vintage's publication date, falling back to the moment
   # the file was first ingested. It is never derived from the reference period:
   # that is precisely the inference that creates look-ahead bias.
@@ -1028,6 +1237,57 @@ create_semantic_views <- function(con) {
     "SELECT e.series_id, d.source_id, d.label, e.dimension, e.value, e.basis, e.evidence,",
     "e.derived_at FROM series_dimension e JOIN dim_series d USING (series_id)"
   ))
+  # The title, on the documented path rather than in staging.
+  create_project_view(con, "v_series_titles", paste(
+    "SELECT t.series_id, d.source_id, d.label, t.table_title, t.source_sheet,",
+    "t.title_varies_by_vintage, t.distinct_titles",
+    "FROM series_titles t JOIN dim_series d USING (series_id)"
+  ))
+  # --- The research extraction interface -------------------------------------
+  # The audit's ER-05, and its P1.1 field list.
+  #
+  # `series_latest()` returned seven columns: series_id, period, value,
+  # vintage_id, publication_date, source_file, observation_status. No label. No
+  # unit. No frequency. A researcher had to know to join canonical.dim_series --
+  # and once they did, the label they joined for is not an identifier, because
+  # 1,599 labels name more than one series.
+  #
+  # So this view carries what interpreting a number actually requires, on one
+  # relation, on the path the README sends people to. It changes nothing about
+  # the values: it descends from v_series_observations, which is the declared
+  # filtered base relation, and adds metadata by joins that are one-to-one by
+  # construction. Nothing here rescales, deflates, splices, seasonally adjusts or
+  # aggregates -- value is the stored number and value_in_base_units is the same
+  # number times its declared scale, and both are named for what they are.
+  #
+  # Realized observations only, for the same reason v_series_latest is: this is
+  # the default a researcher reaches for, and the default must not be the one
+  # that puts a 2028 projection into an estimation sample.
+  research_body <- function(source) paste(
+    "SELECT o.series_id, d.label, t.table_title, o.source_id, o.source_sheet,",
+    "o.period, o.period_start, o.period_end, o.frequency,",
+    "o.unit_code, o.unit, o.scale, o.scale_multiplier, d.currency, d.index_base,",
+    "d.price_base_year, d.stock_flow, d.nominal_real, d.seasonal_adjustment,",
+    "d.transformation, d.valuation, d.hierarchy_status, d.identity_stability,",
+    "r.hierarchy_role, r.methodology_regime_id, r.timing_basis,",
+    # Whether an economist has signed this series off, said in the row rather
+    # than implied by which view the reader chose.
+    "CASE WHEN r.series_id IS NULL THEN 'not_reviewed' ELSE 'reviewed' END AS review_status,",
+    "r.reviewed_by, r.reviewed_at,",
+    "o.value, o.value_in_base_units, o.vintage_id, o.publication_date, o.available_at,",
+    "p.availability_quality, o.observation_status",
+    "FROM", source, "o",
+    "JOIN dim_series d ON d.series_id = o.series_id",
+    "LEFT JOIN series_titles t ON t.series_id = o.series_id",
+    "LEFT JOIN series_review r ON r.series_id = o.series_id",
+    "LEFT JOIN source_provenance p ON p.vintage_id = o.vintage_id",
+    "WHERE NOT o.is_deleted AND o.observation_status = 'observed'"
+  )
+  create_project_view(con, "v_series_research", research_body("v_series_observations"))
+  # The unfiltered twin, on the project's existing convention: it exists for
+  # ingestion diagnosis and is not a research interface, which is what the name
+  # and the contract both say.
+  create_project_view(con, "v_series_research_all", research_body("v_series_observations_all"))
   invisible(TRUE)
 }
 
@@ -1485,6 +1745,165 @@ apply_observation_missingness <- function(con, root = NULL, build_id = NA_charac
 # one-observation auction tender is not. Nothing here decides anything -- no
 # reviewed value is ever written by the pipeline -- it only says what to look at
 # first.
+# --- ER-01: every series on a worksheet that assigns a currency-pair unit ----
+# The audit's ER-01 deliverable 1, verbatim: "a review worklist for every series
+# on CUADRO 60a, CUADRO 60c and every other worksheet assigning PYG_PER_USD.
+# Include series_id, complete dimensional path, table title, source cells,
+# observed range, period coverage, current unit and currency fields."
+#
+# Scoped to worksheets rather than to series, because the defect is inherited at
+# worksheet level: what makes CUADRO 60c wrong is not any one column but the
+# sheet's single unit applied to five columns that are not in it. So a sheet
+# appears here in full the moment any column on it declares a currency pair, and
+# the corrected columns stay on the list beside the uncorrected ones with the
+# decision that was taken recorded against them.
+write_exchange_rate_unit_worklist <- function(con, root) {
+  if (is.null(root) || !database_object_exists(con, "dim_series")) return(invisible(NULL))
+  worklist <- tryCatch(DBI::dbGetQuery(con, paste(
+    "WITH pair_sheets AS (",
+    "  SELECT DISTINCT n.source_id, n.source_sheet",
+    "  FROM", project_qualified_name("documented_series_snapshot"), "n",
+    "  JOIN", project_qualified_name("dim_series"), "d USING (series_id)",
+    "  WHERE regexp_matches(d.unit_code, '^[A-Z]{3}_PER_[A-Z]{3}$')",
+    "), on_sheet AS (",
+    "  SELECT DISTINCT n.series_id, n.source_id, n.source_sheet,",
+    "    any_value(n.table_title) OVER (PARTITION BY n.series_id) AS table_title,",
+    "    any_value(n.series_path) OVER (PARTITION BY n.series_id) AS series_path",
+    "  FROM", project_qualified_name("documented_series_snapshot"), "n",
+    "  JOIN pair_sheets p USING (source_id, source_sheet)",
+    ")",
+    "SELECT s.source_id, s.source_sheet, s.series_id, d.label, s.series_path, s.table_title,",
+    "  d.frequency, d.unit_code, d.currency, d.index_base, d.scale, d.transformation,",
+    "  d.identity_stability,",
+    "  o.observations, o.first_period, o.last_period, o.min_value, o.max_value,",
+    "  o.first_source_row, o.first_source_column,",
+    "  CASE WHEN u.series_id IS NULL THEN 'open' ELSE 'reviewed' END AS decision_status,",
+    "  u.reviewed_by, u.reviewed_at, u.evidence",
+    "FROM on_sheet s",
+    "JOIN", project_qualified_name("dim_series"), "d ON d.series_id = s.series_id",
+    "LEFT JOIN", project_qualified_name("unit_overrides"), "u ON u.series_id = s.series_id",
+    "LEFT JOIN (",
+    "  SELECT series_id, count(*) AS observations, min(period) AS first_period,",
+    "    max(period) AS last_period, min(value) AS min_value, max(value) AS max_value,",
+    "    min(source_row) AS first_source_row, min(source_column) AS first_source_column",
+    "  FROM", project_qualified_name("documented_series_snapshot"), "GROUP BY 1",
+    ") o ON o.series_id = s.series_id",
+    "ORDER BY s.source_sheet, decision_status, d.label"
+  )), error = function(e) NULL)
+  if (is.null(worklist) || !nrow(worklist)) return(invisible(NULL))
+  readr::write_csv(worklist, file.path(root, "outputs", "exchange_rate_unit_worklist.csv"))
+  invisible(worklist)
+}
+
+# --- ER-06: the unresolved units, partitioned rather than counted ------------
+# "Partition the 4,057 unresolved-unit records into true unknowns, mixed-unit
+# sheets, missing mapping rules and non-measure/structural records."
+#
+# 4,057 is not a task. Which of those four a record belongs to decides who can
+# fix it and how: a mixed-unit sheet needs a column-level rule, a structural
+# record needs no unit at all, and a true unknown needs the publisher's notes.
+# The partition is derived from evidence already in the database -- whether other
+# columns on the same worksheet did resolve, whether the series is a measure at
+# all, and whether the sheet's own title states a unit -- and a record the
+# evidence does not place is left in the true-unknown bucket rather than guessed
+# into a smaller one.
+write_unit_resolution_worklist <- function(con, root) {
+  if (is.null(root) || !database_object_exists(con, "dim_series")) return(invisible(NULL))
+  worklist <- tryCatch(DBI::dbGetQuery(con, paste(
+    "WITH placed AS (",
+    "  SELECT d.series_id, d.source_id, d.label, d.unit_code, d.series_grain, d.frequency,",
+    "    any_value(n.source_sheet) AS source_sheet, any_value(n.table_title) AS table_title",
+    "  FROM", project_qualified_name("dim_series"), "d",
+    "  LEFT JOIN", project_qualified_name("documented_series_snapshot"), "n USING (series_id)",
+    "  WHERE d.unit_code IN ('UNRESOLVED_SOURCE_UNITS', 'MIXED_PHYSICAL_UNITS')",
+    "     OR d.unit_code IS NULL",
+    "  GROUP BY d.series_id, d.source_id, d.label, d.unit_code, d.series_grain, d.frequency",
+    "), sheet_units AS (",
+    "  SELECT n.source_id, n.source_sheet,",
+    "    count(DISTINCT d.unit_code) FILTER (",
+    "      WHERE d.unit_code NOT IN ('UNRESOLVED_SOURCE_UNITS', 'MIXED_PHYSICAL_UNITS')",
+    "    ) AS resolved_units_on_sheet",
+    "  FROM", project_qualified_name("documented_series_snapshot"), "n",
+    "  JOIN", project_qualified_name("dim_series"), "d USING (series_id)",
+    "  GROUP BY 1, 2",
+    ")",
+    "SELECT p.series_id, p.source_id, p.source_sheet, p.label, p.table_title, p.frequency,",
+    "  p.unit_code, p.series_grain, coalesce(s.resolved_units_on_sheet, 0) AS resolved_units_on_sheet,",
+    "  coalesce(o.observations, 0) AS observations,",
+    "  CASE",
+    # A record that is not a scalar measure has no unit to resolve: an event or
+    # a curve point is not a quantity in a unit, and counting it among the
+    # unresolved makes the backlog look larger than the work.
+    "    WHEN p.series_grain IS NOT NULL AND p.series_grain <> 'scalar_series'",
+    "      THEN 'structural_or_non_measure'",
+    "    WHEN p.unit_code = 'MIXED_PHYSICAL_UNITS' THEN 'mixed_physical_units'",
+    # Other columns on the same worksheet did resolve, so the publisher stated a
+    # unit somewhere on the sheet and this column did not inherit it. That is a
+    # column-level mapping rule, not a question for the publisher.
+    "    WHEN coalesce(s.resolved_units_on_sheet, 0) > 0 THEN 'missing_column_mapping_rule'",
+    "    ELSE 'true_unknown'",
+    "  END AS partition,",
+    "  CASE WHEN coalesce(o.observations, 0) >= 60 THEN '1_usable_length'",
+    "       WHEN coalesce(o.observations, 0) > 0 THEN '2_short'",
+    "       ELSE '3_no_observations' END AS review_priority",
+    "FROM placed p",
+    "LEFT JOIN sheet_units s ON s.source_id = p.source_id AND s.source_sheet = p.source_sheet",
+    "LEFT JOIN (SELECT series_id, count(*) AS observations FROM",
+    project_qualified_name("fact_series_events"), "WHERE NOT is_deleted GROUP BY 1) o",
+    "  ON o.series_id = p.series_id",
+    "ORDER BY partition, review_priority, observations DESC"
+  )), error = function(e) NULL)
+  if (is.null(worklist) || !nrow(worklist)) return(invisible(NULL))
+  readr::write_csv(worklist, file.path(root, "outputs", "unit_resolution_worklist.csv"))
+  invisible(worklist)
+}
+
+# --- ER-06: the positional identities ---------------------------------------
+# "Review the 820 positional or positional-lane identities against stable labels,
+# dimensions and source cells."
+#
+# A positional identity is one whose series_id depends on where the column sat,
+# so a publisher who inserts a column re-points it at different data without
+# changing anything a query can see. What decides whether that is dangerous is
+# whether the label is stable and distinctive enough to carry the identity
+# instead -- which is measurable, and is measured here, rather than left as a
+# count of 820.
+write_identity_stability_worklist <- function(con, root) {
+  if (is.null(root) || !database_object_exists(con, "dim_series")) return(invisible(NULL))
+  worklist <- tryCatch(DBI::dbGetQuery(con, paste(
+    "WITH labelled AS (",
+    "  SELECT label, count(*) AS series_sharing_label FROM", project_qualified_name("dim_series"),
+    "  GROUP BY 1",
+    ")",
+    "SELECT d.series_id, d.source_id, n.source_sheet, d.label, n.table_title, d.frequency,",
+    "  d.unit_code, d.identity_stability, d.identity_basis, d.hierarchy_status,",
+    "  l.series_sharing_label, o.observations, o.first_period, o.last_period,",
+    "  o.first_source_row, o.first_source_column,",
+    # The repair the evidence supports, stated per row. A label that names this
+    # series and no other can carry the identity; one that names several cannot,
+    # and needs a dimension before the position can be given up.
+    "  CASE WHEN l.series_sharing_label = 1 THEN 'label_is_unique_candidate_semantic_identity'",
+    "       ELSE 'label_is_ambiguous_needs_dimension_before_repositioning' END AS proposed_repair,",
+    "  CASE WHEN coalesce(o.observations, 0) >= 60 THEN '1_usable_length'",
+    "       WHEN coalesce(o.observations, 0) > 0 THEN '2_short'",
+    "       ELSE '3_no_observations' END AS review_priority",
+    "FROM", project_qualified_name("dim_series"), "d",
+    "JOIN labelled l ON l.label = d.label",
+    "LEFT JOIN (SELECT series_id, any_value(source_sheet) AS source_sheet,",
+    "  any_value(table_title) AS table_title FROM",
+    project_qualified_name("documented_series_snapshot"), "GROUP BY 1) n USING (series_id)",
+    "LEFT JOIN (SELECT series_id, count(*) AS observations, min(period) AS first_period,",
+    "  max(period) AS last_period, min(source_row) AS first_source_row,",
+    "  min(source_column) AS first_source_column FROM",
+    project_qualified_name("documented_series_snapshot"), "GROUP BY 1) o USING (series_id)",
+    "WHERE d.identity_stability IN ('positional', 'positional_lane')",
+    "ORDER BY review_priority, proposed_repair, observations DESC"
+  )), error = function(e) NULL)
+  if (is.null(worklist) || !nrow(worklist)) return(invisible(NULL))
+  readr::write_csv(worklist, file.path(root, "outputs", "identity_stability_worklist.csv"))
+  invisible(worklist)
+}
+
 write_semantic_review_worklist <- function(con, root) {
   if (is.null(root) || !database_object_exists(con, "dim_series")) return(invisible(NULL))
   open_fields <- paste(vapply(SERIES_SEMANTIC_COLUMNS, function(field) paste0(

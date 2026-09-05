@@ -275,6 +275,7 @@ run_isolated_update <- function(root, registry, manifest, resolution_issues = ti
     sha256 = published_sha256, superseded_sha256 = base_sha256,
     warnings = result$warning_count, production = production, backup = backup
   )
+  write_build_manifest(root, production, published_sha256, result)
   message(
     "Published ", result$build_id, " by atomic swap.",
     "\n  SHA-256: ", published_sha256,
@@ -288,6 +289,80 @@ run_isolated_update <- function(root, registry, manifest, resolution_issues = ti
 
 pipeline_elapsed_seconds <- function(started_at) {
   unname(proc.time()[["elapsed"]] - started_at)
+}
+
+# --- The build manifest ------------------------------------------------------
+# The audit's ER-12.4: "produce a machine-readable build manifest and confirm
+# deterministic table counts/checksums, with documented exceptions for
+# inherently variable metadata."
+#
+# Everything needed to say what a result was computed from, in one file a script
+# can read. It is written from the *published* database after the swap, not from
+# the candidate during the build, because that is the only moment every field is
+# true of the bytes on disk: the checksum is final, the pointer has moved, and
+# the row counts are the ones a researcher will see.
+#
+# The counts are the governed tables only, and they are the determinism test.
+# built_at and recorded_at are excluded from it by name rather than by omission:
+# a manifest that quietly dropped the fields that vary would be claiming a
+# reproducibility it had not checked.
+BUILD_MANIFEST_COUNTED_TABLES <- c(
+  "canonical.fact_series_events", "canonical.dim_series", "canonical.series_review",
+  "canonical.series_titles", "canonical.unit_overrides", "canonical.series_period_bounds",
+  "canonical.canonical_series", "canonical.map_canonical_series", "canonical.methodology_regime",
+  "staging.documented_series_snapshot", "staging.observation_missingness",
+  "audit.table_status", "audit.quality_flags", "raw.source_provenance"
+)
+
+BUILD_MANIFEST_NONDETERMINISTIC_FIELDS <- c(
+  "generated_at", "built_at", "recorded_at", "elapsed_seconds"
+)
+
+write_build_manifest <- function(root, database_path, sha256, result) {
+  if (is.null(root) || !requireNamespace("jsonlite", quietly = TRUE)) return(invisible(NULL))
+  con <- tryCatch(
+    connect_project_database(database_path, read_only = TRUE), error = function(e) NULL
+  )
+  if (is.null(con)) return(invisible(NULL))
+  on.exit(try(DBI::dbDisconnect(con, shutdown = TRUE), silent = TRUE), add = TRUE)
+  count_of <- function(qualified) tryCatch(
+    DBI::dbGetQuery(con, paste0("SELECT count(*) AS n FROM ", qualified))$n[[1]],
+    error = function(e) NA_integer_
+  )
+  identity <- tryCatch(DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM audit.build_identity WHERE build_id = ", sql_string(result$build_id)
+  )), error = function(e) NULL)
+  packages <- tryCatch(DBI::dbGetQuery(con, paste0(
+    "SELECT package, version, built_under, is_direct FROM audit.build_environment",
+    " WHERE build_id = ", sql_string(result$build_id), " ORDER BY package"
+  )), error = function(e) NULL)
+  manifest <- list(
+    manifest_version = 1L,
+    generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"),
+    database = list(
+      path = basename(database_path), sha256 = sha256,
+      bytes = unname(file.info(database_path)$size),
+      schema_version = result$schema_version
+    ),
+    build = if (is.null(identity) || !nrow(identity)) {
+      list(build_id = result$build_id, release_id = result$release_id)
+    } else as.list(identity[1, , drop = FALSE]),
+    release = list(
+      release_id = result$release_id, run_status = result$status, decision = result$decision,
+      data_release_id = result$data_release_id,
+      error_count = result$error_count, warning_count = result$warning_count
+    ),
+    table_counts = stats::setNames(
+      lapply(BUILD_MANIFEST_COUNTED_TABLES, count_of), BUILD_MANIFEST_COUNTED_TABLES
+    ),
+    environment = if (is.null(packages)) NULL else packages,
+    # Named, not omitted. A second clean rebuild is expected to reproduce every
+    # field of this manifest except these.
+    nondeterministic_fields = BUILD_MANIFEST_NONDETERMINISTIC_FIELDS
+  )
+  path <- file.path(root, "outputs", "build_manifest.json")
+  writeLines(jsonlite::toJSON(manifest, auto_unbox = TRUE, null = "null", digits = NA), path)
+  invisible(path)
 }
 
 write_pipeline_timings <- function(con, attempt_id, release_id, item, timings) {
@@ -542,6 +617,11 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
     apply_table_domains(con, root)
   })
   phase("series_semantics", {
+    # Before the derivations, not after, and for the opposite reason to the
+    # review register below. unit_code and transformation are recomputed from
+    # `unit` on every build, so a correction applied to the output would leave
+    # the two disagreeing; applied to the input, every consequence follows.
+    apply_unit_overrides(con, root)
     apply_series_semantics(con)
     # After the derivations, never before: several of them are unconditional
     # UPDATEs that would overwrite a reviewed value. Reviewed wins because it
@@ -561,6 +641,13 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
     write_canonical_core_proposal(con, root)
     write_semantic_completeness_report(con, root)
     write_semantic_review_worklist(con, root)
+    # The readiness audit's review queues. Each one names rows rather than
+    # counting them, and each is ranked by what a mistake in it would cost --
+    # ER-01's exchange-rate units, ER-06's unresolved units and positional
+    # identities.
+    write_exchange_rate_unit_worklist(con, root)
+    write_unit_resolution_worklist(con, root)
+    write_identity_stability_worklist(con, root)
     write_migration_runbook(con, root)
     # Moved here from after the release decision, where nothing could check it.
     # The audit's F-06 shipped a dashboard with 256 rows for 242 worksheets for

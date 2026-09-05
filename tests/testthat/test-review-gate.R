@@ -201,3 +201,51 @@ testthat::test_that("a complete review satisfies both halves of the gate", {
     DBI::dbGetQuery(con, "SELECT count(*) AS n FROM audit.quality_flags")$n[[1]], 0L
   )
 })
+
+testthat::test_that("validating a worksheet admits only the series reviewed on it", {
+  # The readiness audit's ER-03.4: "do not validate an entire sheet because one
+  # series looks correct... If worksheet status is the gate granularity, document
+  # all other series thereby admitted or narrow the gate design before
+  # promotion."
+  #
+  # It does not need narrowing, and this is the assertion that says so rather
+  # than the reasoning saying so. The gate is a conjunction: a worksheet may be
+  # validated and every one of its unreviewed series stays out, because the
+  # register row is required per series and not per sheet. The number of series
+  # "thereby admitted" is zero, and it is zero by construction.
+  con <- review_gate_fixture(reviewed = TRUE)
+  # A second series on the same validated worksheet, fully derived and never
+  # reviewed -- the neighbour the audit is worried about.
+  DBI::dbWriteTable(con, "dim_series", tibble::tibble(
+    series_id = "fixture:neighbour", source_id = "fixture",
+    label = "Saldo a fin de periodo - Serie Original (otra fila)", unit = "index",
+    scale = "units", frequency = "monthly", first_vintage_id = "fixture:v1",
+    series_grain = "scalar_series", unit_code = "INDEX", scale_multiplier = 1,
+    price_base_year = "2020", stock_flow = "stock", nominal_real = "real",
+    seasonal_adjustment = "not_adjusted", transformation = "index",
+    valuation = "not_applicable", semantic_status = "documented_series", series_sk = 2L
+  ), append = TRUE)
+  DBI::dbWriteTable(con, "fact_series_events", tibble::tibble(
+    series_id = "fixture:neighbour", period = as.Date("2024-01-31"), value = 2,
+    vintage_id = "fixture:v1", publication_date = as.Date("2026-02-15"), is_deleted = FALSE,
+    source_file = "fixture.xlsx", series_sk = 2L, vintage_sk = 1L
+  ), append = TRUE)
+  DBI::dbWriteTable(con, "documented_series_snapshot", tibble::tibble(
+    vintage_id = "fixture:v1", series_id = "fixture:neighbour", period = as.Date("2024-01-31"),
+    source_id = "fixture", source_sheet = "Hoja", value = 2
+  ), append = TRUE)
+  create_series_views(con)
+  create_table_status_views(con)
+  create_mart_views(con)
+
+  admitted <- DBI::dbGetQuery(
+    con, "SELECT series_id FROM marts.v_research_series ORDER BY series_id"
+  )$series_id
+  testthat::expect_equal(admitted, "fixture:series")
+  testthat::expect_false("fixture:neighbour" %in% admitted)
+  # And the neighbour is published, so its absence is the gate and not the
+  # fixture forgetting to give it data.
+  testthat::expect_equal(DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM main.v_series_latest WHERE series_id = 'fixture:neighbour'"
+  ))$n[[1]], 1L)
+})

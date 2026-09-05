@@ -212,13 +212,51 @@ history if recovery of an earlier committed database is required.
 
 There is no supported way to promote a build the gates blocked. That is not an oversight — `promote_data_release()` refuses a product not decided `accepted`, and the refusal is tested.
 
+### Building from an uncommitted tree
+
+Since schema 39 a release built from a working tree with uncommitted tracked changes **blocks**, with
+`dirty_tree_build`. A database whose code is not in the history cannot be reproduced by anybody,
+including its author, so the normal procedure is to commit and re-run.
+
+For a development build, the override is deliberate and spelled out:
+
+```sh
+PARAGUAY_MACRO_ALLOW_DIRTY_BUILD=1 Rscript -e 'source("run_update.R")'
+```
+
+It proceeds and records `dirty_tree_build_overridden` as a warning on the build, so the resulting
+database is visibly a development artifact and cannot later be mistaken for a research release. This
+is the same shape as `PARAGUAY_MACRO_ALLOW_ENV_DRIFT=1`, which does the same for the environment
+check, and neither can be set by accident.
+
+The database file itself is excluded from the dirtiness test: a run writes it, so counting it would
+make every build dirty by construction. A git call that fails reports `NA`, which warns rather than
+passes — a check that cannot tell whether the tree is clean must not answer "clean".
+
+### Signing off an economic review
+
+`config/series_review.csv`, `config/canonical_series.csv` and the other judgement registers ship
+empty and stay empty until a person fills them. Nothing in the pipeline writes them, and a
+half-finished row blocks the release rather than half-promoting a series.
+
+`config/unit_overrides.csv` is the narrow exception and is not a review: it corrects a unit, a
+currency or an index base where a worksheet's inherited unit contradicts the published title, and it
+makes no claim that anybody has reviewed the economics of the series. A row in it never admits a
+series to a research mart. If a correction in it names a series that no longer exists — identity is
+positional on many worksheets, so a rebuild can move it — the release blocks rather than silently
+applying nothing.
+
 ## Recording where a source came from
 
 `config/source_vintages.csv` is the acquisition record, keyed by `source_id` and the file's SHA-256. Fill `official_release_date`, `official_url`, `release_identifier`, `retrieved_at` and `retrieval_method` when you download a file; the licence field records the publisher's terms. It ships with every row `pending`.
 
 The release warns while it is incomplete: `publication_date_inferred_from_content` lists every vintage whose availability is still being guessed from a filename or from the content. `official_release_date` outranks both, so recording it is also how you correct a date the pipeline inferred wrongly — the next run picks it up even for an unchanged file, and propagates it to every snapshot and fact of that vintage.
 
-`available_at` is a separate field and a separate fact: when the file actually became available to you, which is not the reference period it covers and not necessarily the date printed on it. It is what `series_as_of_date()` ranks by when it is present, so a point-in-time query is only as honest as this column. Leave it blank rather than guessing; the pipeline falls back to the publication date and says so.
+`available_at` is a separate field and a separate fact: when the file actually became available to you, which is not the reference period it covers and not necessarily the date printed on it. It is what `series_as_of_date()` ranks by when it is present, so a point-in-time query is only as honest as this column. It is derived rather than typed — the official release date when one is recorded, the retrieval time otherwise — so record both and let the rule choose.
+
+`availability_quality` says how good that answer is, and is required whenever an availability timestamp exists. `official_release` is the publisher's own timestamp; `retrieval_time` is when an operator fetched the file; `inferred_upper_bound` is when the file entered the immutable archive, which bounds acquisition from above and is all that survives for the 22 vintages ingested before the procedure existed. All three are safe in the same direction — later than true availability, so an as-of query sees less rather than more — but only the first two support a real-time claim. An undeclared value blocks the release; an inferred one warns.
+
+[docs/ACQUISITION_RUNBOOK.md](ACQUISITION_RUNBOOK.md) is the full procedure, including what to do when a publisher re-posts identical bytes and how to confirm the as-of interface answers correctly after a revision.
 
 ### Retaining a superseded workbook
 

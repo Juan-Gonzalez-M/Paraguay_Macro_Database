@@ -126,9 +126,29 @@ testthat::test_that("period bounds are convention-independent and availability i
     "WHERE period_start IS NULL OR period_end IS NULL OR period_end < period_start"
   ))$n[[1]], 0L)
   # available_at comes from the vintage, never from the reference period.
+  #
+  # This asserted equality with publication_date, which held only because the
+  # operator's acquisition record was empty and the coalesce fell through to the
+  # date derived from the file. Schema 39 fills that record for all 22 vintages,
+  # and an operator timestamp outranking the derived date is the documented
+  # ordering -- so equality would now fail for being right. The invariant the
+  # test is actually for is that availability is never earlier than the
+  # publication that produced it, and is never read off the reference period.
   testthat::expect_equal(DBI::dbGetQuery(con, paste(
     "SELECT count(*) AS n FROM v_series_observations",
-    "WHERE publication_date IS NOT NULL AND CAST(available_at AS DATE) <> publication_date"
+    "WHERE publication_date IS NOT NULL AND CAST(available_at AS DATE) < publication_date"
+  ))$n[[1]], 0L)
+  # And every observation has one at all, whichever branch of the coalesce
+  # supplied it: an as-of query cannot rank a row whose availability is null.
+  #
+  # That the reference period is not a *source* of availability is asserted where
+  # it can be asserted cleanly -- against a fixture with a known acquisition
+  # record, in test-asof-vintages.R. It cannot be asserted by comparing these two
+  # columns, because a vintage published on 2024-12-31 legitimately carries an
+  # annual observation dated 2024-12-31, so equality happens by coincidence and
+  # is evidence of nothing either way.
+  testthat::expect_equal(DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM v_series_observations WHERE available_at IS NULL"
   ))$n[[1]], 0L)
   # Values dated after their own publication are separated from realised ones.
   after <- DBI::dbGetQuery(con, paste(

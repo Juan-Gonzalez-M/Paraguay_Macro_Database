@@ -137,6 +137,16 @@ PROJECT_TABLE_SCHEMA <- c(
   methodology_regime = "canonical", classification_concordance = "canonical",
   series_semantic_evidence = "canonical", series_dimension = "canonical",
   series_period_bounds = "canonical",
+  # The published table title, resolved to one row per series. It is the only
+  # field distinguishing 1,599 repeated labels, and it lived on a staging
+  # snapshot at observation grain, so the documented read path could not reach it
+  # without joining a table researchers are told not to use. Schema 39.
+  series_titles = "canonical",
+  # Reviewed unit and currency corrections, applied over the derived semantics.
+  # Narrower than series_review, which requires the whole economic record: a
+  # worksheet whose columns carry different units can be corrected without
+  # claiming its series have been economically reviewed. Schema 39.
+  unit_overrides = "canonical",
   # audit: governance and release evidence
   schema_version = "audit", ingestion_runs = "audit", ingestion_stage_timings = "audit",
   release_sources = "audit", structure_checks = "audit", quality_flags = "audit",
@@ -947,10 +957,76 @@ project_cached_config <- function(path, reader) {
 # by its recorded hash; 'newest_mtime' guesses from the filesystem and says so.
 SOURCE_SELECTION_RULES <- c("manifest", "newest_mtime")
 
+# --- The temporal contract ---------------------------------------------------
+# The normalized interval every published observation carries, written once
+# because two carriers publish it and a second copy is a second answer.
+#
+# The database deliberately keeps `period` exactly as parsed. It is part of the
+# observation key, and rewriting it would retire every identifier in the
+# catalogue -- so the fix for the mixed monthly convention the readiness audit
+# found (2,057 monthly series dated to month end, 1,757 to day 1, and 164
+# alternating inside a single series) is not to rewrite the key but to publish
+# the interval beside it. period_start and period_end describe the same month
+# whichever day the publisher printed, so a join on them cannot silently lose
+# observations or shift a lag by a month.
+#
+# A stored bound wins over a derived one. Only an irregular published interval
+# has one -- CUADRO 11 publishes 83 of them, where no frequency implies "in
+# force from 1 January to 30 June 1980" -- so this changes nothing for a series
+# whose frequency already says what its interval is.
+#
+# Nothing here manufactures a daily interpretation of a lower-frequency
+# observation: a frequency the contract does not name falls through to the
+# parsed date on both bounds, which is a one-day interval and honest about it.
+series_period_bounds_sql <- function(fact = "f", series = "d", stored = "b") {
+  period <- paste0(fact, ".period")
+  frequency <- paste0(series, ".frequency")
+  stored_start <- if (is.null(stored)) NULL else paste0(stored, ".period_start")
+  start_expression <- paste(
+    "CASE", frequency,
+    "  WHEN 'annual' THEN date_trunc('year',", period, ")",
+    "  WHEN 'semiannual' THEN CASE WHEN month(", period, ") <= 6",
+    "    THEN date_trunc('year',", period, ")",
+    "    ELSE date_trunc('year',", period, ") + INTERVAL 6 MONTH END",
+    "  WHEN 'quarterly' THEN date_trunc('quarter',", period, ")",
+    "  WHEN 'monthly' THEN date_trunc('month',", period, ")",
+    "  WHEN 'monthly_survey' THEN date_trunc('month',", period, ")",
+    "  ELSE", period, "END"
+  )
+  paste(
+    if (is.null(stored_start)) paste(start_expression, "AS period_start,")
+    else paste("coalesce(", stored_start, ",", start_expression, ") AS period_start,"),
+    "CASE", frequency,
+    "  WHEN 'annual' THEN date_trunc('year',", period, ") + INTERVAL 1 YEAR - INTERVAL 1 DAY",
+    "  WHEN 'semiannual' THEN CASE WHEN month(", period, ") <= 6",
+    "    THEN date_trunc('year',", period, ") + INTERVAL 6 MONTH - INTERVAL 1 DAY",
+    "    ELSE date_trunc('year',", period, ") + INTERVAL 1 YEAR - INTERVAL 1 DAY END",
+    "  WHEN 'quarterly' THEN date_trunc('quarter',", period, ") + INTERVAL 3 MONTH - INTERVAL 1 DAY",
+    "  WHEN 'monthly' THEN last_day(", period, ")",
+    "  WHEN 'monthly_survey' THEN last_day(", period, ")",
+    "  ELSE", period, "END AS period_end"
+  )
+}
+
 SOURCE_VINTAGE_REGISTRY_COLUMNS <- c(
   "source_id", "sha256", "original_filename", "official_release_date", "official_url",
-  "release_identifier", "retrieved_at", "retrieval_method", "license", "evidence"
+  "release_identifier", "retrieved_at", "retrieval_method", "availability_quality",
+  "license", "evidence"
 )
+
+# How good the availability evidence is. The audit's ER-04 asks for availability
+# to be defined conservatively and for the weaker definition to say that it is
+# weaker, because a point-in-time result computed from a guess and one computed
+# from a publisher's release timestamp are not the same claim and looked
+# identical in the column that carried them.
+#
+# 'official_release'      the publisher's own release timestamp: the real answer.
+# 'retrieval_time'        when an operator actually fetched the file. Later than
+#                         availability, so as-of sees less rather than more.
+# 'inferred_upper_bound'  no acquisition record survives; the moment the file
+#                         entered the immutable archive bounds it from above.
+#                         Safe in the same direction, and weaker evidence.
+AVAILABILITY_QUALITY_VALUES <- c("official_release", "retrieval_time", "inferred_upper_bound")
 
 # The operator-maintained record of where a source vintage came from. The audit's
 # F-14: a publisher name is not provenance. This is also the highest authority for
@@ -1012,6 +1088,28 @@ read_environment_lock <- function(root) {
   )
 }
 
+# Two package versions, compared as versions rather than as text.
+#
+# The readiness audit reported the environment as differing from renv.lock for
+# the transitive package Rcpp, and it does not. The lockfile records CRAN's own
+# spelling of a revision, `1.1.1-1.1`; `packageVersion()` parses that and prints
+# it back as `1.1.1.1.1`, because R has always treated `-` and `.` as the same
+# separator in a package version. Comparing the two strings therefore reports a
+# difference between a version and itself -- for every package whose maintainer
+# has ever issued a revision, on every build, forever.
+#
+# ER-12 asks whether the drift is intentional and whether it affects a compiled
+# dependency. It is neither: there is no drift. The reported difference was an
+# artefact of the comparison, and the repair is to compare versions.
+same_package_version <- function(installed, expected) {
+  if (is.na(installed) || is.na(expected)) return(FALSE)
+  parsed <- tryCatch(
+    list(numeric_version(installed), numeric_version(expected)), error = function(e) NULL
+  )
+  if (is.null(parsed)) return(identical(installed, expected))
+  identical(parsed[[1]], parsed[[2]])
+}
+
 check_environment <- function(root = getwd(), strict = FALSE) {
   lock <- read_environment_lock(root)
   if (is.null(lock)) {
@@ -1042,7 +1140,7 @@ check_environment <- function(root = getwd(), strict = FALSE) {
     )
     note <- if (is.na(installed)) {
       paste0(package, " is not installed; renv.lock records ", expected)
-    } else if (!identical(installed, expected)) {
+    } else if (!same_package_version(installed, expected)) {
       paste0(package, " ", installed, " is installed; renv.lock records ", expected)
     } else NULL
     if (is.null(note)) next
