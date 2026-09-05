@@ -1248,9 +1248,28 @@ git_build_state <- function(root) {
     commit = if (length(commit)) commit[[1]] else NA_character_,
     dirty = if (is.null(commit) || is.null(changed)) {
       NA
-    } else length(changed[!grepl("^.{2,3}database/", changed)]) > 0L
+    } else length(changed[!grepl(GIT_BUILD_OUTPUT_PATHS, changed)]) > 0L
   )
 }
+
+# Tracked paths the build itself writes, excluded from the dirtiness test.
+#
+# The database was already here, and the reason generalises: this runs from
+# inside the pipeline, so a tracked file the run *produces* would be counted as
+# an uncommitted change against the run producing it. That is not a fact about
+# the code and it is unsatisfiable by construction.
+#
+# docs/SCHEMA_MIGRATIONS.md joined it in schema 39, found the moment the
+# dirty-tree gate went live and blocked its own first build. The runbook is
+# regenerated from the migration registry on every run -- its own header says not
+# to hand-edit it -- so any run, or any test run, leaves it modified, and a gate
+# that then refuses the next build would be permanently unsatisfiable. The
+# question `git_dirty` answers is whether the *code* that built this database was
+# committed, and a file the build writes is not code.
+#
+# Nothing else qualifies: outputs/ is gitignored and input_archive's manifest is
+# untracked, so this list is the whole of it.
+GIT_BUILD_OUTPUT_PATHS <- "^.{2,3}(database/|docs/SCHEMA_MIGRATIONS\\.md)"
 
 # What was actually loaded, as opposed to what renv.lock says should have been.
 #

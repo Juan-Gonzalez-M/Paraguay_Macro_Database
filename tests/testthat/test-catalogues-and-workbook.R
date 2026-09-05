@@ -169,11 +169,21 @@ testthat::test_that("build dirtiness answers the reproducibility question and fa
   testthat::skip_if(is.na(state$dirty), "not a git checkout")
   testthat::expect_match(state$commit, "^[0-9a-f]{40}$")
 
-  # The database alone must not make a build dirty, and anything else must.
-  classify <- function(lines) length(lines[!grepl("^.{2,3}database/", lines)]) > 0L
+  # The files the build itself writes must not make a build dirty, and anything
+  # else must.
+  classify <- function(lines) length(lines[!grepl(GIT_BUILD_OUTPUT_PATHS, lines)]) > 0L
   testthat::expect_false(classify(" M database/paraguay_macro_pilot.duckdb"))
+  # Schema 39: the generated migration runbook is in the same category as the
+  # database. It is regenerated from the registry on every run, so counting it
+  # would make the dirty-tree gate unsatisfiable after the first build -- which
+  # is exactly how it was found, by blocking its own.
+  testthat::expect_false(classify(" M docs/SCHEMA_MIGRATIONS.md"))
+  testthat::expect_false(classify(c(" M database/paraguay_macro_pilot.duckdb",
+                                    " M docs/SCHEMA_MIGRATIONS.md")))
   testthat::expect_true(classify(c(" M database/paraguay_macro_pilot.duckdb", " M scripts/01_utils.R")))
   testthat::expect_true(classify("A  config/source_value_tokens.csv"))
+  # And a different file under docs/ is still a change to the project.
+  testthat::expect_true(classify(" M docs/OPERATIONS.md"))
 
   # And a git call that fails is NA, never FALSE. The first attempt at this
   # repair used a `:(exclude)` pathspec, which the shell rejected; the command
