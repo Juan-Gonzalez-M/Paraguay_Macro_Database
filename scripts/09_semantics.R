@@ -1765,6 +1765,14 @@ write_exchange_rate_unit_worklist <- function(con, root) {
     "  FROM", project_qualified_name("documented_series_snapshot"), "n",
     "  JOIN", project_qualified_name("dim_series"), "d USING (series_id)",
     "  WHERE regexp_matches(d.unit_code, '^[A-Z]{3}_PER_[A-Z]{3}$')",
+    # A worksheet that has been corrected stays on the list. Scoping only to
+    # sheets that *currently* assign a currency-pair unit would drop CUADRO 60c
+    # the moment its five index series were fixed -- so the queue would lose the
+    # record of the decision exactly when the decision was made, and ER-01's
+    # "before/after list of affected series" would have nothing to show.
+    "  UNION",
+    "  SELECT DISTINCT u.source_id, u.source_sheet",
+    "  FROM", project_qualified_name("unit_overrides"), "u",
     "), on_sheet AS (",
     "  SELECT DISTINCT n.series_id, n.source_id, n.source_sheet,",
     "    any_value(n.table_title) OVER (PARTITION BY n.series_id) AS table_title,",

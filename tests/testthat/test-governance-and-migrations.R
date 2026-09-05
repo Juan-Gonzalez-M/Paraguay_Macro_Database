@@ -129,14 +129,35 @@ testthat::test_that("period bounds are convention-independent and availability i
   #
   # This asserted equality with publication_date, which held only because the
   # operator's acquisition record was empty and the coalesce fell through to the
-  # date derived from the file. Schema 39 fills that record for all 22 vintages,
-  # and an operator timestamp outranking the derived date is the documented
-  # ordering -- so equality would now fail for being right. The invariant the
-  # test is actually for is that availability is never earlier than the
-  # publication that produced it, and is never read off the reference period.
+  # date derived from the file. Schema 39 fills that record, so equality would
+  # now fail for being right.
+  #
+  # Ordering against publication_date is not the replacement, and finding out why
+  # is worth more than the assertion was. No publication_date in this database is
+  # a publication *fact*: nine vintages take it from the filename and twelve from
+  # the content maximum. `eve` is named "agosto_2026", which resolves to
+  # 2026-08-31 -- seven days after the file was actually acquired -- so 2,760 of
+  # its observations legitimately have an availability earlier than their
+  # "publication date". That is the derived date overshooting, not availability
+  # going backwards, and it is exactly the gap ER-04 asks to be closed by
+  # recording official_release_date.
+  #
+  # What must hold, and what the audit actually asks for, is that availability is
+  # a property of the vintage and not of the observation. If it were ever read
+  # off the reference period it would vary within a vintage, because a vintage
+  # spans decades of periods. It does not.
   testthat::expect_equal(DBI::dbGetQuery(con, paste(
-    "SELECT count(*) AS n FROM v_series_observations",
-    "WHERE publication_date IS NOT NULL AND CAST(available_at AS DATE) < publication_date"
+    "SELECT count(*) AS n FROM (SELECT vintage_id FROM v_series_observations",
+    "GROUP BY vintage_id HAVING count(DISTINCT available_at) > 1)"
+  ))$n[[1]], 0L)
+  # And where an operator has recorded an official release date, availability is
+  # that date and nothing else. Vacuous until one is recorded, which is the point
+  # of outputs/source_provenance_worklist.csv.
+  testthat::expect_equal(DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM v_series_observations o",
+    "JOIN raw.source_provenance p USING (vintage_id)",
+    "WHERE p.official_release_date IS NOT NULL",
+    "  AND CAST(o.available_at AS DATE) <> p.official_release_date"
   ))$n[[1]], 0L)
   # And every observation has one at all, whichever branch of the coalesce
   # supplied it: an as-of query cannot rank a row whose availability is null.

@@ -136,10 +136,8 @@ testthat::test_that("the whole research path works from a default connection", {
   con <- DBI::dbConnect(duckdb::duckdb(), path, read_only = TRUE)
   withr::defer(DBI::dbDisconnect(con, shutdown = TRUE))
   for (object in c("main.v_series_research", "main.v_series_titles", "main.v_series_latest")) {
-    testthat::expect_gte(
-      DBI::dbGetQuery(con, paste0("SELECT count(*) AS n FROM ", object))$n[[1]], 0L,
-      info = object
-    )
+    rows <- DBI::dbGetQuery(con, paste0("SELECT count(*) AS n FROM ", object))$n[[1]]
+    testthat::expect_true(rows > 0L, info = object)
   }
   one <- DBI::dbGetQuery(con, "SELECT series_id FROM main.v_series_research LIMIT 1")$series_id
   testthat::skip_if(!length(one), "no observations published")

@@ -95,26 +95,37 @@ testthat::test_that("the unit-family check fires on the defect it was written fo
   withr::defer(DBI::dbDisconnect(con, shutdown = TRUE))
   initialize_database(con, project_test_root)
 
+  # Two worksheets, because the two defects live on two worksheets and the
+  # index-wording rule reads the *table title*, which is a property of the sheet.
+  # An earlier version of this fixture put a genuine dollar quotation on a sheet
+  # titled as an index, which is not a shape the sources produce -- and the rule
+  # correctly flagged it, which looked like a false positive and was not.
   DBI::dbWriteTable(con, "dim_series", tibble::tibble(
-    series_id = c("fx:euro", "fx:index", "fx:usd"),
-    source_id = "fx", label = c("Euro", "TCR USA", "USD 1/"),
+    series_id = c("fx:euro", "fx:usd", "fx:index"),
+    source_id = "fx", label = c("Euro", "USD 1/", "TCR USA"),
     unit = "PYG_per_USD", scale = "units", frequency = "monthly",
     currency = "PYG/USD", first_vintage_id = "fx:v1", series_grain = "scalar_series",
     unit_code = "PYG_PER_USD", scale_multiplier = 1, series_sk = 1:3
   ), append = TRUE)
   DBI::dbWriteTable(con, "documented_series_snapshot", tibble::tibble(
     vintage_id = "fx:v1", release_id = "fx:r1", publication_date = as.Date("2026-01-31"),
-    source_id = "fx", source_file = "fx.xlsx", source_sheet = "CUADRO 60x",
-    table_title = "Cuadro Nº 60x — Tipo de cambio real bilateral — (enero 1995 = 100)",
+    source_id = "fx", source_file = "fx.xlsx",
+    # The quotation sheet and the index sheet, titled as the publisher titles them.
+    source_sheet = c("CUADRO 60a", "CUADRO 60a", "CUADRO 60c"),
+    table_title = c(
+      "Cuadro Nº 60a — Tipo de cambio nominal del guaraní",
+      "Cuadro Nº 60a — Tipo de cambio nominal del guaraní",
+      "Cuadro Nº 60c — Tipo de cambio real bilateral — (enero 1995 = 100)"
+    ),
     parser_mode = "documented",
-    series_id = c("fx:euro", "fx:index", "fx:usd"),
+    series_id = c("fx:euro", "fx:usd", "fx:index"),
     identity_basis = "semantic", identity_stability = "semantic",
     hierarchy_status = "unresolved", period = as.Date("2026-01-31"),
     source_period_label = "ene-26", frequency = "monthly",
-    series_label = c("Euro", "TCR USA", "USD 1/"),
-    series_path = c("Euro", "TCR USA", "USD 1/"),
+    series_label = c("Euro", "USD 1/", "TCR USA"),
+    series_path = c("Euro", "USD 1/", "TCR USA"),
     unit = "PYG_per_USD", scale = "units", currency = "PYG/USD",
-    value = c(8000, 120, 7000), is_total = FALSE, source_row = 1:3, source_column = 2L
+    value = c(8000, 7000, 120), is_total = FALSE, source_row = 1:3, source_column = 2L
   ), append = TRUE)
 
   DBI::dbExecute(con, "DELETE FROM audit.quality_flags")
