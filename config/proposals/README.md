@@ -23,7 +23,7 @@ stay behind when the row is promoted:
 
 | Column | What it holds |
 | --- | --- |
-| `evidence` | the sentence the value rests on: a published title, a footnote, an arithmetic check |
+| `proposal_evidence` | the sentence the value rests on: a published title, a footnote, an arithmetic check. Named so it cannot collide with the `evidence` column that some registers have as a field of the decision itself |
 | `source_cell` | where to look: `source_id/sheet!cell`, or the workbook SHA-256 |
 | `proposed_by` | who or what drafted it |
 | `proposed_at` | when |

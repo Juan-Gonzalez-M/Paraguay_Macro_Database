@@ -311,7 +311,18 @@ SCREEN_WORKLIST_LIMIT <- 2000L
 write_screen_worklist <- function(con, root, filename, query,
                                   limit = SCREEN_WORKLIST_LIMIT) {
   if (is.null(root)) return(invisible(NULL))
-  rows <- tryCatch(DBI::dbGetQuery(con, query), error = function(e) NULL)
+  # A query that fails must say so. This swallowed the error and returned NULL,
+  # so a broken worklist was indistinguishable from an empty one -- the file
+  # simply was not there, and nothing in the run mentioned it. Found the way
+  # these things are found: a stray parenthesis in this file produced no
+  # gap_worklist.csv and no complaint.
+  rows <- tryCatch(DBI::dbGetQuery(con, query), error = function(e) {
+    warning(
+      "The worklist query for ", filename, " failed and the file was not written: ",
+      conditionMessage(e), call. = FALSE
+    )
+    NULL
+  })
   if (is.null(rows) || !nrow(rows)) return(invisible(NULL))
   total <- nrow(rows)
   rows <- utils::head(rows, limit)
@@ -363,7 +374,6 @@ run_quality_screens <- function(con, release_id, root) {
       "    datediff('month', previous_start, period_start) AS observed_step,",
       expected_step, "AS expected_step",
       "  FROM ordered WHERE previous_start IS NOT NULL",
-      ")",
       "), episodes AS (",
       "  SELECT series_id, source_id, source_sheet, frequency, unit_code, vintage_id,",
       "    previous_start AS gap_after, period_start AS resumes_at,",

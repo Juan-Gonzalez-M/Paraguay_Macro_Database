@@ -47,8 +47,12 @@ root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 if (!file.exists(file.path(root, "config", "source_registry.csv"))) stop(
   "Run this from the project root.", call. = FALSE
 )
-for (script in c("01_utils.R", "03_concepts.R", "02_extract_raw.R", "09_semantics.R",
-                 "10_canonical.R")) {
+# The same set the test helper sources, and for the same reason: the register
+# validators reach across files -- series_review_problems() reads a constant
+# declared in the reconciliation script -- and a sign-off that fell over halfway
+# through validating would be worse than one that never started.
+for (script in c("01_utils.R", "03_concepts.R", "02_extract_raw.R", "04_validate.R",
+                 "08_reconciliation.R", "09_semantics.R", "10_canonical.R", "11_marts.R")) {
   suppressMessages(source(file.path(root, "scripts", script)))
 }
 
@@ -56,8 +60,14 @@ for (script in c("01_utils.R", "03_concepts.R", "02_extract_raw.R", "09_semantic
 # what it rests on, how sure they were, and what is still unresolved. They are
 # stripped on promotion -- the register records the decision, and the evidence
 # behind it stays in the proposal file, which is version-controlled beside it.
+# `proposal_evidence`, not `evidence`: methodology_regimes and
+# canonical_series_members already have a column called `evidence`, which is part
+# of the decision and travels into the register. The annotation is a different
+# thing -- why the draft says what it says -- and giving them the same name would
+# make one silently overwrite the other.
 PROPOSAL_ANNOTATION_COLUMNS <- c(
-  "evidence", "source_cell", "proposed_by", "proposed_at", "confidence", "open_questions"
+  "proposal_evidence", "source_cell", "proposed_by", "proposed_at", "confidence",
+  "open_questions"
 )
 
 PROPOSAL_CONFIDENCE_VALUES <- c("high", "medium", "low")
@@ -162,11 +172,26 @@ read_register <- function(root, register_name) {
   register <- readr::read_csv(
     path, show_col_types = FALSE, col_types = readr::cols(.default = readr::col_character())
   )
-  if (!identical(names(register), spec$columns)) stop(
-    "config/", spec$file, " does not have the expected columns. Refusing to write to a register ",
-    "whose shape this script does not recognise.", call. = FALSE
+  # Set equality, not order. The register's field constants are grouped by
+  # meaning -- required fields, then the ones required only conditionally -- and
+  # the file is ordered for a human filling it in. Both are legitimate and they
+  # are not the same order. What must not differ is which columns exist, because
+  # the register's own guards read them by name and a missing one is a question
+  # nobody was asked.
+  if (!setequal(names(register), spec$columns)) stop(
+    "config/", spec$file, " does not have the expected columns (missing: ",
+    paste(setdiff(spec$columns, names(register)), collapse = ", "), "; unexpected: ",
+    paste(setdiff(names(register), spec$columns), collapse = ", "),
+    "). Refusing to write to a register whose shape this script does not recognise.",
+    call. = FALSE
   )
   register
+}
+
+# The order the register file itself uses, so signing a row does not silently
+# rewrite the whole file into a different column order.
+register_column_order <- function(root, register_name) {
+  names(read_register(root, register_name))
 }
 
 proposal_key <- function(rows, spec) {
@@ -189,7 +214,7 @@ describe_proposals <- function(root, register_name, proposals) {
     if (nzchar(trimws(proposals$source_cell[[i]] %||% ""))) {
       cat("  source:     ", proposals$source_cell[[i]], "\n", sep = "")
     }
-    cat("  evidence:   ", proposals$evidence[[i]], "\n", sep = "")
+    cat("  evidence:   ", proposals$proposal_evidence[[i]], "\n", sep = "")
     if (nzchar(trimws(proposals$open_questions[[i]] %||% ""))) {
       cat("  OPEN:       ", proposals$open_questions[[i]], "\n", sep = "")
     }
@@ -234,7 +259,7 @@ sign_off <- function(root, register_name, keys_wanted, reviewer, review_date, fo
   promoted <- proposals[selected, setdiff(spec$columns, spec$stamped), drop = FALSE]
   promoted$reviewed_by <- reviewer
   promoted$reviewed_at <- format(review_date, "%Y-%m-%d")
-  promoted <- promoted[spec$columns]
+  promoted <- promoted[names(register)]
   # Re-signing an existing row replaces it rather than duplicating the key.
   existing <- proposal_key(register, spec)
   register <- register[!existing %in% proposal_key(promoted, spec), , drop = FALSE]
