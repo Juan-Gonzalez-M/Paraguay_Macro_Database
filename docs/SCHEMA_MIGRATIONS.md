@@ -1,6 +1,6 @@
 # Schema migrations
 
-Generated from the migration registry (`SCHEMA_MIGRATIONS` in `scripts/02_extract_raw.R`) and the `schema_version` table on 2026-09-05. Do not edit by hand -- `write_migration_runbook()` rewrites this file on every release.
+Generated from the migration registry (`SCHEMA_MIGRATIONS` in `scripts/02_extract_raw.R`) and the `schema_version` table on 2026-09-06. Do not edit by hand -- `write_migration_runbook()` rewrites this file on every release.
 
 The database is at **schema 39**.
 
