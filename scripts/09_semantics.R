@@ -57,7 +57,20 @@ SERIES_SEMANTIC_DERIVATIONS <- list(
   seasonal_adjustment = list(
     not_adjusted        = "serie original",
     trend_cycle         = "tendencia.?ciclo",
-    seasonally_adjusted = "desestacionaliz"
+    # `serie ajustada` is the BCP's own wording, and it was the one variant of
+    # the three this list did not read. CUADRO 9 a publishes `Serie Original`,
+    # `Serie ajustada` and `Tendencia Ciclo` side by side for six IMAEP
+    # aggregates; the first and third were derived and the middle six were left
+    # not_reviewed, so the seasonally adjusted activity index -- the series a
+    # macro model actually wants -- looked unreviewed while its neighbours did
+    # not. The same error this whole list was written to fix, one word further
+    # on: the publisher is stating it and the search was for a different word.
+    #
+    # `serie ajustad` and not `ajustad`: the shorter stem would eventually catch
+    # an unrelated `ajustado por`, and matching two values in one family leaves
+    # the field not_reviewed rather than guessing. Measured across all 13,985
+    # labels, the phrase occurs six times and every one is an IMAEP variant.
+    seasonally_adjusted = "desestacionaliz|serie ajustad"
   ),
   # The trade tables state their valuation basis in the title. FOB and CIF are
   # not interchangeable -- CIF includes freight and insurance, so an import
