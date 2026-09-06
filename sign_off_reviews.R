@@ -90,7 +90,8 @@ REVIEW_REGISTERS <- list(
                 "timing_reviewed", "hierarchy_reviewed", "methodology_reviewed",
                 "evidence_uri"),
     key = c("source_id", "source_sheet"),
-    stamped = c("reviewed_by", "reviewed_at")
+    stamped = c("reviewed_by", "reviewed_at"),
+    vocabulary = list(status = TABLE_STATUS_VALUES, parser_claim = TABLE_STATUS_PARSER_CLAIMS)
   ),
   canonical_series = list(
     file = "canonical_series.csv",
@@ -99,21 +100,25 @@ REVIEW_REGISTERS <- list(
                 "seasonal_adjustment", "transformation", "valuation", "methodology_regime_id",
                 "reviewed_status", "reviewed_by", "reviewed_at"),
     key = "canonical_series_id",
-    stamped = c("reviewed_by", "reviewed_at")
+    stamped = c("reviewed_by", "reviewed_at"),
+    vocabulary = list(reviewed_status = CANONICAL_REVIEW_STATUSES)
   ),
   canonical_series_members = list(
     file = "canonical_series_members.csv",
     columns = c("canonical_series_id", "series_id", "relationship", "evidence",
                 "reviewed_by", "reviewed_at"),
     key = c("canonical_series_id", "series_id"),
-    stamped = c("reviewed_by", "reviewed_at")
+    stamped = c("reviewed_by", "reviewed_at"),
+    vocabulary = list(relationship = CANONICAL_RELATIONSHIPS)
   ),
   methodology_regimes = list(
     file = "methodology_regimes.csv",
     columns = c("regime_id", "concept_key", "regime_label", "change_type", "effective_from",
                 "effective_to", "comparability", "evidence", "reviewed_by", "reviewed_at"),
     key = "regime_id",
-    stamped = c("reviewed_by", "reviewed_at")
+    stamped = c("reviewed_by", "reviewed_at"),
+    vocabulary = list(change_type = METHODOLOGY_CHANGE_TYPES,
+                      comparability = METHODOLOGY_COMPARABILITY)
   )
 )
 
@@ -211,18 +216,26 @@ describe_proposals <- function(root, register_name, proposals) {
     status <- if (keys[[i]] %in% signed) "SIGNED" else "unsigned"
     cat("\n[", status, "] ", keys[[i]], "\n", sep = "")
     cat("  confidence: ", proposals$confidence[[i]], "\n", sep = "")
-    if (nzchar(trimws(proposals$source_cell[[i]] %||% ""))) {
+    if (has_text(proposals$source_cell[[i]])) {
       cat("  source:     ", proposals$source_cell[[i]], "\n", sep = "")
     }
     cat("  evidence:   ", proposals$proposal_evidence[[i]], "\n", sep = "")
-    if (nzchar(trimws(proposals$open_questions[[i]] %||% ""))) {
+    if (has_text(proposals$open_questions[[i]])) {
       cat("  OPEN:       ", proposals$open_questions[[i]], "\n", sep = "")
     }
   }
   invisible(NULL)
 }
 
-`%||%` <- function(x, y) if (is.null(x) || is.na(x)) y else x
+# The standard null-coalesce, and only that. It was written as
+# `if (is.null(x) || is.na(x))`, which works for a missing character scalar and
+# breaks on anything longer: `is.na()` of the two-element vocabulary list returns
+# a length-two logical, and `||` has rejected those since R 4.3. Blank-or-absent
+# text is a different question and is asked separately, below.
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+# Absent, NA, or whitespace -- the three ways a proposal field says nothing.
+has_text <- function(x) length(x) == 1L && !is.na(x) && nzchar(trimws(x))
 
 sign_off <- function(root, register_name, keys_wanted, reviewer, review_date, force) {
   spec <- REVIEW_REGISTERS[[register_name]]
@@ -295,6 +308,21 @@ validate_signed_register <- function(root, register_name, updated) {
   blank <- function(x) is.na(x) | !nzchar(trimws(x))
   problems <- list()
   key <- proposal_key(updated, spec)
+  # The closed vocabularies each register's apply_*() enforces, checked here
+  # instead of at the next build. Discovering that `rebase` is spelled
+  # `base_period` when the pipeline refuses to start is a worse way to find out
+  # than being told before the file is written.
+  for (field in names(spec$vocabulary %||% list())) {
+    allowed <- spec$vocabulary[[field]]
+    offending <- !blank(updated[[field]]) & !updated[[field]] %in% allowed
+    if (any(offending)) problems[[length(problems) + 1L]] <- tibble::tibble(
+      series_id = key[offending],
+      problem = paste0(
+        "`", field, "` is '", updated[[field]][offending], "', which is outside the register's ",
+        "vocabulary (", paste(allowed, collapse = ", "), ")."
+      )
+    )
+  }
   if (anyDuplicated(key)) problems[[length(problems) + 1L]] <- tibble::tibble(
     series_id = key[duplicated(key)], problem = "the key appears more than once."
   )

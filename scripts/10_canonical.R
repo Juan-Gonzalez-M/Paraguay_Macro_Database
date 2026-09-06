@@ -453,10 +453,41 @@ write_duplicate_series_candidates <- function(con, root, minimum_periods = DUPLI
 # measure overlap, exact agreement and tolerance breaches. It fires only where
 # somebody has recorded a membership, so it passes vacuously today and is what
 # makes the first mapping safe to record.
+# Two members compared on the normalised period, not on the date each publisher
+# happened to print.
+#
+# Both checks below used to join `af.period = pf.period`, and schema 39 is where
+# that stopped being survivable. The whole point of a canonical membership is to
+# relate series from *different sources*, and different sources do not agree on
+# which day of the month a monthly observation carries: 2,057 monthly series are
+# dated to month end and 1,757 to day 1. So the first cross-source alias anyone
+# declares -- CUADRO 60a's dollar column against exchange_rates 'USD Prom', which
+# publish the same quotation on the same months -- shares zero *dates* with its
+# primary.
+#
+# That broke the pair in opposite directions at once. The value check found no
+# overlapping period, so it compared nothing and passed; the comparability check
+# saw no overlap and blocked the release. A membership was therefore
+# simultaneously untested and rejected, and the untested half is the dangerous
+# one: an alias that overlaps in time but not in dates would have agreed
+# vacuously for as long as anyone cared to look.
+#
+# Both now join on period_start, from the same shared expression the published
+# views use. Aliases must already share a frequency, which the comparability
+# check enforces, so this cannot silently align a month onto a quarter.
+canonical_comparison_events_sql <- function() paste(
+  "SELECT f.series_id, f.value, f.is_deleted,", series_period_bounds_sql(),
+  "FROM", project_qualified_name("fact_series_events"), "f",
+  "JOIN", project_qualified_name("dim_series"), "d ON d.series_id = f.series_id",
+  "LEFT JOIN", project_qualified_name("series_period_bounds"), "b",
+  "  ON b.series_id = f.series_id AND b.period = f.period"
+)
+
 validate_canonical_membership_agreement <- function(con, release_id, tolerance = 1e-9) {
   if (!database_object_exists(con, "map_canonical_series")) return(invisible(FALSE))
   disagreements <- tryCatch(DBI::dbGetQuery(con, paste(
-    "WITH primary_series AS (",
+    "WITH events AS (", canonical_comparison_events_sql(), "),",
+    "primary_series AS (",
     "  SELECT canonical_series_id, series_id FROM", project_qualified_name("map_canonical_series"),
     "  WHERE relationship = 'primary'",
     "), alias_series AS (",
@@ -467,9 +498,8 @@ validate_canonical_membership_agreement <- function(con, release_id, tolerance =
     "       count(*) AS overlapping_periods,",
     "       count(*) FILTER (WHERE abs(pf.value - af.value) >", tolerance, ") AS disagreeing_periods",
     "FROM primary_series p JOIN alias_series a USING (canonical_series_id)",
-    "JOIN", project_qualified_name("fact_series_events"), "pf ON pf.series_id = p.series_id",
-    "JOIN", project_qualified_name("fact_series_events"), "af",
-    "  ON af.series_id = a.series_id AND af.period = pf.period",
+    "JOIN events pf ON pf.series_id = p.series_id",
+    "JOIN events af ON af.series_id = a.series_id AND af.period_start = pf.period_start",
     "WHERE NOT pf.is_deleted AND NOT af.is_deleted",
     "GROUP BY 1, 2 HAVING count(*) FILTER (WHERE abs(pf.value - af.value) >", tolerance, ") > 0"
   )), error = function(e) NULL)
@@ -523,16 +553,17 @@ validate_canonical_membership_comparability <- function(con, release_id) {
   }
   # An alias with no overlapping period has never been tested against its primary.
   vacuous <- tryCatch(DBI::dbGetQuery(con, paste(
-    "WITH p AS (SELECT canonical_series_id, series_id FROM",
+    "WITH events AS (", canonical_comparison_events_sql(), "),",
+    "p AS (SELECT canonical_series_id, series_id FROM",
     project_qualified_name("map_canonical_series"), "WHERE relationship = 'primary'),",
     "a AS (SELECT canonical_series_id, series_id FROM",
     project_qualified_name("map_canonical_series"), "WHERE relationship = 'alias')",
     "SELECT p.canonical_series_id, a.series_id AS alias_series_id",
     "FROM p JOIN a USING (canonical_series_id)",
     "WHERE NOT EXISTS (",
-    "  SELECT 1 FROM", project_qualified_name("fact_series_events"), "pf",
-    "  JOIN", project_qualified_name("fact_series_events"), "af",
-    "    ON af.series_id = a.series_id AND af.period = pf.period AND NOT af.is_deleted",
+    "  SELECT 1 FROM events pf JOIN events af",
+    "    ON af.series_id = a.series_id AND af.period_start = pf.period_start",
+    "       AND NOT af.is_deleted",
     "  WHERE pf.series_id = p.series_id AND NOT pf.is_deleted)"
   )), error = function(e) NULL)
   if (!is.null(vacuous) && nrow(vacuous)) problems <- c(problems, paste0(

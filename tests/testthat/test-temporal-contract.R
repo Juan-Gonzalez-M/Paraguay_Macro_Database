@@ -162,3 +162,72 @@ testthat::test_that("the mixed-convention series are reported rather than silent
   testthat::expect_true(all(c("review_priority", "observations_month_start",
                               "observations_month_end") %in% names(rows)))
 })
+
+testthat::test_that("canonical members are compared on the normalised period", {
+  # The temporal key reaching into the canonical layer, and the reason it had to.
+  #
+  # A canonical membership exists to relate series from different sources, and
+  # different sources do not agree on which day of the month a monthly
+  # observation carries. Both membership checks joined `af.period = pf.period`,
+  # so the first genuine cross-source alias shared zero *dates* with its primary
+  # -- and the two checks then failed in opposite directions: the value check
+  # compared nothing and passed, while the comparability check saw no overlap and
+  # blocked. The untested half is the dangerous one.
+  path <- withr::local_tempfile(fileext = ".duckdb")
+  con <- DBI::dbConnect(duckdb::duckdb(), path)
+  withr::defer(DBI::dbDisconnect(con, shutdown = TRUE))
+  initialize_database(con, project_test_root)
+
+  months <- seq(as.Date("2020-01-01"), as.Date("2020-12-01"), by = "month")
+  DBI::dbWriteTable(con, "dim_series", tibble::tibble(
+    series_id = c("cx:primary", "cx:alias"), source_id = c("src_a", "src_b"),
+    label = c("Rate", "Rate"), unit = "index", scale = "units", frequency = "monthly",
+    first_vintage_id = "cx:v1", series_grain = "scalar_series", unit_code = "INDEX",
+    scale_multiplier = 1, series_sk = 1:2
+  ), append = TRUE)
+  # Identical values, on identical months, dated the way their two publishers
+  # date them: one to the first of the month, one to the last.
+  DBI::dbWriteTable(con, "fact_series_events", tibble::tibble(
+    series_id = rep(c("cx:primary", "cx:alias"), each = length(months)),
+    period = c(months, as.Date(vapply(months, function(m) {
+      as.character(seq(m, by = "month", length.out = 2)[[2]] - 1)
+    }, character(1)))),
+    value = rep(seq_along(months) + 100, times = 2),
+    vintage_id = "cx:v1", publication_date = as.Date("2021-01-15"), is_deleted = FALSE,
+    source_file = "cx.xlsx", series_sk = rep(1:2, each = length(months)), vintage_sk = 1L
+  ), append = TRUE)
+  DBI::dbWriteTable(con, "map_canonical_series", tibble::tibble(
+    canonical_series_id = "canon:cx", series_id = c("cx:primary", "cx:alias"),
+    relationship = c("primary", "alias"), evidence = "fixture",
+    reviewed_by = "fixture", reviewed_at = as.Date("2026-01-01")
+  ), append = TRUE)
+
+  # They share no date at all -- which is the whole point.
+  testthat::expect_equal(DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM canonical.fact_series_events pf",
+    "JOIN canonical.fact_series_events af ON af.period = pf.period",
+    "WHERE pf.series_id = 'cx:primary' AND af.series_id = 'cx:alias'"
+  ))$n[[1]], 0L)
+
+  # And yet they are the same figure on every month, so nothing should fire.
+  DBI::dbExecute(con, "DELETE FROM audit.quality_flags")
+  testthat::expect_true(validate_canonical_membership_agreement(con, "cx"))
+  testthat::expect_equal(DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM audit.quality_flags WHERE release_id = 'cx'"
+  ))$n[[1]], 0L)
+
+  # The comparison is real, not vacuous: change one value and it must be caught.
+  DBI::dbExecute(con, paste(
+    "UPDATE canonical.fact_series_events SET value = value + 5",
+    "WHERE series_id = 'cx:alias' AND period = DATE '2020-06-30'"
+  ))
+  DBI::dbExecute(con, "DELETE FROM audit.quality_flags")
+  testthat::expect_false(validate_canonical_membership_agreement(con, "cx"))
+  flags <- DBI::dbGetQuery(con, paste(
+    "SELECT check_name, detail FROM audit.quality_flags WHERE release_id = 'cx'"
+  ))
+  testthat::expect_equal(flags$check_name, "canonical_alias_disagrees")
+  # One disagreeing month out of twelve compared -- so the overlap was measured,
+  # which is what the old exact-date join could never do.
+  testthat::expect_match(flags$detail, "(1 of 12)", fixed = TRUE)
+})
