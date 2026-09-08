@@ -2704,7 +2704,7 @@ validate_published_release_filter <- function(con, release_id, root = NULL) {
     problems <- c(problems, "config/public_view_contract.csv is missing, so no object declares what it publishes")
     required <- character()
   } else {
-    published <- grep("^(main|marts)\\.", stored$object_name, value = TRUE)
+    published <- grep("^(main|marts|research)\\.", stored$object_name, value = TRUE)
     # An object nobody has classified is the failure this register exists to
     # catch: a view added without anyone saying whether researchers should read
     # it. Undeclared is not the same as diagnostic, and must not default to it.
@@ -3250,6 +3250,9 @@ validate_database <- function(con, manifest, release_id, root, db_path = NULL,
   validate_published_identities(con, release_id, root)
   validate_source_provenance(con, release_id, root)
   validate_availability_quality(con, release_id)
+  if (exists("validate_platform_contracts", mode = "function")) {
+    validate_platform_contracts(con, release_id, root)
+  }
   validate_archive_integrity(con, release_id, root)
   validate_series_review_register(con, release_id, root)
   validate_unit_overrides(con, release_id, root)
@@ -3344,7 +3347,8 @@ validate_database <- function(con, manifest, release_id, root, db_path = NULL,
 write_quality_flag_report <- function(con, release_id, root) {
   if (is.null(root)) return(invisible(NULL))
   flags <- DBI::dbGetQuery(con, paste0(
-    "SELECT * FROM quality_flags WHERE ", attempt_flags_predicate(con, release_id),
+    "SELECT * FROM ", project_qualified_name("quality_flags"), " WHERE ",
+    attempt_flags_predicate(con, release_id),
     " ORDER BY severity, source_id"
   ))
   readr::write_csv(flags, file.path(root, "outputs", "quality_flags_latest.csv"))
@@ -3419,7 +3423,8 @@ write_update_report <- function(con, release_id, root, attempt_id = NULL, build_
   flag_predicate <- if (is.na(attempt_id)) paste0("release_id = ", sql_string(release_id))
                     else paste0("attempt_id = ", sql_string(attempt_id))
   flags <- DBI::dbGetQuery(con, paste0(
-    "SELECT severity, source_id, check_name, detail FROM quality_flags WHERE ",
+    "SELECT severity, source_id, check_name, detail FROM ",
+    project_qualified_name("quality_flags"), " WHERE ",
     flag_predicate, " ORDER BY severity, source_id"
   ))
   # Scoped by attempt, not by release. A report headed "this update" was reading

@@ -32,7 +32,14 @@ CANONICAL_REVIEW_STATUSES <- c("proposed", "reviewed", "retired")
 # of them a component of the other, which is false, or to leave the duplication
 # undeclared, which is what lets a researcher count it twice.
 CANONICAL_RELATIONSHIPS <- c(
-  "primary", "alias", "component", "alternative_frequency", "spliced_predecessor"
+  "primary", "replica", "historical_segment", "methodology_break", "component",
+  "aggregate", "projection",
+  # Compatibility spellings retained for signed registers created before v40.
+  "alias", "alternative_frequency", "spliced_predecessor"
+)
+CANONICAL_OVERLAP_POLICIES <- c(
+  "require_equal_then_primary", "prefer_lower_precedence", "append_nonoverlap",
+  "no_composite"
 )
 METHODOLOGY_CHANGE_TYPES <- c(
   "definition", "classification", "base_period", "coverage", "valuation", "compilation_method"
@@ -76,12 +83,17 @@ read_register_csv <- function(root, file_name) {
 }
 
 apply_canonical_series <- function(con, root) {
-  required <- c("canonical_series_id", "concept_id", "definition", "domain", "subdomain",
+  required <- c("canonical_series_id", "canonical_name", "concept_id", "definition", "domain", "subdomain",
                 "frequency", "unit_code", "currency", "stock_flow", "nominal_real",
                 "seasonal_adjustment", "transformation", "valuation", "methodology_regime_id",
                 "reviewed_status", "reviewed_by", "reviewed_at")
+  series_input <- read_register_csv(root, "canonical_series.csv")
+  if (identical(names(series_input), setdiff(required, "canonical_name"))) {
+    series_input$canonical_name <- series_input$concept_id
+    series_input <- series_input[, required]
+  }
   series <- documented_register_guard(
-    read_register_csv(root, "canonical_series.csv"), "config/canonical_series.csv",
+    series_input, "config/canonical_series.csv",
     required, "canonical_series_id"
   )
   if (nrow(series)) {
@@ -97,17 +109,62 @@ apply_canonical_series <- function(con, root) {
       "of the canonical layer is that it does not move when a parser does.", call. = FALSE
     )
   }
-  members_required <- c("canonical_series_id", "series_id", "relationship", "evidence",
-                        "reviewed_by", "reviewed_at")
-  members <- documented_register_guard(
-    read_register_csv(root, "canonical_series_members.csv"),
-    "config/canonical_series_members.csv", members_required,
-    c("canonical_series_id", "series_id")
+  members_required <- c(
+    "canonical_series_id", "series_id", "relationship", "valid_from", "valid_to",
+    "precedence", "overlap_policy", "evidence", "reviewed_by", "reviewed_at"
   )
+  members <- read_register_csv(root, "canonical_series_members.csv")
+  # Read old signed registers during the compatibility window.  Once loaded,
+  # they receive the safe v40 defaults and are subject to the same checks.
+  if (identical(names(members), c(
+    "canonical_series_id", "series_id", "relationship", "evidence", "reviewed_by", "reviewed_at"
+  ))) {
+    members$valid_from <- ""; members$valid_to <- ""; members$precedence <- "1"
+    members$overlap_policy <- "require_equal_then_primary"
+    members <- members[, members_required]
+  }
+  if (!identical(names(members), members_required)) stop(
+    "Register guard: config/canonical_series_members.csv columns changed or are reordered.",
+    call. = FALSE
+  )
+  if (nrow(members)) {
+    required_values <- setdiff(members_required, c("valid_from", "valid_to"))
+    for (field in required_values) if (any(is.na(members[[field]]) | !nzchar(trimws(members[[field]])))) {
+      stop("Register guard: config/canonical_series_members.csv requires ", field,
+           " on every row.", call. = FALSE)
+    }
+    if (anyDuplicated(members[c("canonical_series_id", "series_id")])) stop(
+      "Register guard: config/canonical_series_members.csv has duplicate canonical_series_id/series_id rows.",
+      call. = FALSE
+    )
+    dates <- suppressWarnings(lubridate::ymd(members$reviewed_at, quiet = TRUE))
+    if (any(is.na(dates)) || any(members$reviewed_by == "unreviewed")) stop(
+      "Register guard: canonical members require a named reviewer and YYYY-MM-DD reviewed_at.",
+      call. = FALSE
+    )
+  }
   if (nrow(members)) {
     invalid <- setdiff(unique(members$relationship), CANONICAL_RELATIONSHIPS)
     if (length(invalid)) stop(
       "Canonical guard: unsupported relationship: ", paste(invalid, collapse = "; "), call. = FALSE
+    )
+    invalid_overlap <- setdiff(unique(members$overlap_policy), CANONICAL_OVERLAP_POLICIES)
+    if (length(invalid_overlap)) stop(
+      "Canonical guard: unsupported overlap_policy: ",
+      paste(invalid_overlap, collapse = "; "), call. = FALSE
+    )
+    precedence <- suppressWarnings(as.integer(members$precedence))
+    if (any(is.na(precedence) | precedence < 1L)) stop(
+      "Canonical guard: precedence must be a positive integer.", call. = FALSE
+    )
+    from <- suppressWarnings(lubridate::ymd(dplyr::na_if(trimws(members$valid_from), ""), quiet = TRUE))
+    to <- suppressWarnings(lubridate::ymd(dplyr::na_if(trimws(members$valid_to), ""), quiet = TRUE))
+    bad_date <- (!is.na(members$valid_from) & nzchar(trimws(members$valid_from)) & is.na(from)) |
+      (!is.na(members$valid_to) & nzchar(trimws(members$valid_to)) & is.na(to)) |
+      (!is.na(from) & !is.na(to) & from > to)
+    if (any(bad_date)) stop(
+      "Canonical guard: member validity dates must be YYYY-MM-DD and valid_from <= valid_to.",
+      call. = FALSE
     )
     unknown_canonical <- setdiff(members$canonical_series_id, series$canonical_series_id)
     if (length(unknown_canonical)) stop(
@@ -140,9 +197,19 @@ apply_canonical_series <- function(con, root) {
   }
   canonical_rows <- series %>% dplyr::mutate(
     reviewed_at = suppressWarnings(lubridate::ymd(.data$reviewed_at, quiet = TRUE))
+  ) %>% dplyr::select(
+    canonical_series_id, concept_id, definition, domain, subdomain, frequency, unit_code,
+    currency, stock_flow, nominal_real, seasonal_adjustment, transformation, valuation,
+    methodology_regime_id, reviewed_status, reviewed_by, reviewed_at, canonical_name
   )
   member_rows <- members %>% dplyr::mutate(
+    valid_from = suppressWarnings(lubridate::ymd(dplyr::na_if(trimws(.data$valid_from), ""), quiet = TRUE)),
+    valid_to = suppressWarnings(lubridate::ymd(dplyr::na_if(trimws(.data$valid_to), ""), quiet = TRUE)),
+    precedence = as.integer(.data$precedence),
     reviewed_at = suppressWarnings(lubridate::ymd(.data$reviewed_at, quiet = TRUE))
+  ) %>% dplyr::select(
+    canonical_series_id, series_id, relationship, evidence, reviewed_by, reviewed_at,
+    valid_from, valid_to, precedence, overlap_policy
   )
   # The two tables are rewritten together or not at all: a membership row that
   # outlived its canonical series would reference nothing, and
@@ -292,8 +359,9 @@ create_canonical_views <- function(con) {
   # excluded here and reported by apply_canonical_series() so a reviewer
   # re-declares the membership against the successor they actually meant.
   create_project_view(con, "v_canonical_membership", paste(
-    "SELECT m.canonical_series_id, m.relationship, r.current_series_id AS series_id,",
-    "m.series_id AS declared_series_id, m.reviewed_by, m.reviewed_at",
+    "SELECT m.canonical_series_id, m.relationship, m.valid_from, m.valid_to,",
+    "m.precedence, m.overlap_policy, r.current_series_id AS series_id,",
+    "m.series_id AS declared_series_id, m.evidence, m.reviewed_by, m.reviewed_at",
     "FROM map_canonical_series m",
     "JOIN v_series_id_resolution r ON r.published_series_id = m.series_id",
     "WHERE r.current_series_id IS NOT NULL AND r.resolution_cardinality = 'one_to_one'"
@@ -492,7 +560,7 @@ validate_canonical_membership_agreement <- function(con, release_id, tolerance =
     "  WHERE relationship = 'primary'",
     "), alias_series AS (",
     "  SELECT canonical_series_id, series_id FROM", project_qualified_name("map_canonical_series"),
-    "  WHERE relationship = 'alias'",
+    "  WHERE relationship IN ('alias', 'replica')",
     ")",
     "SELECT p.canonical_series_id, a.series_id AS alias_series_id,",
     "       count(*) AS overlapping_periods,",
@@ -541,7 +609,7 @@ validate_canonical_membership_comparability <- function(con, release_id) {
     group <- members[members$canonical_series_id == canonical, , drop = FALSE]
     # A fragment covers a different span by definition, so only aliases are held
     # to the frequency and unit of their primary.
-    comparable <- group[group$relationship %in% c("primary", "alias"), , drop = FALSE]
+    comparable <- group[group$relationship %in% c("primary", "alias", "replica"), , drop = FALSE]
     if (nrow(comparable) < 2L) next
     for (field in c("unit_code", "scale_multiplier", "frequency")) {
       values <- unique(comparable[[field]])
@@ -557,7 +625,7 @@ validate_canonical_membership_comparability <- function(con, release_id) {
     "p AS (SELECT canonical_series_id, series_id FROM",
     project_qualified_name("map_canonical_series"), "WHERE relationship = 'primary'),",
     "a AS (SELECT canonical_series_id, series_id FROM",
-    project_qualified_name("map_canonical_series"), "WHERE relationship = 'alias')",
+    project_qualified_name("map_canonical_series"), "WHERE relationship IN ('alias', 'replica'))",
     "SELECT p.canonical_series_id, a.series_id AS alias_series_id",
     "FROM p JOIN a USING (canonical_series_id)",
     "WHERE NOT EXISTS (",

@@ -1,4 +1,13 @@
 schema_name,object_name,object_type,public_scope,carries_release_boundary,reason,reviewed_by,reviewed_at
+research,series_catalog_approved,view,current,FALSE,Reviewed canonical catalogue; rows may exist before observations pass both review gates.,platform_contract,2026-09-07
+research,observations_latest_actual,view,current,TRUE,Canonical realized observations with deterministic member precedence and both economic review gates.,platform_contract,2026-09-07
+research,observations_latest_statement,view,current,TRUE,Reviewed actual observations plus explicitly mapped publisher projections.,platform_contract,2026-09-07
+research,quality_flags,view,current,TRUE,Scoped quality issues raised by the attempt that produced the active data release.,platform_contract,2026-09-07
+research,bank_panel,view,current,TRUE,Validated bank and finance-company statement panel at an explicit entity-item-currency grain.,platform_contract,2026-09-07
+research,lrm_auction_events,view,current,TRUE,Reviewed LRM auction observations exposed at event grain rather than counted as macro series.,platform_contract,2026-09-07
+research,interbank_events,view,current,TRUE,Reviewed interbank observations exposed at event grain rather than counted as macro series.,platform_contract,2026-09-07
+research,bond_curves,view,current,TRUE,Curve nodes published only after the curve grain and source table are reviewed.,platform_contract,2026-09-07
+research,securities_transactions,view,current,TRUE,Securities transactions published only after the event grain and source table are reviewed.,platform_contract,2026-09-07
 main,v_banks_carteras_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
 main,v_banks_credito_actividad_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31
 main,v_banks_credito_sector_documented_all,view,all,FALSE,"Unfiltered twin of the current object of the same name: it sees staged and blocked releases, and exists for the ingestion path and for diagnosis. Not a research interface.",juan.manuel.gonzalez,2026-08-31

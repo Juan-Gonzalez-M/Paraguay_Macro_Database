@@ -280,3 +280,47 @@ concept_catalogue <- function(con, reviewed_only = FALSE) {
     " ORDER BY concept_domain, concept_id, source_id, series_id"
   ))
 }
+
+# --- Schema-40 canonical research API --------------------------------------
+# These helpers intentionally read only the compact, fail-closed research
+# schema. An empty result means that the relevant economic definitions have not
+# yet completed both table and series review; callers are never silently routed
+# to the provisional source-series surface.
+research_catalogue <- function(con, canonical_series_id = NULL) {
+  where <- if (is.null(canonical_series_id)) "" else paste0(
+    " WHERE canonical_series_id IN (",
+    paste(vapply(canonical_series_id, sql_string, character(1)), collapse = ", "), ")"
+  )
+  DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM research.series_catalog_approved", where,
+    " ORDER BY canonical_series_id"
+  ))
+}
+
+research_observations <- function(con, canonical_series_id = NULL,
+                                  include_projections = FALSE) {
+  object <- if (isTRUE(include_projections)) {
+    "research.observations_latest_statement"
+  } else {
+    "research.observations_latest_actual"
+  }
+  where <- if (is.null(canonical_series_id)) "" else paste0(
+    " WHERE canonical_series_id IN (",
+    paste(vapply(canonical_series_id, sql_string, character(1)), collapse = ", "), ")"
+  )
+  DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM ", object, where,
+    " ORDER BY canonical_series_id, reference_period_start, source_period_date"
+  ))
+}
+
+research_quality_flags <- function(con, series_id = NULL) {
+  where <- if (is.null(series_id)) "" else paste0(
+    " WHERE series_id IN (",
+    paste(vapply(series_id, sql_string, character(1)), collapse = ", "), ")"
+  )
+  DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM research.quality_flags", where,
+    " ORDER BY severity DESC, check_name, source_id, source_sheet, series_id, period"
+  ))
+}

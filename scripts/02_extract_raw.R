@@ -436,6 +436,8 @@ SCHEMA_MIGRATIONS <- list(
        change = "Reproducibility evidence that matches what actually happened. The environment record covered 19 declared packages out of 61 in the lockfile and no platform at all, so an arm64 macOS build and an x86 Linux build produced identical identities -- and DBI and duckdb, the two packages that write the database, are built under a different R patch release than the one running, which nothing could see. The full lockfile-intersected library is now recorded with each package's Built field, alongside the platform, the OS release and a digest of the loaded namespaces. Distribution artifacts are identified by their bytes: the artifact id hashed a size read while the connection was still open and more rows were still to be written, so the recorded size was 37% out and the identifier was not derivable from the shipped file. The artifact is now recorded after final close with a real SHA-256, and compaction registers the compacted file as a linked transformation of the file it replaced. The discontinuity and gap screens gain row-level worklists -- 38,433 flagged observations summarised into fifteen rows by source could not be investigated. A structured run log survives the process, for the failures that never reach the database. Changes no observation."),
   list(version = 39L, reingests = character(), registry_driven = TRUE,
        change = "The research interface the readiness audit found missing. Monthly series do not share a day convention -- 2,057 dated to month end, 1,757 to day 1, and 164 alternating inside a single series -- and the normalisation that resolves it existed only on v_series_observations, while the documented read path pointed at v_series_latest, which did not carry it. Joining the price index to the exchange rate on `period` therefore returned zero rows with no error and no warning. Both current-value carriers now publish period_start and period_end, `period` keeps the date the publisher printed, the temporal contract is written down, and the release blocks on an unordered bound or a duplicate canonical period. The documented helper returned seven columns with no label, unit or frequency, so v_series_research publishes the full interpretable record on the path researchers are told to use -- including the published table title, the only field separating 1,599 labels that name more than one series, and until now reachable only through a staging table. A wide extraction refuses to guess its join key, and a label that names more than one series is an error rather than a silent choice among the 4,015 scalar series that share one. Exchange-rate units are corrected against the published worksheet titles: the five CUADRO 60c series tagged as a price of foreign currency are index numbers based on January 1995, and the CUADRO 60a euro, Argentine-peso and Brazilian-real quotations do not have a US dollar denominator. Acquisition time is recorded per vintage with the quality of that evidence beside it, so a conservative upper bound is distinguishable from a publisher's release timestamp instead of passing as one. And a release built from an uncommitted tree blocks, with the same explicit override the environment check already had. Changes no observation.")
+  ,list(version = 40L, reingests = character(), registry_driven = TRUE,
+       change = "Canonical members gain effective dates, precedence and explicit overlap policy; source semantics retain publisher labels and full paths; missingness and panel-resolution contracts become governed inputs; quality flags gain row and series scope; legacy vintages are explicitly snapshot-only; and a nine-view research schema publishes only reviewed, collision-free data while compatibility views remain available. Changes no source observation.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -1314,6 +1316,8 @@ DATABASE_TABLE_STATEMENTS <- c(
   "CREATE TABLE IF NOT EXISTS map_canonical_series (canonical_series_id VARCHAR, series_id VARCHAR, relationship VARCHAR, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, PRIMARY KEY (canonical_series_id, series_id))",
   "CREATE TABLE IF NOT EXISTS methodology_regime (regime_id VARCHAR PRIMARY KEY, concept_key VARCHAR, regime_label VARCHAR, change_type VARCHAR, effective_from DATE, effective_to DATE, comparability VARCHAR, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE)",
   "CREATE TABLE IF NOT EXISTS classification_concordance (concordance_id VARCHAR PRIMARY KEY, from_scheme VARCHAR, from_code VARCHAR, to_scheme VARCHAR, to_code VARCHAR, relationship VARCHAR, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE)",
+  "CREATE TABLE IF NOT EXISTS missingness_contracts (source_id VARCHAR, source_sheet VARCHAR, contract_type VARCHAR NOT NULL, calendar_frequency VARCHAR, applicability VARCHAR NOT NULL, evidence VARCHAR NOT NULL, reviewed_by VARCHAR NOT NULL, reviewed_at DATE, PRIMARY KEY (source_id, source_sheet))",
+  "CREATE TABLE IF NOT EXISTS panel_resolution (resolution_id VARCHAR PRIMARY KEY, table_name VARCHAR NOT NULL, source_sheet VARCHAR NOT NULL, source_row BIGINT NOT NULL, disposition VARCHAR NOT NULL, measure VARCHAR, canonical_source_row BIGINT, evidence VARCHAR NOT NULL, reviewed_by VARCHAR NOT NULL, reviewed_at DATE)",
   # Keyed by (source_id, source_sheet) since schema 32: a source declares one
   # grain under the '*' wildcard and may override it per worksheet, so source_id
   # alone is no longer unique.
@@ -1696,6 +1700,29 @@ initialize_database <- function(con, root = NULL) {
   # acquisition from above are both dates in the same column, and a point-in-time
   # claim that cannot tell them apart is overstating what it knows. Schema 39.
   ensure_table_column(con, "source_provenance", "availability_quality", "VARCHAR")
+  ensure_table_column(con, "source_provenance", "snapshot_policy", "VARCHAR")
+  # Schema 40 keeps the publisher-facing identity separate from the reviewed
+  # research name and makes the full header path queryable at series grain.
+  ensure_table_column(con, "dim_series", "source_label", "VARCHAR")
+  ensure_table_column(con, "dim_series", "canonical_name", "VARCHAR")
+  ensure_table_column(con, "dim_series", "measure_type", "VARCHAR")
+  ensure_table_column(con, "dim_series", "full_series_path", "VARCHAR")
+  # Canonical composition must say which member wins and when.  These columns
+  # are nullable on databases predating schema 40 and are normalized by the
+  # governed register loader before a member can be published.
+  ensure_table_column(con, "map_canonical_series", "valid_from", "DATE")
+  ensure_table_column(con, "map_canonical_series", "valid_to", "DATE")
+  ensure_table_column(con, "map_canonical_series", "precedence", "INTEGER")
+  ensure_table_column(con, "map_canonical_series", "overlap_policy", "VARCHAR")
+  ensure_table_column(con, "canonical_series", "canonical_name", "VARCHAR")
+  # A quality issue can now point to the exact object it qualifies rather than
+  # surviving only as release prose.
+  ensure_table_column(con, "quality_flags", "scope_type", "VARCHAR")
+  ensure_table_column(con, "quality_flags", "series_id", "VARCHAR")
+  ensure_table_column(con, "quality_flags", "period", "DATE")
+  ensure_table_column(con, "quality_flags", "status", "VARCHAR")
+  ensure_table_column(con, "quality_flags", "test_version", "VARCHAR")
+  ensure_table_column(con, "quality_flags", "waiver_evidence", "VARCHAR")
   # What the publisher wrote in the cell, where there was no number to read. The
   # reason column alone says the status; this says which token produced it, so a
   # reviewer can go from the classification back to the worksheet.
@@ -1971,6 +1998,12 @@ initialize_database <- function(con, root = NULL) {
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 39")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (39, current_timestamp, 'The current-value views carry normalized period bounds, so a cross-source monthly join stops returning an empty sample without saying so; v_series_research publishes the interpretable record, table title included, on the documented read path; the extraction helpers refuse an ambiguous label and an unstated join key; reviewed unit and currency corrections outrank the worksheet default; acquisition time carries the quality of its evidence; and a release built from an uncommitted tree blocks')")
   }
+  if (exists("initialize_platform_contracts", mode = "function")) {
+    initialize_platform_contracts(con)
+  }
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 40")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (40, current_timestamp, 'Governed canonical precedence, scoped quality, explicit snapshot and missingness policy, collision resolution, and a fail-closed research API')")
+  }
 }
 
 # The migration's one job that is not DDL: keep the database published.
@@ -2223,16 +2256,34 @@ current_attempt_id <- function(con, release_id) {
   if (!nrow(open)) NA_character_ else open$attempt_id[[1]]
 }
 
-insert_quality_flag <- function(con, release_id, severity, check_name, source_id = NA_character_, detail, vintage_id = NA_character_, source_sheet = NA_character_) {
+insert_quality_flag <- function(con, release_id, severity, check_name, source_id = NA_character_,
+                                detail, vintage_id = NA_character_, source_sheet = NA_character_,
+                                scope_type = NULL, series_id = NA_character_, period = as.Date(NA),
+                                status = "open", test_version = "schema_40",
+                                waiver_evidence = NA_character_) {
   attempt_id <- current_attempt_id(con, release_id)
-  key <- paste(attempt_id, release_id, vintage_id, severity, check_name, source_id, source_sheet, detail, sep = "|")
+  key <- paste(
+    attempt_id, release_id, vintage_id, severity, check_name, source_id, source_sheet,
+    scope_type, series_id, as.character(period), status, test_version, detail, sep = "|"
+  )
   check_id <- digest::digest(key, algo = "sha256", serialize = FALSE)
-  existing <- DBI::dbGetQuery(con, paste0("SELECT COUNT(*) AS n FROM quality_flags WHERE check_id = ", sql_string(check_id)))$n[[1]]
-  if (!existing) DBI::dbWriteTable(con, "quality_flags", tibble(
+  existing <- DBI::dbGetQuery(con, paste0(
+    "SELECT COUNT(*) AS n FROM ", project_qualified_name("quality_flags"),
+    " WHERE check_id = ", sql_string(check_id)
+  ))$n[[1]]
+  if (!existing) DBI::dbWriteTable(
+    con, DBI::Id(schema = project_schema_for("quality_flags"), table = "quality_flags"), tibble(
     check_id = check_id, attempt_id = attempt_id, release_id = release_id, vintage_id = vintage_id,
     severity = severity, check_name = check_name, source_id = source_id,
-    source_sheet = source_sheet, detail = detail, created_at = Sys.time()
-  ), append = TRUE)
+    source_sheet = source_sheet, detail = detail, created_at = Sys.time(),
+    scope_type = if (is.null(scope_type)) {
+      if (!is.na(series_id)) "series" else if (!is.na(source_sheet)) "table"
+      else if (!is.na(source_id)) "source" else if (!is.na(vintage_id)) "vintage" else "release"
+    } else scope_type,
+    series_id = series_id, period = as.Date(period), status = status,
+      test_version = test_version, waiver_evidence = waiver_evidence
+    ), append = TRUE
+  )
   invisible(check_id)
 }
 

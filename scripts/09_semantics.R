@@ -1567,7 +1567,11 @@ apply_observation_missingness <- function(con, root = NULL, build_id = NA_charac
     "SELECT series_id, source_id, source_sheet, vintage_id, frequency, period,",
     "source_row, source_column FROM documented_series_snapshot",
     "WHERE source_row IS NOT NULL AND source_column IS NOT NULL AND frequency IN (",
-    paste(vapply(EXPECTED_GRID_FREQUENCIES, sql_string, character(1)), collapse = ", "), ")"
+    paste(vapply(EXPECTED_GRID_FREQUENCIES, sql_string, character(1)), collapse = ", "), ")",
+    "AND EXISTS (SELECT 1 FROM", project_qualified_name("missingness_contracts"), "c",
+    " WHERE c.source_id = documented_series_snapshot.source_id",
+    " AND c.contract_type = 'regular_calendar'",
+    " AND (c.source_sheet = documented_series_snapshot.source_sheet OR c.source_sheet = '*'))"
   ))
   if (!nrow(observed)) return(invisible(0L))
   observed$period <- as.Date(observed$period)

@@ -39,6 +39,12 @@ All 22 current vintages are `inferred_upper_bound`, dated 2026-08-24 from
 `input_archive/archive_manifest.csv`. `outputs/source_provenance_worklist.csv` names, per vintage,
 which fields are still missing and what each one costs.
 
+Schema 40 makes the use restriction machine-readable as
+`raw.source_provenance.snapshot_policy = 'legacy_current_snapshot_only'`. A genuinely new hash is
+labelled `verified_current_snapshot` or `release_history` only after the acquisition register is
+complete. This policy is independent of engineering rebuilds: running the same bytes through newer
+code does not create a statistical vintage.
+
 **`available_at` is never derived from the reference period.** The observations span 1945 to 2028;
 inferring availability from the period a figure describes is precisely the look-ahead the column
 exists to prevent, and no code path does it. `source_files.publication_date` — read from the filename

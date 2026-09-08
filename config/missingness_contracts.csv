@@ -1,0 +1,23 @@
+source_id,source_sheet,contract_type,calendar_frequency,applicability,evidence,reviewed_by,reviewed_at
+bank_reference,*,panel_conditional,not_applicable,Reference rows exist only for institutions represented by the publisher.,Source registry and declared entity-panel grain.,platform_contract,2026-09-07
+banking_indicators,*,regular_calendar,declared_series_frequency,Expected periods follow each admitted scalar series frequency.,Source registry and declared scalar-series grain.,platform_contract,2026-09-07
+banks,*,panel_conditional,not_applicable,"Expected rows depend on institution, statement and reporting applicability.",Source registry and declared entity-panel grain.,platform_contract,2026-09-07
+bcp_fx_daily,*,regular_calendar,daily_business_calendar,Absence is assessed only on the publisher operating-day calendar.,Source registry and documented daily frequency.,platform_contract,2026-09-07
+compensatory_fx_sales,*,regular_calendar,monthly,Expected periods are calendar months within the published reporting span.,Source registry and documented monthly frequency.,platform_contract,2026-09-07
+corporate_bond_curves,*,observed_only,not_applicable,A curve node exists only when the publisher estimates that combination.,Source registry and declared curve-panel grain.,platform_contract,2026-09-07
+credit_survey,*,regular_calendar,quarterly,Expected periods are survey quarters inside each admitted series span.,Source registry and documented survey frequency.,platform_contract,2026-09-07
+direct_investment,*,regular_calendar,declared_series_frequency,Scalar worksheets follow their frequency; panel overrides remain conditional.,Source registry and worksheet grain overrides.,platform_contract,2026-09-07
+economic_annex,*,regular_calendar,declared_series_frequency,Expected periods follow each regular scalar series frequency.,Source registry and declared scalar-series grain.,platform_contract,2026-09-07
+eve,*,regular_calendar,monthly_survey,Expected periods follow the monthly survey publication sequence.,Source registry and documented survey frequency.,platform_contract,2026-09-07
+exchange_houses,*,panel_conditional,not_applicable,Expected rows depend on entity existence and item applicability.,Source registry and declared entity-panel grain.,platform_contract,2026-09-07
+exchange_rates,*,regular_calendar,declared_series_frequency,"Expected periods follow each quotation's declared frequency.",Source registry and declared scalar-series grain.,platform_contract,2026-09-07
+financial,*,panel_conditional,not_applicable,"Expected rows depend on institution, statement and reporting applicability.",Source registry and declared entity-panel grain.,platform_contract,2026-09-07
+financial_indicators,*,regular_calendar,monthly,Expected periods are calendar months inside each admitted series span.,Source registry and documented monthly frequency.,platform_contract,2026-09-07
+fx_operations,*,regular_calendar,declared_series_frequency,Expected periods follow the declared monthly or annual frequency.,Source registry and declared scalar-series grain.,platform_contract,2026-09-07
+icc,*,regular_calendar,monthly_survey,Expected periods follow the monthly confidence-survey sequence.,Source registry and documented survey frequency.,platform_contract,2026-09-07
+insurance_annex,*,regular_calendar,annual,Expected periods are annual reporting dates inside each admitted series span.,Source registry and documented annual frequency.,platform_contract,2026-09-07
+interbank_market,*,event_structural_absence,not_applicable,A date without an operation is structurally absent and not missing.,Source registry and declared event grain.,platform_contract,2026-09-07
+liquidity_facility,*,event_structural_absence,not_applicable,A date without an operation is structurally absent and not missing.,Source registry and declared event grain.,platform_contract,2026-09-07
+lrm_auctions,*,event_structural_absence,not_applicable,A date without an auction is structurally absent and not missing.,Source registry and declared event grain.,platform_contract,2026-09-07
+payments,*,regular_calendar,monthly,Expected periods are calendar months inside each admitted series span.,Source registry and documented monthly frequency.,platform_contract,2026-09-07
+securities_trades,*,event_structural_absence,not_applicable,A date without a transaction is structurally absent and not missing.,Source registry and declared event grain.,platform_contract,2026-09-07

@@ -1,4 +1,4 @@
-# Paraguay macroeconomic database — governed pilot v38
+# Paraguay macroeconomic database — governed pilot v40
 
 ## About this project
 
@@ -16,13 +16,13 @@ How far that trace goes depends on the source family, and the difference matters
 What this buys a researcher or analyst working with Paraguayan macro/financial data:
 
 - **One queryable history instead of dozens of spreadsheets.** All 22 sources share a common provenance, vintage and quality-flag model, so a single SQL query can span sources that would otherwise require manually reconciling incompatible Excel layouts every month.
-- **Point-in-time correctness.** Because every observation is tied to the publication vintage that produced it, you can ask "what did this series look like as of a past release," not just "what does it look like now" — essential for reproducing prior analysis or auditing a revision.
+- **Point-in-time-safe architecture.** Every observation is tied to a publication vintage, but the shipped legacy data contain only one inferred current snapshot per source. The machinery can answer past-release questions only after genuine historical releases are archived; it never presents the current revised history as real-time data.
 - **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `release_blocked` produced error-severity flags, is never published through the research views, and stops the caller with a nonzero status.
 - **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
 
-The schema is at version 39. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. The current readiness limitations and remediation plan are in `revisiones/EMPIRICAL_READINESS_2026-09-03.md`.
+The schema is at version 40. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. The current readiness limitations and remediation plan are in `Paraguay_Macro_Database_Audit.md`.
 
-**What is and is not research-ready, as of schema 39.** The extraction interface, the temporal
+**What is and is not research-ready, as of schema 40.** The extraction interface, the temporal
 contract and the known unit defects are closed: a cross-source monthly sample can now be built
 through the documented path without silently returning nothing, and the exchange-rate units mean what
 they say. The **economic review is not done**. `config/series_review.csv` is empty, so
@@ -43,6 +43,7 @@ Three access paths answer three different questions, and using the wrong one is 
 | `series_as_of_date(d)` | "What did the database say on date `d`?" | Point-in-time, realized observations only; `series_statement_as_of_date(d)` includes projections. Ranks over **every vintage that was ever published**, not the ones currently published. **Snapshot-limited today** — see below. |
 | `main.v_series_research` | "What is this number, and may I use it?" | Every value on the current path, with the label, the **published table title**, normalized period bounds, unit, scale, currency, review status and availability beside it. Realized observations only. It rescales nothing, deflates nothing and splices nothing. **Start here.** |
 | `marts.v_research_series` and the validated marts | "What has an economist signed off on?" | Only series that an economist has reviewed in `config/series_review.csv` **and** whose worksheets are `validated` — two different reviews of two different objects, both required. **This is currently 0 rows by design**: no series has been through that review yet. |
+| `research.*` | "What is the stable public research API?" | Nine narrowly scoped views for approved canonical observations, catalog metadata, scoped flags, and grain-specific panels/events. They fail closed while reviews are unsigned. Start new production research here. |
 
 Four things a researcher has to know:
 
@@ -115,7 +116,7 @@ Replace it only when an official reviewed reference version changes. Its fifteen
 
 ## Current release and change history
 
-The active project is schema 38. `CHANGELOG.md` is the single maintained implementation history;
+The active project is schema 40. `CHANGELOG.md` is the single maintained implementation history;
 `docs/SCHEMA_MIGRATIONS.md` is generated from the migration registry and records the executable
 upgrade path. Historical audit narratives and version-specific repair notes are intentionally not
 part of the current distribution. The only current readiness assessment and remediation plan is
@@ -132,6 +133,7 @@ part of the current distribution. The only current readiness assessment and reme
 | Series semantics | `dim_series`, `dim_concept`, `map_series_concept`, `fact_series_events`, `series_revisions` | Source series, reviewed concepts, explicit relationships and sparse change/removal events |
 | Quality and operations | `structure_checks`, `quality_flags`, `discarded_rows`, `semantic_coverage`, `ingestion_stage_timings` | Fail-closed guards, omissions, checks, limitations and measured runtime by stage |
 | Views | `v_series_latest`, `v_series_catalogue`, `v_latest_raw_*`, `v_*_documented`, `v_*_latest` | Current, analysis-oriented access without losing source coordinates |
+| Stable research API | `research.series_catalog_approved`, `research.observations_latest_actual`, `research.observations_latest_statement`, grain-specific views | Canonical, reviewed, release-isolated exports; empty is the safe result until economic sign-off |
 
 `report_cells` is a compatibility view that reconstructs the full vintage-sheet-cell inventory from deduplicated content plus vintage links. It is not a claim of harmonized statistical coverage.
 

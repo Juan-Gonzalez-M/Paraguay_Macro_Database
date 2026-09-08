@@ -95,7 +95,7 @@ REVIEW_REGISTERS <- list(
   ),
   canonical_series = list(
     file = "canonical_series.csv",
-    columns = c("canonical_series_id", "concept_id", "definition", "domain", "subdomain",
+    columns = c("canonical_series_id", "canonical_name", "concept_id", "definition", "domain", "subdomain",
                 "frequency", "unit_code", "currency", "stock_flow", "nominal_real",
                 "seasonal_adjustment", "transformation", "valuation", "methodology_regime_id",
                 "reviewed_status", "reviewed_by", "reviewed_at"),
@@ -105,7 +105,8 @@ REVIEW_REGISTERS <- list(
   ),
   canonical_series_members = list(
     file = "canonical_series_members.csv",
-    columns = c("canonical_series_id", "series_id", "relationship", "evidence",
+    columns = c("canonical_series_id", "series_id", "relationship", "valid_from", "valid_to",
+                "precedence", "overlap_policy", "evidence",
                 "reviewed_by", "reviewed_at"),
     key = c("canonical_series_id", "series_id"),
     stamped = c("reviewed_by", "reviewed_at"),
@@ -148,6 +149,16 @@ read_proposals <- function(root, register_name) {
   proposals <- readr::read_csv(
     path, show_col_types = FALSE, col_types = readr::cols(.default = readr::col_character())
   )
+  # Schema-40 defaults let the existing unsigned evidence pack be reviewed
+  # without pretending that a mechanical CSV migration was an economic review.
+  if (identical(register_name, "canonical_series") && !"canonical_name" %in% names(proposals)) {
+    proposals$canonical_name <- proposals$concept_id
+  }
+  if (identical(register_name, "canonical_series_members") &&
+      !"precedence" %in% names(proposals)) {
+    proposals$valid_from <- ""; proposals$valid_to <- ""; proposals$precedence <- "1"
+    proposals$overlap_policy <- "require_equal_then_primary"
+  }
   expected <- c(setdiff(spec$columns, spec$stamped), PROPOSAL_ANNOTATION_COLUMNS)
   missing <- setdiff(expected, names(proposals))
   if (length(missing)) stop(

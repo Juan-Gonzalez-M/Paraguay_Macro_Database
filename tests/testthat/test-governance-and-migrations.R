@@ -602,7 +602,9 @@ testthat::test_that("every object lives in the storage layer that says what it i
     "SELECT schema_name, count(*) AS tables FROM duckdb_tables()",
     "WHERE NOT internal GROUP BY 1"
   ))
-  testthat::expect_setequal(layers$schema_name, PROJECT_SCHEMAS[PROJECT_SCHEMAS != "marts"])
+  testthat::expect_setequal(
+    layers$schema_name, setdiff(PROJECT_SCHEMAS, c("marts", "research"))
+  )
   # Nothing is left in main. A table there is one nobody has said the purpose of,
   # which is the state the audit found the whole database in.
   testthat::expect_false("main" %in% layers$schema_name)

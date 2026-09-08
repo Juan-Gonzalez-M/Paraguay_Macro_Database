@@ -1,5 +1,27 @@
 # Changelog
 
+## v40
+
+Canonical-platform remediation from `Paraguay_Macro_Database_Audit.md`. Changes no source
+observation.
+
+- Added a compact nine-view `research` schema. Canonical observations require reviewed source
+  semantics, a validated source table, a reviewed canonical definition, effective membership, and
+  deterministic precedence. Actuals and publisher projections remain separate.
+- Canonical membership now records relationship, effective dates, precedence, and overlap policy;
+  source metadata retain the publisher label and full hierarchy path separately from a reviewed
+  canonical name. Replicas are equality-tested against their primary and ambiguous overlaps block.
+- Every source declares a governed missingness contract: regular calendar, structural event
+  absence, conditional panel, or observed-only. Expected-grid generation is restricted to regular
+  sources instead of silently applying a scalar calendar to events and panels.
+- Quality flags can identify release, vintage, source, table, series, or observation scope and carry
+  lifecycle/test-version fields. Research exports expose only flags from the active release.
+- Legacy vintages are explicitly labelled `legacy_current_snapshot_only`. New vintages fail the
+  provenance gate unless acquisition metadata are complete; inferred legacy availability is never
+  promoted into a real-time research claim.
+- Added governed panel-collision dispositions and a fail-closed curated bank-panel surface. No
+  unresolved panel is aggregated, and no unsigned economic proposal was promoted automatically.
+
 ## v39
 
 Empirical-readiness remediation, `revisiones/EMPIRICAL_READINESS_2026-09-03.md`, items ER-01, ER-02,

@@ -96,7 +96,7 @@ testthat::test_that("no stored view or macro references a project object without
   con <- open_unconfigured()
   object_names <- DBI::dbGetQuery(con, paste0(
     "SELECT DISTINCT table_name FROM information_schema.tables WHERE table_schema IN (",
-    "'main', 'raw', 'staging', 'canonical', 'marts', 'audit')"
+    "'main', 'raw', 'staging', 'canonical', 'marts', 'research', 'audit')"
   ))$table_name
   stored <- rbind(
     DBI::dbGetQuery(con, paste(

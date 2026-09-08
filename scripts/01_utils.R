@@ -113,7 +113,7 @@ file_sha256 <- function(path) digest::digest(file = path, algo = "sha256")
 # executes every view and macro on a connection with no search path set. The
 # search path stays, because dbWriteTable() and dbExistsTable() still use it; it
 # is no longer load-bearing for anything a researcher touches.
-PROJECT_SCHEMAS <- c("raw", "staging", "canonical", "marts", "audit")
+PROJECT_SCHEMAS <- c("raw", "staging", "canonical", "marts", "research", "audit")
 
 PROJECT_TABLE_SCHEMA <- c(
   # raw: what was read, before anyone interpreted it
@@ -137,6 +137,7 @@ PROJECT_TABLE_SCHEMA <- c(
   methodology_regime = "canonical", classification_concordance = "canonical",
   series_semantic_evidence = "canonical", series_dimension = "canonical",
   series_period_bounds = "canonical",
+  missingness_contracts = "audit", panel_resolution = "audit",
   # The published table title, resolved to one row per series. It is the only
   # field distinguishing 1,599 repeated labels, and it lived on a staging
   # snapshot at observation grain, so the documented read path could not reach it
@@ -629,8 +630,11 @@ quote_object <- function(name) {
 # did, including through DBI's dbExistsTable() and dbWriteTable(append = TRUE).
 # main stays first so anything unassigned is still found and still created there.
 set_project_search_path <- function(con) {
+  existing <- DBI::dbGetQuery(con, "SELECT schema_name FROM information_schema.schemata")$schema_name
+  path <- c("main", PROJECT_SCHEMAS)
+  path <- path[path %in% existing]
   DBI::dbExecute(con, paste0(
-    "SET search_path = '", paste(c("main", PROJECT_SCHEMAS), collapse = ","), "'"
+    "SET search_path = '", paste(path, collapse = ","), "'"
   ))
   invisible(TRUE)
 }

@@ -137,7 +137,7 @@ Every filtered view has an unfiltered `_all` twin. Those exist for diagnostics a
 
 ## What is published, declared rather than inferred
 
-`config/public_view_contract.csv` gives every view and macro in `main` and `marts` a `public_scope`, with a reason and a reviewer:
+`config/public_view_contract.csv` gives every view and macro in `main`, `marts`, and `research` a `public_scope`, with a reason and a reviewer:
 
 | Scope | Meaning |
 | --- | --- |
@@ -217,11 +217,34 @@ Schema 27 kept the projections in `v_series_latest` and exposed the status besid
 
 ## Canonical layer
 
-`canonical_series` identifiers are assigned by a reviewer and must not reuse a parsed `series_id`; `map_canonical_series` holds membership, resolved through `v_series_id_resolution` so a canonical series keeps its members across a parser repair that renamed them. `methodology_regime` records definition, base-period and classification changes with comparability; `classification_concordance` maps between classification schemes. All ship empty: the machinery and guards are delivered, populating them is economic review.
+`canonical_series` identifiers are assigned by a reviewer and must not reuse a parsed `series_id`;
+the canonical name is stored separately from the publisher's `source_label` and `full_series_path`.
+`map_canonical_series` holds membership, resolved through `v_series_id_resolution` so a canonical
+series keeps its members across a parser repair that renamed them. Each membership records a
+relationship (`primary`, `replica`, `historical_segment`, `methodology_break`, `component`,
+`aggregate`, or `projection`), effective dates, precedence, and overlap policy. `methodology_regime`
+records definition, base-period and classification changes with comparability;
+`classification_concordance` maps between classification schemes. All reviewed registers ship
+empty: the machinery and guards are delivered, and populating them is economic review.
 
 That is a decision, not an omission. Declaring one canonical series means asserting its definition, domain, frequency, unit, currency, stock/flow and nominal/real character under a named reviewer — seven economic judgements per concept — and no automated screen can make them. What the pipeline does instead is assemble the evidence and rank it. `outputs/canonical_core_candidates.csv` ranks concepts by how much of the database they would unify; `outputs/duplicate_series_candidates.csv` screens for series whose values agree period-for-period, by md5 signature over the shared periods, which is what a duplicate looks like before anyone has decided which one is primary. The `CUADRO 20`/`fx_operations` pair is the clearest case in the database and sits at the top of that list.
 
-The guards run whether or not anything is declared: `validate_canonical_membership_agreement()` blocks a release in which a declared alias disagrees with its primary over their overlapping periods. A canonical relationship that stops holding is a fact about the sources, and it should stop the release rather than be discovered by a reader.
+The guards run whether or not anything is declared: `validate_canonical_membership_agreement()`
+blocks a release in which a declared replica disagrees with its primary over their overlapping
+periods. Equal-precedence overlapping carriers block unless they are an explicitly equality-tested
+primary/replica pair. A canonical relationship that stops holding is a fact about the sources, and
+it should stop the release rather than be discovered by a reader.
+
+## Stable research schema
+
+Schema 40 publishes nine stable views under `research`. The scalar catalogue and observations
+require all three decisions: validated source table, reviewed source-series semantics, and reviewed
+canonical definition/membership. `observations_latest_actual` uses normalized
+`reference_period_start`/`reference_period_end` and excludes projections;
+`observations_latest_statement` adds only source members explicitly mapped as projections.
+`quality_flags` exposes the active release's scoped flags. Bank, auction, interbank, curve, and
+securities views preserve their own grains. An unsigned register or unresolved collision yields an
+empty view, not a provisional fallback.
 
 ## Series grain
 
@@ -353,7 +376,8 @@ not have to; what the layers change is what a person sees when they open the cat
 | `raw` | Immutable file, sheet and cell evidence exactly as read, plus the reference tables |
 | `staging` | Typed parser output, parser diagnostics, exclusions and curated snapshots |
 | `canonical` | The curated economic layer: dimensions, facts, identity, concepts, evidence |
-| `marts` | The research interface — `v_mart_*` and `v_research_series` — and nothing else |
+| `marts` | Reusable reviewed catalogues and domain marts used to build publication products |
+| `research` | The stable, compact, fail-closed researcher interface |
 | `audit` | Governance, review status, reconciliation and release evidence |
 
 The assignment lives in `PROJECT_TABLE_SCHEMA` (`scripts/01_utils.R`); a table without one

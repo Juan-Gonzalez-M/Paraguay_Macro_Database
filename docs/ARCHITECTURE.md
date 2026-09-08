@@ -8,7 +8,7 @@
 4. **Separate source observations from meaning.** Raw tables reproduce publications; semantic dimensions document how to interpret source codes and labels.
 5. **Keep mappings visible.** Documented views add semantics without removing the source columns used for the join.
 6. **Never hide discarded or unmapped content.** Parser omissions and mapping coverage are written to quality outputs, and every numeric source cell inside a parsed region must resolve to an observation or to a reviewed classification saying what else it is. A cell nobody has accounted for blocks the release.
-7. **Say which layer an object belongs to.** Tables live in `raw`, `staging`, `canonical` or `audit`, and the research interface is published under `marts`. See `docs/DATA_MODEL.md`.
+7. **Say which layer an object belongs to.** Tables live in `raw`, `staging`, `canonical` or `audit`; reusable validation marts live in `marts`; the compact stable interface lives in `research`. See `docs/DATA_MODEL.md`.
 8. **Derive only what the source states, and record the wording.** A measurement field is filled in only where the publisher says the answer in words, and the sentence travels with the value. `not_reviewed` is a real answer and is reported as one.
 9. **A build cannot touch the database it has not been accepted to replace.** The run writes a candidate file; publication is the rename of that file. See below.
 
@@ -62,6 +62,9 @@ The reference workbook is processed first because bank and finance-company views
 - `config/table_status.csv` declares the reviewed research status of every source table (`validated`, `provisional`, `needs_remodeling`, `quarantined`). Only `validated` tables reach `v_research_series`, and a source or worksheet with no declared status blocks the release.
 - `config/long_csv_contracts.csv` guards typed CSV tables by row count, date range, unique key where applicable and required currencies.
 - `config/concept_mappings.csv` contains only reviewed cross-source semantic relationships. Automatic source identities are generated separately and never imply equivalence.
+- `config/missingness_contracts.csv` declares whether absence means a regular-calendar gap, a structurally absent event, a conditional panel row, or an observed-only curve node.
+- `config/panel_resolution.csv` records reviewed canonical rows, exact duplicates, recovered measure splits, and quarantines for direct-panel natural-key collisions.
+- `config/canonical_series.csv` and `config/canonical_series_members.csv` define reviewed economic series and their source members, including effective dates, precedence, and overlap policy. Unsigned proposals are inert.
 
 ## Complex workbook normalization
 

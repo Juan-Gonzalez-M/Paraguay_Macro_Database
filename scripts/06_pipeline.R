@@ -411,7 +411,8 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
   # the half of the audit's R6-02 that is about evidence rather than publication.
   # Only this attempt's own flags are cleared, and only if it is being re-entered.
   DBI::dbExecute(con, paste0(
-    "DELETE FROM quality_flags WHERE attempt_id = ", sql_string(attempt_id)
+    "DELETE FROM ", project_qualified_name("quality_flags"),
+    " WHERE attempt_id = ", sql_string(attempt_id)
   ))
   if (nrow(resolution_issues)) for (i in seq_len(nrow(resolution_issues))) insert_quality_flag(
     con, release_id, resolution_issues$severity[[i]], resolution_issues$check_name[[i]],
@@ -465,7 +466,8 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
     }
     if (!is.na(previous_status) && previous_status == "failed_structure_or_ingestion") {
       DBI::dbExecute(con, paste0(
-        "DELETE FROM quality_flags WHERE vintage_id = ", sql_string(item$vintage_id),
+        "DELETE FROM ", project_qualified_name("quality_flags"),
+        " WHERE vintage_id = ", sql_string(item$vintage_id),
         " AND check_name = 'source_ingestion_failed' AND attempt_id = ", sql_string(attempt_id)
       ))
     }
@@ -629,12 +631,16 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
     apply_series_review(con, root)
     apply_series_grain(con, root)
     apply_source_provenance(con, root)
+    apply_platform_contracts(con, root)
   })
   # After the semantics, because the expected grid is read off each series'
   # declared frequency, and before the marts, which publish the result.
   phase("observation_missingness", apply_observation_missingness(con, root, build$build_id))
   phase("governance_registers", apply_governance_registers(con, root))
-  phase("mart_views", create_mart_views(con))
+  phase("mart_views", {
+    create_mart_views(con)
+    create_research_views(con)
+  })
   })
   flush_release_timings()
   phase("reports", {
@@ -673,7 +679,8 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
     write_quality_flag_report(con, release_id, root)
   })
   flags <- DBI::dbGetQuery(con, paste0(
-    "SELECT severity FROM quality_flags WHERE attempt_id = ", sql_string(attempt_id)
+    "SELECT severity FROM ", project_qualified_name("quality_flags"),
+    " WHERE attempt_id = ", sql_string(attempt_id)
   ))
   errors <- sum(flags$severity == "error")
   warnings <- sum(flags$severity == "warning")
