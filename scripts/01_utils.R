@@ -138,6 +138,9 @@ PROJECT_TABLE_SCHEMA <- c(
   series_semantic_evidence = "canonical", series_dimension = "canonical",
   series_period_bounds = "canonical",
   missingness_contracts = "audit", panel_resolution = "audit",
+  acquisition_contracts = "audit", certification_rules = "audit",
+  certification_decisions = "canonical", rule_certified_series = "canonical",
+  dataset_catalog = "canonical",
   # The published table title, resolved to one row per series. It is the only
   # field distinguishing 1,599 repeated labels, and it lived on a staging
   # snapshot at observation grain, so the documented read path could not reach it

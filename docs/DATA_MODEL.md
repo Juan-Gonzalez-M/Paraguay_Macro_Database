@@ -237,14 +237,13 @@ it should stop the release rather than be discovered by a reader.
 
 ## Stable research schema
 
-Schema 40 publishes nine stable views under `research`. The scalar catalogue and observations
-require all three decisions: validated source table, reviewed source-series semantics, and reviewed
-canonical definition/membership. `observations_latest_actual` uses normalized
-`reference_period_start`/`reference_period_end` and excludes projections;
-`observations_latest_statement` adds only source members explicitly mapped as projections.
-`quality_flags` exposes the active release's scoped flags. Bank, auction, interbank, curve, and
-securities views preserve their own grains. An unsigned register or unresolved collision yields an
-empty view, not a provisional fallback.
+Schema 41 publishes exactly nine stable views under `research`: `dataset_catalog`, `series_catalog`,
+`observations_latest_actual`, `observations_latest_statement`, `entity_panel`, `events`, `curves`,
+`transactions`, and `quality_flags`. The table macro `research.observations_as_of(timestamp)` is the
+point-in-time scalar interface. Every data row carries its assurance level and rule. Automated
+certification is stored separately from `canonical.series_review`, so it cannot be mistaken for a
+human signature. Unresolved series, colliding panel keys, and unsafe canonical mappings remain out
+of the data views while their source-level disposition remains queryable in `dataset_catalog`.
 
 ## Series grain
 

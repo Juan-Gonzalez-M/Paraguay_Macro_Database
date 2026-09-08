@@ -70,3 +70,18 @@ table_reconciliation,quality,source worksheet and vintage,Numeric source cells r
 v_series_id_resolution,view,published series identifier,Resolves any identifier ever published to its current series or an explicit retirement,derived view
 v_series_migration_summary,view,release pair and relationship,Counts of identity mappings by release pair relationship and match method,derived view
 v_table_reconciliation,view,source worksheet and vintage,Reconciliation outcome joined to the review status of the worksheet,derived view
+acquisition_contracts,governance,source,Forward collection retention provenance rights and use contract for every registered source,reviewed configuration
+certification_rules,governance,rule and version,Versioned deterministic assurance rules with configuration hash,reviewed configuration
+certification_decisions,governance,assurance decision,Append-only evidence-hashed automated or human assurance decisions,append only
+rule_certified_series,canonical,source series,Current source series passing a deterministic semantic and reconciliation rule,rebuilt each release
+dataset_catalog,canonical,source dataset,Current assurance disposition and use restrictions for every source,rebuilt each release
+research.dataset_catalog,view,source dataset,Supported dataset discovery surface with assurance provenance limits and observation counts,dynamic view
+research.series_catalog,view,research series,Supported scalar series catalogue with complete transformation metadata and assurance,dynamic view
+research.observations_latest_actual,view,research series and normalized period,Latest realized certified scalar observations,dynamic view
+research.observations_latest_statement,view,research series and normalized period,Latest certified publisher statement including observation status,dynamic view
+research.entity_panel,view,entity-period-item-currency-measure,Collision-free bank and finance-company statement rows,dynamic view
+research.events,view,event identity,Certified event-grain facts kept outside the scalar catalogue,dynamic view
+research.curves,view,date-currency-rating-maturity,Structurally certified corporate-bond curve nodes,dynamic view
+research.transactions,view,transaction,Structurally certified securities transactions,dynamic view
+research.quality_flags,view,open scoped quality flag,Open quality flags for the active release,dynamic view
+research.observations_as_of,macro,research series and normalized period,Certified scalar observations available by a caller-supplied cutoff,dynamic macro

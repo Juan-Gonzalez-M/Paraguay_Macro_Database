@@ -281,19 +281,17 @@ concept_catalogue <- function(con, reviewed_only = FALSE) {
   ))
 }
 
-# --- Schema-40 canonical research API --------------------------------------
-# These helpers intentionally read only the compact, fail-closed research
-# schema. An empty result means that the relevant economic definitions have not
-# yet completed both table and series review; callers are never silently routed
-# to the provisional source-series surface.
+# --- Schema-41 governed research API ---------------------------------------
+# A research_series_id is either a reviewed canonical concept or, where no safe
+# cross-source mapping exists, the certified source identity itself.
 research_catalogue <- function(con, canonical_series_id = NULL) {
   where <- if (is.null(canonical_series_id)) "" else paste0(
-    " WHERE canonical_series_id IN (",
+    " WHERE research_series_id IN (",
     paste(vapply(canonical_series_id, sql_string, character(1)), collapse = ", "), ")"
   )
   DBI::dbGetQuery(con, paste0(
-    "SELECT * FROM research.series_catalog_approved", where,
-    " ORDER BY canonical_series_id"
+    "SELECT * FROM research.series_catalog", where,
+    " ORDER BY research_series_id"
   ))
 }
 
@@ -305,12 +303,23 @@ research_observations <- function(con, canonical_series_id = NULL,
     "research.observations_latest_actual"
   }
   where <- if (is.null(canonical_series_id)) "" else paste0(
-    " WHERE canonical_series_id IN (",
+    " WHERE research_series_id IN (",
     paste(vapply(canonical_series_id, sql_string, character(1)), collapse = ", "), ")"
   )
   DBI::dbGetQuery(con, paste0(
     "SELECT * FROM ", object, where,
-    " ORDER BY canonical_series_id, reference_period_start, source_period_date"
+    " ORDER BY research_series_id, reference_period_start, source_period_date"
+  ))
+}
+
+research_observations_as_of <- function(con, cutoff, research_series_id = NULL) {
+  where <- if (is.null(research_series_id)) "" else paste0(
+    " WHERE research_series_id IN (",
+    paste(vapply(research_series_id, sql_string, character(1)), collapse = ", "), ")"
+  )
+  DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM research.observations_as_of(", sql_string(as.character(cutoff)),
+    ")", where, " ORDER BY research_series_id, reference_period_start"
   ))
 }
 

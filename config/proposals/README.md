@@ -1,7 +1,11 @@
 # Drafted reviews, awaiting signature
 
-Files here are **proposals**. Nothing in the pipeline reads them, nothing in them admits a series to
-any research mart, and a value written here has no effect on the database.
+Files here are **proposals**, not human signatures. Since schema 41 the pipeline may read a series,
+canonical-series, or membership proposal as evidence for a separately labelled
+`rule_certified` decision. It does so only under the versioned rules in
+`config/certification_rules.csv`; it never copies an automated decision into a human review
+register. Low/medium confidence, open questions, incomplete semantics, positional identities,
+unreconciled sheets, and unsigned methodology dependencies remain inert.
 
 They exist because preparing evidence and deciding on it are two different acts, and the readiness
 audit requires both. Its governing principle 4 asks that every decision carry a reviewer, a date, a
@@ -59,7 +63,9 @@ Then rebuild:
 Rscript -e 'source("run_update.R")'
 ```
 
-`marts.v_research_series` becomes non-empty only after that run, and only for the series you signed.
+`marts.v_research_series` remains the human-reviewed compatibility surface and becomes non-empty
+only for series you signed. The schema-41 `research` API additionally exposes deterministic results
+with `assurance_level = 'rule_certified'` on every row.
 
 ## What signing means
 

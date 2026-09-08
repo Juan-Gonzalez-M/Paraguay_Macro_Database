@@ -1,5 +1,22 @@
 # Changelog
 
+## v41
+
+Research-usability implementation following the final DuckDB re-audit. Changes no source
+observation.
+
+- Added an append-only assurance ledger and versioned deterministic rules. Automated decisions use
+  `rule_certified`; human signatures remain exclusively `human_verified` and are never fabricated.
+- Certified 32 high-confidence, no-open-question scalar proposals only when semantic identity,
+  complete transformation metadata, unique published context, and worksheet reconciliation all
+  pass. Unsafe canonical merges remain source identities.
+- Replaced the empty research surface with exactly nine grain-aware views plus an as-of table macro.
+  Curves and transactions retain their native grains; entity-panel collisions are excluded.
+- Added a source-complete dataset catalogue and explicit forward-acquisition contracts for all 22
+  sources, including rights and point-in-time limitations.
+- Preserved all unresolved material as provisional or excluded rather than inventing definitions,
+  units, historical vintages, or methodological splices.
+
 ## v40
 
 Canonical-platform remediation from `Paraguay_Macro_Database_Audit.md`. Changes no source

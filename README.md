@@ -20,17 +20,16 @@ What this buys a researcher or analyst working with Paraguayan macro/financial d
 - **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `release_blocked` produced error-severity flags, is never published through the research views, and stops the caller with a nonzero status.
 - **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
 
-The schema is at version 40. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. The current readiness limitations and remediation plan are in `Paraguay_Macro_Database_Audit.md`.
+The schema is at version 41. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. The current readiness limitations and remediation plan are in `Paraguay_Macro_Database_Audit.md`.
 
-**What is and is not research-ready, as of schema 40.** The extraction interface, the temporal
-contract and the known unit defects are closed: a cross-source monthly sample can now be built
-through the documented path without silently returning nothing, and the exchange-rate units mean what
-they say. The **economic review is not done**. `config/series_review.csv` is empty, so
-`marts.v_research_series` is 0 rows — which is the fail-closed design working, not an outage. Of the
-7,229 scalar series, stock/flow is established for 9%, nominal/real for 0.5%, seasonal adjustment for
-0.2%, and hierarchy for 6%. Until a series has been reviewed, this database gives you the publisher's
-number with its provenance attached, and no claim at all about whether two of them may be added,
-deflated or compared.
+**What is and is not research-ready, as of schema 41.** The `research` schema is usable now, but its
+scope is intentionally smaller than the raw database. Deterministic high-confidence source-series
+proposals may enter as visibly labelled `rule_certified`; this is not represented as human review.
+Long-format curves and transactions are certified for structural use, and the entity panel exposes
+only keys that are collision-free. Every other dataset remains visible in `research.dataset_catalog`
+as `provisional`, with permitted and prohibited uses. Legacy sources still contain one inferred
+current snapshot, so they are unsuitable for historical real-time or revision studies until future
+vintages accumulate. See `docs/RESEARCH_DATABASE_GUIDE.md`.
 
 ## What the three interfaces promise
 
@@ -116,7 +115,7 @@ Replace it only when an official reviewed reference version changes. Its fifteen
 
 ## Current release and change history
 
-The active project is schema 40. `CHANGELOG.md` is the single maintained implementation history;
+The active project is schema 41. `CHANGELOG.md` is the single maintained implementation history;
 `docs/SCHEMA_MIGRATIONS.md` is generated from the migration registry and records the executable
 upgrade path. Historical audit narratives and version-specific repair notes are intentionally not
 part of the current distribution. The only current readiness assessment and remediation plan is
@@ -133,7 +132,7 @@ part of the current distribution. The only current readiness assessment and reme
 | Series semantics | `dim_series`, `dim_concept`, `map_series_concept`, `fact_series_events`, `series_revisions` | Source series, reviewed concepts, explicit relationships and sparse change/removal events |
 | Quality and operations | `structure_checks`, `quality_flags`, `discarded_rows`, `semantic_coverage`, `ingestion_stage_timings` | Fail-closed guards, omissions, checks, limitations and measured runtime by stage |
 | Views | `v_series_latest`, `v_series_catalogue`, `v_latest_raw_*`, `v_*_documented`, `v_*_latest` | Current, analysis-oriented access without losing source coordinates |
-| Stable research API | `research.series_catalog_approved`, `research.observations_latest_actual`, `research.observations_latest_statement`, grain-specific views | Canonical, reviewed, release-isolated exports; empty is the safe result until economic sign-off |
+| Stable research API | `research.dataset_catalog`, `research.series_catalog`, scalar observations, and grain-specific views | Release-isolated exports with visible `rule_certified` or `human_verified` assurance; provisional material is excluded |
 
 `report_cells` is a compatibility view that reconstructs the full vintage-sheet-cell inventory from deduplicated content plus vintage links. It is not a claim of harmonized statistical coverage.
 

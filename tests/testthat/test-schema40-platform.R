@@ -5,7 +5,7 @@ schema40_database <- function() {
   file.copy(source, path, overwrite = TRUE)
   connection <- connect_project_database(path)
   initialize_database(connection, project_test_root)
-  apply_platform_contracts(connection, project_test_root)
+  apply_platform_contracts(connection, project_test_root, "test:schema41")
   create_canonical_views(connection)
   create_mart_views(connection)
   create_research_views(connection)
@@ -16,40 +16,88 @@ schema40_database <- function() {
   connection
 }
 
-testthat::test_that("schema 40 publishes exactly the governed research API", {
+testthat::test_that("schema 41 publishes exactly the governed grain-aware research API", {
   con <- schema40_database()
   testthat::expect_equal(
     DBI::dbGetQuery(con, "SELECT max(version) AS version FROM audit.schema_version")$version,
-    40L
+    41L
   )
   views <- DBI::dbGetQuery(con, paste(
     "SELECT view_name FROM duckdb_views()",
     "WHERE schema_name = 'research' AND NOT internal ORDER BY 1"
   ))$view_name
   testthat::expect_setequal(views, c(
-    "series_catalog_approved", "observations_latest_actual",
-    "observations_latest_statement", "quality_flags", "bank_panel",
-    "lrm_auction_events", "interbank_events", "bond_curves",
-    "securities_transactions"
+    "dataset_catalog", "series_catalog", "observations_latest_actual",
+    "observations_latest_statement", "entity_panel", "events", "curves",
+    "transactions", "quality_flags"
   ))
   for (view in views) testthat::expect_error(
     DBI::dbGetQuery(con, paste0("SELECT * FROM research.", view, " LIMIT 0")), NA
   )
 })
 
-testthat::test_that("the research API remains fail closed before economic sign-off", {
+testthat::test_that("rule-certified rows are usable without claiming human sign-off", {
   con <- schema40_database()
-  testthat::expect_equal(
+  testthat::expect_gt(
     DBI::dbGetQuery(con, "SELECT count(*) AS n FROM research.observations_latest_actual")$n,
     0
   )
+  testthat::expect_gt(DBI::dbGetQuery(con, "SELECT count(*) AS n FROM research.entity_panel")$n, 0)
+  testthat::expect_gt(nrow(research_catalogue(con)), 0L)
+  testthat::expect_gt(nrow(research_observations(con)), 0L)
+  assurance <- DBI::dbGetQuery(con, "SELECT DISTINCT assurance_level FROM research.series_catalog")
+  testthat::expect_true(all(assurance$assurance_level %in% ASSURANCE_LEVELS))
+  testthat::expect_true("rule_certified" %in% assurance$assurance_level)
+  testthat::expect_false("human_verified" %in% assurance$assurance_level)
   testthat::expect_equal(
-    DBI::dbGetQuery(con, "SELECT count(*) AS n FROM research.bank_panel")$n,
-    0
+    nrow(research_observations_as_of(con, Sys.time())), nrow(research_observations(con))
   )
-  testthat::expect_equal(nrow(research_catalogue(con)), 0L)
-  testthat::expect_equal(nrow(research_observations(con)), 0L)
-  testthat::expect_equal(nrow(research_observations(con, include_projections = TRUE)), 0L)
+})
+
+testthat::test_that("certification is evidence-hashed, complete, and conservative", {
+  con <- schema40_database()
+  registered <- readr::read_csv(
+    file.path(project_test_root, "config", "source_registry.csv"), show_col_types = FALSE
+  )$source_id
+  datasets <- DBI::dbGetQuery(con, "SELECT * FROM research.dataset_catalog")
+  testthat::expect_setequal(datasets$source_id, registered)
+  testthat::expect_true(all(datasets$assurance_level %in% ASSURANCE_LEVELS))
+  testthat::expect_true(all(nzchar(datasets$allowed_uses)))
+  testthat::expect_true(all(nzchar(datasets$prohibited_uses)))
+
+  certified <- DBI::dbGetQuery(con, "SELECT * FROM canonical.rule_certified_series")
+  decisions <- DBI::dbGetQuery(con, paste(
+    "SELECT object_id,evidence_hash FROM canonical.certification_decisions",
+    "WHERE object_type='series' AND assurance_level='rule_certified'"
+  ))
+  testthat::expect_gt(nrow(certified), 0L)
+  testthat::expect_setequal(certified$series_id, decisions$object_id)
+  testthat::expect_true(all(nchar(certified$evidence_hash) == 64L))
+
+  proposals <- readr::read_csv(
+    file.path(project_test_root, "config", "proposals", "series_review.csv"),
+    show_col_types = FALSE
+  )
+  open <- proposals$series_id[!is.na(proposals$open_questions) & nzchar(proposals$open_questions)]
+  testthat::expect_length(intersect(open, certified$series_id), 0L)
+  testthat::expect_equal(DBI::dbGetQuery(con, paste(
+    "SELECT count(*) n FROM canonical.certification_decisions",
+    "WHERE object_type='canonical_series'"
+  ))$n, 1)
+})
+
+testthat::test_that("grain-specific views do not silently retain duplicate panel keys", {
+  con <- schema40_database()
+  duplicated <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id,reference_period,entity_id,item_id,currency,measure,count(*) n",
+    "FROM research.entity_panel GROUP BY 1,2,3,4,5,6 HAVING count(*)>1"
+  ))
+  testthat::expect_equal(nrow(duplicated), 0L)
+  testthat::expect_gt(DBI::dbGetQuery(con, "SELECT count(*) n FROM research.curves")$n, 0)
+  testthat::expect_gt(DBI::dbGetQuery(con, "SELECT count(*) n FROM research.transactions")$n, 0)
+  testthat::expect_true(all(DBI::dbGetQuery(
+    con, "SELECT DISTINCT assurance_level FROM research.transactions"
+  )$assurance_level == "rule_certified"))
 })
 
 testthat::test_that("every source declares missingness and legacy vintages declare their limit", {

@@ -1,4 +1,4 @@
-# --- Schema 40: governed research platform ---------------------------------
+# --- Schemas 40-41: governed research platform -----------------------------
 
 MISSINGNESS_CONTRACT_TYPES <- c(
   "regular_calendar", "event_structural_absence", "panel_conditional", "observed_only"
@@ -9,6 +9,9 @@ PANEL_RESOLUTION_DISPOSITIONS <- c(
 CANONICAL_VALUE_RELATIONSHIPS <- c(
   "primary", "replica", "historical_segment", "methodology_break", "alias",
   "spliced_predecessor"
+)
+ASSURANCE_LEVELS <- c(
+  "rule_certified", "human_verified", "provisional", "quarantined", "excluded"
 )
 
 platform_table_columns <- function(con, table_name) {
@@ -47,6 +50,281 @@ initialize_platform_contracts <- function(con) {
     ))
   }
   invisible(TRUE)
+}
+
+read_acquisition_contracts <- function(root) {
+  required <- c(
+    "source_id", "expected_frequency", "acquisition_method", "official_landing_page",
+    "license_status", "retention_policy", "provenance_requirement", "point_in_time_status",
+    "allowed_uses", "prohibited_uses", "owner", "effective_from"
+  )
+  rows <- readr::read_csv(
+    file.path(root, "config", "acquisition_contracts.csv"),
+    col_types = readr::cols(.default = readr::col_character())
+  )
+  if (!identical(names(rows), required)) stop(
+    "Acquisition contract columns changed or are reordered.", call. = FALSE
+  )
+  if (anyDuplicated(rows$source_id)) stop("Duplicate acquisition source_id.", call. = FALSE)
+  text_fields <- setdiff(required, c("official_landing_page", "effective_from"))
+  incomplete <- apply(rows[text_fields], 1, function(x) any(is.na(x) | !nzchar(trimws(x))))
+  effective <- suppressWarnings(lubridate::ymd(rows$effective_from, quiet = TRUE))
+  if (any(incomplete | is.na(effective))) stop(
+    "Acquisition contracts require all policy fields and a valid effective_from date.",
+    call. = FALSE
+  )
+  rows$effective_from <- effective
+  rows$official_landing_page <- dplyr::na_if(rows$official_landing_page, "")
+  rows
+}
+
+read_certification_rules <- function(root) {
+  required <- c(
+    "rule_id", "rule_version", "object_type", "assurance_level", "description", "enabled"
+  )
+  rows <- readr::read_csv(
+    file.path(root, "config", "certification_rules.csv"),
+    col_types = readr::cols(.default = readr::col_character())
+  )
+  if (!identical(names(rows), required) || anyDuplicated(rows[c("rule_id", "rule_version")])) {
+    stop("Certification rule contract is invalid.", call. = FALSE)
+  }
+  if (any(!rows$assurance_level %in% ASSURANCE_LEVELS)) stop(
+    "Certification rule uses an unsupported assurance level.", call. = FALSE
+  )
+  rows$enabled <- tolower(rows$enabled) == "true"
+  rows$config_hash <- vapply(seq_len(nrow(rows)), function(i) {
+    digest::digest(paste(rows[i, required], collapse = "|"), algo = "sha256", serialize = FALSE)
+  }, character(1))
+  rows
+}
+
+blank_text <- function(x) is.na(x) | !nzchar(trimws(as.character(x)))
+
+apply_rule_certification <- function(con, root, build_id = NA_character_) {
+  rules <- read_certification_rules(root)
+  contracts <- read_acquisition_contracts(root)
+  registry <- readr::read_csv(
+    file.path(root, "config", "source_registry.csv"), show_col_types = FALSE
+  )
+  if (!setequal(registry$source_id, contracts$source_id)) stop(
+    "Acquisition contracts must cover every registered source exactly once.", call. = FALSE
+  )
+  replace_table_if_changed(con, "certification_rules", rules)
+  replace_table_if_changed(con, "acquisition_contracts", contracts)
+
+  proposals <- readr::read_csv(
+    file.path(root, "config", "proposals", "series_review.csv"),
+    col_types = readr::cols(.default = readr::col_character())
+  )
+  required_semantics <- c(
+    "definition", "definition_evidence_uri", "frequency", "reference_period_convention",
+    "timing_basis", "stock_flow", "unit_code", "scale_multiplier", "currency", "valuation",
+    "nominal_real", "seasonal_adjustment", "transformation", "hierarchy_role", "comparability",
+    "proposal_evidence", "source_cell"
+  )
+  candidate <- proposals$confidence == "high" & blank_text(proposals$open_questions)
+  candidate <- candidate & !apply(proposals[required_semantics], 1, function(x) any(blank_text(x)))
+  candidate <- candidate & proposals$unit_code != "UNRESOLVED_SOURCE_UNITS" &
+    proposals$stock_flow != "not_reviewed" & proposals$nominal_real != "not_reviewed" &
+    proposals$seasonal_adjustment != "not_reviewed"
+  proposals <- proposals[candidate, , drop = FALSE]
+
+  if (nrow(proposals)) {
+    ids <- paste(vapply(proposals$series_id, sql_string, character(1)), collapse = ",")
+    dimensions <- DBI::dbGetQuery(con, paste0(
+      "SELECT series_id, source_id, series_grain, identity_stability, full_series_path ",
+      "FROM canonical.dim_series WHERE series_id IN (", ids, ")"
+    ))
+    proposals <- merge(proposals, dimensions, by = "series_id")
+    proposals <- proposals[
+      proposals$series_grain == "scalar_series" & proposals$identity_stability == "semantic" &
+        !blank_text(proposals$full_series_path), , drop = FALSE
+    ]
+  }
+
+  # A source identity is certifiable only when every physical worksheet that
+  # contributes to it balances and the identity resolves to one published title.
+  if (nrow(proposals)) {
+    ids <- paste(vapply(proposals$series_id, sql_string, character(1)), collapse = ",")
+    technical <- DBI::dbGetQuery(con, paste0(
+      "WITH sheets AS (SELECT DISTINCT series_id, source_id, source_sheet, vintage_id ",
+      " FROM staging.documented_series_snapshot WHERE series_id IN (", ids, ")), ",
+      "checks AS (SELECT s.series_id, count(*) AS sheet_rows, ",
+      " count(*) FILTER (WHERE r.status = 'balanced' AND coalesce(r.balance_delta,0)=0 ",
+      " AND coalesce(r.unclassified_cells,0)=0 AND coalesce(r.parser_defect_cells,0)=0) AS good_rows ",
+      " FROM sheets s LEFT JOIN audit.table_reconciliation r USING ",
+      " (vintage_id, source_id, source_sheet) GROUP BY 1), ",
+      "titles AS (SELECT series_id, count(DISTINCT table_title) FILTER (WHERE table_title IS NOT NULL) title_count ",
+      " FROM main.v_series_research_all WHERE series_id IN (", ids, ") GROUP BY 1) ",
+      "SELECT c.series_id FROM checks c JOIN titles t USING(series_id) ",
+      "WHERE c.sheet_rows=c.good_rows AND t.title_count=1"
+    ))$series_id
+    proposals <- proposals[proposals$series_id %in% technical, , drop = FALSE]
+  }
+
+  canonical <- readr::read_csv(
+    file.path(root, "config", "proposals", "canonical_series.csv"),
+    col_types = readr::cols(.default = readr::col_character())
+  )
+  members <- readr::read_csv(
+    file.path(root, "config", "proposals", "canonical_series_members.csv"),
+    col_types = readr::cols(.default = readr::col_character())
+  )
+  canon_ok <- canonical$confidence == "high" & blank_text(canonical$open_questions) &
+    (blank_text(canonical$methodology_regime_id) | canonical$methodology_regime_id == "not_applicable")
+  member_ok <- members$confidence == "high" & blank_text(members$open_questions) &
+    members$relationship == "primary"
+  canonical_candidates <- canonical[
+    canon_ok, c("canonical_series_id", "proposal_evidence", "source_cell"), drop = FALSE
+  ]
+  names(canonical_candidates)[2:3] <- c("canonical_proposal_evidence", "canonical_source_cell")
+  mappings <- merge(
+    canonical_candidates,
+    members[member_ok, c("canonical_series_id", "series_id"), drop = FALSE],
+    by = "canonical_series_id"
+  )
+  mappings <- mappings[mappings$series_id %in% proposals$series_id, , drop = FALSE]
+  proposals <- merge(proposals, mappings, by = "series_id", all.x = TRUE)
+  proposals$research_series_id <- ifelse(
+    blank_text(proposals$canonical_series_id), proposals$series_id, proposals$canonical_series_id
+  )
+  proposals$canonical_name <- proposals$canonical_series_id
+  rule_version <- rules$rule_version[rules$rule_id == "proposal_high_no_open"][[1]]
+  certified_at <- as.POSIXct(Sys.time(), tz = "UTC")
+  if (nrow(proposals)) {
+    proposals$evidence_hash <- vapply(seq_len(nrow(proposals)), function(i) digest::digest(
+      paste(proposals[i, c("series_id", required_semantics)], collapse = "|"),
+      algo = "sha256", serialize = FALSE
+    ), character(1))
+  } else proposals$evidence_hash <- character()
+  stored <- proposals %>% dplyr::transmute(
+    series_id, research_series_id, canonical_name, definition, definition_evidence_uri,
+    frequency, reference_period_convention, timing_basis, stock_flow, unit_code,
+    scale_multiplier = as.numeric(.data$scale_multiplier), currency, valuation, nominal_real,
+    price_base_year = dplyr::na_if(.data$price_base_year, ""), seasonal_adjustment,
+    transformation, hierarchy_role, parent_series_id = dplyr::na_if(.data$parent_series_id, ""),
+    methodology_regime_id = dplyr::na_if(.data$methodology_regime_id, ""), comparability,
+    assurance_level = "rule_certified", certification_rule_id = "proposal_high_no_open",
+    certification_rule_version = rule_version, evidence_hash, certified_at = certified_at
+  )
+  DBI::dbExecute(con, "DELETE FROM canonical.rule_certified_series")
+  if (nrow(stored)) DBI::dbAppendTable(
+    con, DBI::Id(schema = "canonical", table = "rule_certified_series"), stored
+  )
+
+  decision_ids <- vapply(seq_len(nrow(stored)), function(i) digest::digest(
+    paste("series", stored$series_id[[i]], stored$evidence_hash[[i]], build_id, sep = "|"),
+    algo = "sha256", serialize = FALSE
+  ), character(1))
+  decisions <- stored %>% dplyr::transmute(
+    decision_id = decision_ids,
+    object_type = "series", object_id = series_id, assurance_level,
+    rule_id = certification_rule_id, rule_version = certification_rule_version,
+    evidence_uri = definition_evidence_uri, evidence_hash,
+    rationale = "All deterministic proposal, semantic-identity and worksheet-reconciliation gates passed; this is automated assurance, not human review.",
+    decided_at = certified_at, build_id = as.character(build_id)
+  )
+  if (nrow(decisions)) {
+    existing <- DBI::dbGetQuery(con, "SELECT decision_id FROM canonical.certification_decisions")$decision_id
+    decisions <- decisions[!decisions$decision_id %in% existing, , drop = FALSE]
+    if (nrow(decisions)) DBI::dbAppendTable(
+      con, DBI::Id(schema = "canonical", table = "certification_decisions"), decisions
+    )
+  }
+  if (nrow(mappings)) {
+    canonical_rule_version <- rules$rule_version[
+      rules$rule_id == "canonical_high_no_dependency"
+    ][[1]]
+    canonical_decisions <- mappings %>% dplyr::transmute(
+      object_type = "canonical_series", object_id = canonical_series_id,
+      assurance_level = "rule_certified", rule_id = "canonical_high_no_dependency",
+      rule_version = canonical_rule_version, evidence_uri = canonical_source_cell,
+      evidence_hash = vapply(seq_len(nrow(mappings)), function(i) digest::digest(
+        paste(mappings$canonical_series_id[[i]], mappings$series_id[[i]],
+              mappings$canonical_proposal_evidence[[i]], sep = "|"),
+        algo = "sha256", serialize = FALSE
+      ), character(1)),
+      rationale = "Canonical and membership proposals are high confidence, have no open question, require no unsigned methodology regime, and the source series is rule-certified.",
+      decided_at = certified_at, build_id = as.character(build_id)
+    )
+    canonical_decisions$decision_id <- vapply(seq_len(nrow(canonical_decisions)), function(i) {
+      digest::digest(paste(
+        "canonical_series", canonical_decisions$object_id[[i]],
+        canonical_decisions$evidence_hash[[i]], build_id, sep = "|"
+      ), algo = "sha256", serialize = FALSE)
+    }, character(1))
+    canonical_decisions <- canonical_decisions[c(
+      "decision_id", "object_type", "object_id", "assurance_level", "rule_id", "rule_version",
+      "evidence_uri", "evidence_hash", "rationale", "decided_at", "build_id"
+    )]
+    existing <- DBI::dbGetQuery(con, "SELECT decision_id FROM canonical.certification_decisions")$decision_id
+    canonical_decisions <- canonical_decisions[
+      !canonical_decisions$decision_id %in% existing, , drop = FALSE
+    ]
+    if (nrow(canonical_decisions)) DBI::dbAppendTable(
+      con, DBI::Id(schema = "canonical", table = "certification_decisions"), canonical_decisions
+    )
+  }
+
+  grain <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id, any_value(series_grain) AS grain FROM audit.source_grains",
+    "WHERE source_sheet='*' GROUP BY 1"
+  ))
+  catalog <- merge(registry, contracts, by = "source_id", all.x = TRUE)
+  catalog <- merge(catalog, grain, by = "source_id", all.x = TRUE)
+  certified_source_ids <- unique(proposals$source_id)
+  structural <- catalog$source_id %in% c("corporate_bond_curves", "securities_trades")
+  catalog$assurance_level <- ifelse(
+    catalog$source_id %in% certified_source_ids | structural, "rule_certified", "provisional"
+  )
+  catalog$disposition_reason <- ifelse(
+    structural, "Long-format rows pass explicit parser accounting; assurance covers structure only.",
+    ifelse(catalog$source_id %in% certified_source_ids,
+      "At least one scalar series passes the automated semantic and reconciliation rule; other rows remain provisional.",
+      ifelse(catalog$source_id %in% c("banks", "financial"),
+        "Dataset remains provisional; only collision-free rows are exposed by research.entity_panel.",
+        "No row has yet passed a complete automated or human economic certification rule."))
+  )
+  catalog$grain[blank_text(catalog$grain)] <- "mixed_or_undeclared"
+  dataset <- catalog %>% dplyr::transmute(
+    dataset_id = source_id, source_id, source_label, publisher, source_format, grain,
+    assurance_level, disposition_reason, point_in_time_status, license_status, allowed_uses,
+    prohibited_uses, certification_rule_id = ifelse(
+      structural, "accounted_long_source",
+      ifelse(source_id %in% certified_source_ids, "proposal_high_no_open", NA_character_)
+    ), evidence_uri = "config/acquisition_contracts.csv", updated_at = certified_at
+  )
+  DBI::dbExecute(con, "DELETE FROM canonical.dataset_catalog")
+  DBI::dbAppendTable(con, DBI::Id(schema = "canonical", table = "dataset_catalog"), dataset)
+  dataset_decisions <- dataset %>% dplyr::transmute(
+    object_type = "dataset", object_id = dataset_id, assurance_level,
+    rule_id = certification_rule_id, rule_version = ifelse(
+      is.na(certification_rule_id), NA_character_, "1"
+    ), evidence_uri,
+    evidence_hash = vapply(seq_len(nrow(dataset)), function(i) digest::digest(
+      paste(dataset$dataset_id[[i]], dataset$assurance_level[[i]],
+            dataset$allowed_uses[[i]], dataset$prohibited_uses[[i]], sep = "|"),
+      algo = "sha256", serialize = FALSE
+    ), character(1)),
+    rationale = disposition_reason, decided_at = certified_at, build_id = as.character(build_id)
+  )
+  dataset_decisions$decision_id <- vapply(seq_len(nrow(dataset_decisions)), function(i) {
+    digest::digest(paste(
+      "dataset", dataset_decisions$object_id[[i]], dataset_decisions$evidence_hash[[i]],
+      build_id, sep = "|"
+    ), algo = "sha256", serialize = FALSE)
+  }, character(1))
+  dataset_decisions <- dataset_decisions[c(
+    "decision_id", "object_type", "object_id", "assurance_level", "rule_id", "rule_version",
+    "evidence_uri", "evidence_hash", "rationale", "decided_at", "build_id"
+  )]
+  existing <- DBI::dbGetQuery(con, "SELECT decision_id FROM canonical.certification_decisions")$decision_id
+  dataset_decisions <- dataset_decisions[!dataset_decisions$decision_id %in% existing, , drop = FALSE]
+  if (nrow(dataset_decisions)) DBI::dbAppendTable(
+    con, DBI::Id(schema = "canonical", table = "certification_decisions"), dataset_decisions
+  )
+  invisible(list(series = nrow(stored), datasets = nrow(dataset)))
 }
 
 read_missingness_contracts <- function(root) {
@@ -169,10 +447,11 @@ apply_panel_resolution <- function(con, root) {
   invisible(nrow(stored))
 }
 
-apply_platform_contracts <- function(con, root) {
+apply_platform_contracts <- function(con, root, build_id = NA_character_) {
   initialize_platform_contracts(con)
   apply_missingness_contracts(con, root)
   apply_panel_resolution(con, root)
+  apply_rule_certification(con, root, build_id)
   invisible(TRUE)
 }
 
@@ -183,7 +462,7 @@ current_quality_flags_sql <- function() paste(
   "WHERE coalesce(q.status, 'open') = 'open'"
 )
 
-create_research_views <- function(con) {
+create_schema40_compat_views <- function(con) {
   DBI::dbExecute(con, "CREATE SCHEMA IF NOT EXISTS research")
   create_project_view(con, "quality_flags", current_quality_flags_sql(), schema = "research")
 
@@ -310,6 +589,168 @@ create_research_views <- function(con) {
   invisible(TRUE)
 }
 
+# Schema 41. The research schema is deliberately small and grain-aware. Its
+# assurance column is part of the data contract: rule certification is visible
+# at every row and is never presented as economist sign-off.
+create_research_views <- function(con) {
+  DBI::dbExecute(con, "CREATE SCHEMA IF NOT EXISTS research")
+  retired <- c(
+    "series_catalog_approved", "bank_panel", "lrm_auction_events", "interbank_events",
+    "bond_curves", "securities_transactions"
+  )
+  for (view in retired) DBI::dbExecute(
+    con, paste0("DROP VIEW IF EXISTS research.", view, " CASCADE")
+  )
+
+  create_project_view(con, "v_certified_research_series", paste(
+    "WITH human AS (",
+    " SELECT d.series_id, coalesce(m.canonical_series_id,d.series_id) AS research_series_id,",
+    " c.canonical_series_id AS canonical_name, r.definition, r.definition_evidence_uri,",
+    " r.frequency, r.reference_period_convention, r.timing_basis, r.stock_flow, r.unit_code,",
+    " r.scale_multiplier, r.currency, r.valuation, r.nominal_real, r.price_base_year,",
+    " r.seasonal_adjustment, r.transformation, r.hierarchy_role, r.parent_series_id,",
+    " r.methodology_regime_id, r.comparability, 'human_verified' AS assurance_level,",
+    " 'human_series_review' AS certification_rule_id, 'register' AS certification_rule_version,",
+    " d.source_id, d.source_label, d.full_series_path, d.series_grain,",
+    " coalesce(m.relationship,'primary') AS relationship, coalesce(m.precedence,1) AS precedence",
+    " FROM canonical.series_review r JOIN canonical.dim_series d USING(series_id)",
+    " LEFT JOIN canonical.map_canonical_series m USING(series_id)",
+    " LEFT JOIN canonical.canonical_series c ON c.canonical_series_id=m.canonical_series_id",
+    "  AND c.reviewed_status='reviewed'",
+    "), automated AS (",
+    " SELECT r.*, d.source_id, d.source_label, d.full_series_path, d.series_grain,",
+    " 'primary' AS relationship, 1 AS precedence",
+    " FROM canonical.rule_certified_series r JOIN canonical.dim_series d USING(series_id)",
+    " WHERE NOT EXISTS (SELECT 1 FROM human h WHERE h.series_id=r.series_id)",
+    ") SELECT * FROM human UNION ALL BY NAME SELECT * FROM automated"
+  ), schema = "main")
+
+  create_project_view(con, "quality_flags", current_quality_flags_sql(), schema = "research")
+  create_project_view(con, "observations_latest_actual", paste(
+    "WITH ranked AS (SELECT r.research_series_id, r.canonical_name, o.series_id AS source_series_id,",
+    " o.label AS source_label, o.table_title, o.period AS source_period_date,",
+    " o.period_start AS reference_period_start, o.period_end AS reference_period_end,",
+    " o.value, o.value * r.scale_multiplier AS value_in_base_units, r.frequency, r.unit_code,",
+    " r.scale_multiplier, r.currency, r.stock_flow, r.nominal_real, r.seasonal_adjustment,",
+    " r.transformation, o.vintage_id, o.publication_date, o.available_at,",
+    " o.availability_quality, o.observation_status, o.source_id, o.source_sheet,",
+    " r.relationship, r.precedence, r.assurance_level, r.certification_rule_id,",
+    " row_number() OVER(PARTITION BY r.research_series_id,o.period_start",
+    " ORDER BY r.precedence,o.available_at DESC,o.series_id) AS member_rank",
+    " FROM main.v_series_research o JOIN main.v_certified_research_series r USING(series_id)",
+    " WHERE o.observation_status='observed' AND EXISTS(SELECT 1 FROM audit.active_data_release))",
+    " SELECT * EXCLUDE(member_rank),",
+    " (SELECT count(*) FROM research.quality_flags q WHERE q.series_id=ranked.source_series_id",
+    " OR (q.series_id IS NULL AND q.source_id=ranked.source_id",
+    " AND (q.source_sheet IS NULL OR q.source_sheet=ranked.source_sheet))) AS flag_count",
+    " FROM ranked WHERE member_rank=1"
+  ), schema = "research")
+
+  create_project_view(con, "observations_latest_statement", paste(
+    "WITH ranked AS (SELECT r.research_series_id, r.canonical_name, o.series_id AS source_series_id,",
+    " d.label AS source_label, t.table_title, o.period AS source_period_date,",
+    " o.period_start AS reference_period_start, o.period_end AS reference_period_end,",
+    " o.value, o.value*r.scale_multiplier AS value_in_base_units, r.frequency, r.unit_code,",
+    " r.scale_multiplier, r.currency, r.stock_flow, r.nominal_real, r.seasonal_adjustment,",
+    " r.transformation, o.vintage_id, o.publication_date, p.available_at,",
+    " p.availability_quality, o.observation_status, d.source_id, o.source_sheet,",
+    " r.relationship, r.precedence, r.assurance_level, r.certification_rule_id,",
+    " row_number() OVER(PARTITION BY r.research_series_id,o.period_start",
+    " ORDER BY r.precedence,p.available_at DESC,o.series_id) AS member_rank",
+    " FROM main.v_series_observations o JOIN main.v_certified_research_series r USING(series_id)",
+    " JOIN canonical.dim_series d USING(series_id) LEFT JOIN canonical.series_titles t USING(series_id)",
+    " LEFT JOIN raw.source_provenance p USING(vintage_id)",
+    " WHERE NOT o.is_deleted AND EXISTS(SELECT 1 FROM audit.active_data_release))",
+    " SELECT * EXCLUDE(member_rank),",
+    " (SELECT count(*) FROM research.quality_flags q WHERE q.series_id=ranked.source_series_id",
+    " OR (q.series_id IS NULL AND q.source_id=ranked.source_id",
+    " AND (q.source_sheet IS NULL OR q.source_sheet=ranked.source_sheet))) AS flag_count",
+    " FROM ranked WHERE member_rank=1"
+  ), schema = "research")
+
+  create_project_view(con, "series_catalog", paste(
+    "SELECT r.research_series_id, r.canonical_name, r.series_id AS source_series_id,",
+    " r.source_id, r.source_label, r.full_series_path, r.definition, r.definition_evidence_uri,",
+    " r.series_grain, r.frequency, r.reference_period_convention, r.timing_basis, r.stock_flow,",
+    " r.unit_code, r.scale_multiplier, r.currency, r.valuation, r.nominal_real,",
+    " r.price_base_year, r.seasonal_adjustment, r.transformation, r.hierarchy_role,",
+    " r.parent_series_id, r.methodology_regime_id, r.comparability, r.assurance_level,",
+    " r.certification_rule_id, count(o.reference_period_start) AS observations,",
+    " min(o.reference_period_start) AS first_period, max(o.reference_period_end) AS last_period",
+    " FROM main.v_certified_research_series r LEFT JOIN research.observations_latest_actual o",
+    " ON o.research_series_id=r.research_series_id AND o.source_series_id=r.series_id GROUP BY ALL"
+  ), schema = "research")
+
+  create_project_view(con, "dataset_catalog", paste(
+    "SELECT d.*, (SELECT count(*) FROM canonical.dim_series s WHERE s.source_id=d.source_id) AS series,",
+    " (SELECT count(*) FROM main.v_series_latest o JOIN canonical.dim_series s USING(series_id)",
+    "  WHERE s.source_id=d.source_id) AS scalar_observations",
+    " FROM canonical.dataset_catalog d"
+  ), schema = "research")
+
+  bank_inputs_exist <- all(vapply(c("v_banks_eeff_documented", "v_financial_eeff_documented"),
+    function(x) database_object_exists(con, x), logical(1)))
+  panel_sql <- if (bank_inputs_exist) paste(
+    "WITH source AS (SELECT * FROM main.v_banks_eeff_documented UNION ALL BY NAME",
+    " SELECT * FROM main.v_financial_eeff_documented), keyed AS (SELECT x.*,",
+    " count(*) OVER(PARTITION BY source_id,fecha,entity_id,statement_item_id,economic_currency) n",
+    " FROM source x) SELECT vintage_id,source_id,source_sheet,source_file,fecha AS reference_period,",
+    " entity_id,short_name AS entity_name,statement_item_id AS item_id,semantic_classification,",
+    " semantic_rubro,semantic_sub_rubro,economic_currency AS currency,'balance' AS measure,",
+    " importe AS value,source_row,'rule_certified' AS assurance_level,",
+    " 'collision_free_panel_row' AS certification_rule_id FROM keyed WHERE n=1",
+    " AND EXISTS(SELECT 1 FROM audit.active_data_release)"
+  ) else paste(
+    "SELECT NULL::VARCHAR vintage_id,NULL::VARCHAR source_id,NULL::VARCHAR source_sheet,",
+    "NULL::VARCHAR source_file,NULL::TIMESTAMP reference_period,NULL::VARCHAR entity_id,",
+    "NULL::VARCHAR entity_name,NULL::VARCHAR item_id,NULL::VARCHAR semantic_classification,",
+    "NULL::VARCHAR semantic_rubro,NULL::VARCHAR semantic_sub_rubro,NULL::VARCHAR currency,",
+    "NULL::VARCHAR AS measure,NULL::DOUBLE AS value,NULL::BIGINT AS source_row,",
+    "NULL::VARCHAR assurance_level,NULL::VARCHAR certification_rule_id WHERE FALSE"
+  )
+  create_project_view(con, "entity_panel", panel_sql, schema = "research")
+
+  create_project_view(con, "events", paste(
+    "SELECT md5(o.series_id||':'||cast(o.period AS VARCHAR)||':'||o.vintage_id) AS event_id,",
+    " o.period AS event_date,o.series_id AS source_series_id,r.source_id,o.source_sheet,",
+    " r.full_series_path AS measure_path,o.value,o.value_in_base_units,r.unit_code,o.vintage_id,",
+    " r.assurance_level,r.certification_rule_id FROM main.v_series_research o",
+    " JOIN main.v_certified_research_series r USING(series_id) WHERE r.series_grain='event'",
+    " AND o.observation_status='observed' AND EXISTS(SELECT 1 FROM audit.active_data_release)"
+  ), schema = "research")
+  create_project_view(con, "curves", paste(
+    "SELECT c.*,'rule_certified' AS assurance_level,'accounted_long_source' AS certification_rule_id",
+    " FROM main.v_bond_curves_latest c WHERE EXISTS(SELECT 1 FROM canonical.dataset_catalog d",
+    " WHERE d.source_id='corporate_bond_curves' AND d.assurance_level='rule_certified')",
+    " AND EXISTS(SELECT 1 FROM audit.active_data_release)"
+  ), schema = "research")
+  create_project_view(con, "transactions", paste(
+    "SELECT t.*,'rule_certified' AS assurance_level,'accounted_long_source' AS certification_rule_id",
+    " FROM main.v_securities_transactions_latest t WHERE EXISTS(SELECT 1 FROM canonical.dataset_catalog d",
+    " WHERE d.source_id='securities_trades' AND d.assurance_level='rule_certified')",
+    " AND EXISTS(SELECT 1 FROM audit.active_data_release)"
+  ), schema = "research")
+
+  # A table macro, not a tenth view. It ranks every accepted historical vintage
+  # by recorded availability and therefore remains empty before the first truly
+  # timestamped forward vintage for a cutoff earlier than the legacy upper bound.
+  DBI::dbExecute(con, paste0(
+    "CREATE OR REPLACE MACRO research.observations_as_of(cutoff) AS TABLE (",
+    "WITH ranked AS (SELECT r.research_series_id,r.canonical_name,o.series_id source_series_id,",
+    "o.period source_period_date,o.period_start reference_period_start,o.period_end reference_period_end,",
+    "o.value,o.value*r.scale_multiplier value_in_base_units,r.frequency,r.unit_code,r.scale_multiplier,",
+    "r.currency,r.stock_flow,r.nominal_real,r.seasonal_adjustment,r.transformation,o.vintage_id,",
+    "o.publication_date,o.available_at,p.availability_quality,o.observation_status,d.source_id,",
+    "o.source_sheet,r.assurance_level,r.certification_rule_id,row_number() over(partition by ",
+    "r.research_series_id,o.period_start order by r.precedence,o.available_at desc,o.vintage_id desc) rn ",
+    "FROM main.v_series_observations_history o JOIN main.v_certified_research_series r USING(series_id) ",
+    "JOIN canonical.dim_series d USING(series_id) LEFT JOIN raw.source_provenance p USING(vintage_id) ",
+    "WHERE NOT o.is_deleted AND o.observation_status='observed' ",
+    "AND o.available_at<=cutoff) SELECT * EXCLUDE(rn) FROM ranked WHERE rn=1)"
+  ))
+  invisible(TRUE)
+}
+
 validate_platform_contracts <- function(con, release_id, root) {
   contracts <- read_missingness_contracts(root)
   registered <- readr::read_csv(
@@ -367,5 +808,51 @@ validate_platform_contracts <- function(con, release_id, root) {
       paste(nrow(overlap), "canonical member pair(s) overlap with equal precedence.")
     )
   }
+  acquisitions <- DBI::dbGetQuery(con, "SELECT source_id FROM audit.acquisition_contracts")$source_id
+  if (!setequal(acquisitions, registered)) insert_quality_flag(
+    con, release_id, "error", "acquisition_contract_coverage", NA_character_,
+    "The acquisition register does not cover every registered source exactly once."
+  )
+  catalog <- DBI::dbGetQuery(con, paste(
+    "SELECT source_id,assurance_level,license_status,point_in_time_status,allowed_uses,prohibited_uses",
+    "FROM canonical.dataset_catalog"
+  ))
+  if (!setequal(catalog$source_id, registered) || any(!catalog$assurance_level %in% ASSURANCE_LEVELS) ||
+      any(blank_text(catalog$allowed_uses) | blank_text(catalog$prohibited_uses))) {
+    insert_quality_flag(
+      con, release_id, "error", "dataset_disposition_incomplete", NA_character_,
+      "Every registered source must have one valid assurance disposition and explicit use limits."
+    )
+  }
+  certified <- DBI::dbGetQuery(con, paste(
+    "SELECT r.series_id FROM canonical.rule_certified_series r",
+    "LEFT JOIN canonical.certification_decisions d ON d.object_type='series'",
+    "AND d.object_id=r.series_id AND d.evidence_hash=r.evidence_hash",
+    "WHERE d.decision_id IS NULL OR r.assurance_level<>'rule_certified'",
+    "OR r.unit_code='UNRESOLVED_SOURCE_UNITS' OR r.stock_flow='not_reviewed'",
+    "OR r.nominal_real='not_reviewed' OR r.seasonal_adjustment='not_reviewed'"
+  ))
+  if (nrow(certified)) insert_quality_flag(
+    con, release_id, "error", "invalid_rule_certification", NA_character_,
+    paste(nrow(certified), "series carry incomplete certification evidence or semantics.")
+  )
+  duplicate_actual <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM (SELECT research_series_id,reference_period_start,count(*) n",
+    "FROM research.observations_latest_actual GROUP BY 1,2 HAVING count(*)>1)"
+  ))$n[[1]]
+  duplicate_panel <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM (SELECT source_id,reference_period,entity_id,item_id,currency,measure,count(*) n",
+    "FROM research.entity_panel GROUP BY 1,2,3,4,5,6 HAVING count(*)>1)"
+  ))$n[[1]]
+  if (duplicate_actual || duplicate_panel) insert_quality_flag(
+    con, release_id, "error", "research_grain_not_unique", NA_character_,
+    paste(duplicate_actual, "scalar keys and", duplicate_panel, "entity-panel keys are duplicated.")
+  )
+  tryCatch(
+    DBI::dbGetQuery(con, "SELECT * FROM research.observations_as_of(current_timestamp) LIMIT 0"),
+    error = function(e) insert_quality_flag(
+      con, release_id, "error", "research_as_of_unusable", NA_character_, conditionMessage(e)
+    )
+  )
   invisible(TRUE)
 }

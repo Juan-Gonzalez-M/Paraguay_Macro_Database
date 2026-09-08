@@ -39,11 +39,17 @@ All 22 current vintages are `inferred_upper_bound`, dated 2026-08-24 from
 `input_archive/archive_manifest.csv`. `outputs/source_provenance_worklist.csv` names, per vintage,
 which fields are still missing and what each one costs.
 
-Schema 40 makes the use restriction machine-readable as
+Schema 41 makes the use restriction machine-readable as
 `raw.source_provenance.snapshot_policy = 'legacy_current_snapshot_only'`. A genuinely new hash is
 labelled `verified_current_snapshot` or `release_history` only after the acquisition register is
 complete. This policy is independent of engineering rebuilds: running the same bytes through newer
 code does not create a statistical vintage.
+
+`config/acquisition_contracts.csv` is the forward operating contract for all 22 sources. It states
+the expected cadence, retention rule, mandatory provenance, rights status, allowed uses, prohibited
+uses, owner, and effective date. Blank landing-page fields and `license_status = unverified` are
+open acquisition tasks, not defaults to permission. Complete them from publisher evidence when the
+next genuine vintage is acquired.
 
 **`available_at` is never derived from the reference period.** The observations span 1945 to 2028;
 inferring availability from the period a figure describes is precisely the look-ahead the column

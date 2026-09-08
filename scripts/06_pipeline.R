@@ -631,7 +631,7 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
     apply_series_review(con, root)
     apply_series_grain(con, root)
     apply_source_provenance(con, root)
-    apply_platform_contracts(con, root)
+    apply_platform_contracts(con, root, build$build_id)
   })
   # After the semantics, because the expected grid is read off each series'
   # declared frequency, and before the marts, which publish the result.
