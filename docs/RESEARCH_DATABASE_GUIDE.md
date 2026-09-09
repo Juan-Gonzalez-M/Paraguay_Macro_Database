@@ -55,6 +55,16 @@ they were macroeconomic time series.
 No automatic logs, growth rates, seasonal adjustment, deflation, interpolation, or splicing are
 stored. `value_in_base_units` is only the deterministic published scale multiplication.
 
+## First review workstream
+
+The frozen baseline is `docs/RELEASE_BASELINE_SCHEMA41.md`. The ranked economist queue is
+`outputs/flagship_review_queue.csv`; it contains 50 scalar candidates with blank decision fields.
+`outputs/duplicate_canonical_resolution_queue.csv` combines value-signature duplicates, panel
+collisions, canonical proposals, and membership proposals. Complete those packets only after
+checking the cited source cells and then promote decisions through the existing sign-off workflow.
+The generator is `scripts/14_review_readiness.R` and is intentionally not run on every release, so a
+baseline remains frozen until an operator explicitly creates a new one.
+
 ## Citation and reproducibility
 
 Record the database SHA-256, schema version, active `data_release_id`, query text, assurance level,

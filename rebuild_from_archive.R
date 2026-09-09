@@ -1,7 +1,7 @@
 # Rebuilds a separate database using every deduplicated workbook in input_archive/.
 # The production database is never overwritten.
 root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
-for (script in c("01_utils.R", "03_concepts.R", "02_extract_raw.R", "03_reference_semantics.R", "03_curate_documented.R", "03_curate_expanded.R", "03_curate_special.R", "04_validate.R", "07_migration.R", "08_reconciliation.R", "09_semantics.R", "10_canonical.R", "11_marts.R", "12_platform.R", "06_pipeline.R")) {
+for (script in c("01_utils.R", "03_concepts.R", "02_extract_raw.R", "03_reference_semantics.R", "03_curate_documented.R", "03_curate_expanded.R", "03_curate_special.R", "04_validate.R", "05_query_helpers.R", "07_migration.R", "08_reconciliation.R", "09_semantics.R", "10_canonical.R", "11_marts.R", "12_platform.R", "14_review_readiness.R", "06_pipeline.R")) {
   source(file.path(root, "scripts", script))
 }
 ensure_dirs(root)
