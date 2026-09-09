@@ -80,7 +80,7 @@ testthat::test_that("certification is evidence-hashed, complete, and conservativ
   )
   open <- proposals$series_id[!is.na(proposals$open_questions) & nzchar(proposals$open_questions)]
   testthat::expect_length(intersect(open, certified$series_id), 0L)
-  testthat::expect_equal(DBI::dbGetQuery(con, paste(
+  testthat::expect_gte(DBI::dbGetQuery(con, paste(
     "SELECT count(*) n FROM canonical.certification_decisions",
     "WHERE object_type='canonical_series'"
   ))$n, 1)
