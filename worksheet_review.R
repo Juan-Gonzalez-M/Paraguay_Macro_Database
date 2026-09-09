@@ -42,9 +42,8 @@ root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 if (!file.exists(file.path(root, "config", "source_registry.csv"))) stop(
   "Run this from the project root.", call. = FALSE
 )
-for (script in c("01_utils.R", "03_concepts.R", "02_extract_raw.R", "09_semantics.R")) {
-  suppressMessages(source(file.path(root, "scripts", script)))
-}
+source(file.path(root, "scripts", "load_project.R"))
+load_project_scripts(root, profile = "worksheet_review", quiet = TRUE)
 
 WORKSHEET_REVIEW_PATH <- file.path("config", "proposals", "worksheet_review.csv")
 SERIES_PROPOSAL_PATH <- file.path("config", "proposals", "series_review.csv")

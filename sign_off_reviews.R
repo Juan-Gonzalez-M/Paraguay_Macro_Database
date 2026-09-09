@@ -47,14 +47,10 @@ root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 if (!file.exists(file.path(root, "config", "source_registry.csv"))) stop(
   "Run this from the project root.", call. = FALSE
 )
-# The same set the test helper sources, and for the same reason: the register
-# validators reach across files -- series_review_problems() reads a constant
-# declared in the reconciliation script -- and a sign-off that fell over halfway
-# through validating would be worse than one that never started.
-for (script in c("01_utils.R", "03_concepts.R", "02_extract_raw.R", "04_validate.R",
-                 "08_reconciliation.R", "09_semantics.R", "10_canonical.R", "11_marts.R")) {
-  suppressMessages(source(file.path(root, "scripts", script)))
-}
+# Register validators reach across stages, so this uses the governed dependency
+# profile shared with the other entry points rather than maintaining a local list.
+source(file.path(root, "scripts", "load_project.R"))
+load_project_scripts(root, profile = "governance", quiet = TRUE)
 
 # The annotations a proposal carries and a register does not: who drafted it,
 # what it rests on, how sure they were, and what is still unresolved. They are

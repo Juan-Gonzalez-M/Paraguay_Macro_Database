@@ -15,9 +15,8 @@ root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 if (!file.exists(file.path(root, "config", "source_registry.csv"))) {
   stop("Run from the project root: Rscript build_migration_map.R ...", call. = FALSE)
 }
-for (script in c("01_utils.R", "03_concepts.R", "02_extract_raw.R", "07_migration.R")) {
-  source(file.path(root, "scripts", script))
-}
+source(file.path(root, "scripts", "load_project.R"))
+load_project_scripts(root, profile = "migration")
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 3L) stop(

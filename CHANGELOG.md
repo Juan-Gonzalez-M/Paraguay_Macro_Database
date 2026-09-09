@@ -16,6 +16,10 @@ observation.
   sources, including rights and point-in-time limitations.
 - Preserved all unresolved material as provisional or excluded rather than inventing definitions,
   units, historical vintages, or methodological splices.
+- Consolidated entry-point dependency order in `scripts/load_project.R`, removed the unreachable
+  schema-40 research-view builder, renamed the active platform regression suite for schema 41, and
+  repaired current documentation links to the consolidated audit and review workflow. These are
+  codebase-maintenance changes and do not alter the published database or research SQL contract.
 
 ## v40
 

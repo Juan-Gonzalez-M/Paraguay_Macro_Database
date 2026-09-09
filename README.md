@@ -1,4 +1,4 @@
-# Paraguay macroeconomic database — governed pilot v40
+# Paraguay macroeconomic database — governed pilot v41
 
 ## About this project
 
@@ -21,6 +21,11 @@ What this buys a researcher or analyst working with Paraguayan macro/financial d
 - **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
 
 The schema is at version 41. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. The current readiness limitations and remediation plan are in `Paraguay_Macro_Database_Audit.md`.
+
+The supported commands, script dependency profiles, directory ownership, and latest dead-code and
+storage audit are recorded in [`docs/CODEBASE_AUDIT.md`](docs/CODEBASE_AUDIT.md). Entry points load
+pipeline stages through `scripts/load_project.R`; the numeric filenames are historical stage labels,
+not a lexical execution order.
 
 **What is and is not research-ready, as of schema 41.** The `research` schema is usable now, but its
 scope is intentionally smaller than the raw database. Deterministic high-confidence source-series
@@ -118,8 +123,11 @@ Replace it only when an official reviewed reference version changes. Its fifteen
 The active project is schema 41. `CHANGELOG.md` is the single maintained implementation history;
 `docs/SCHEMA_MIGRATIONS.md` is generated from the migration registry and records the executable
 upgrade path. Historical audit narratives and version-specific repair notes are intentionally not
-part of the current distribution. The only current readiness assessment and remediation plan is
-`revisiones/EMPIRICAL_READINESS_2026-09-03.md`.
+part of the current distribution. The current consolidated assessment is
+[`Paraguay_Macro_Database_Audit.md`](Paraguay_Macro_Database_Audit.md); the implemented schema-41
+release baseline and remaining human-review work are documented in
+[`docs/RELEASE_BASELINE_SCHEMA41.md`](docs/RELEASE_BASELINE_SCHEMA41.md) and
+[`docs/REVIEW_WORKFLOW.md`](docs/REVIEW_WORKFLOW.md).
 
 ## Data layers
 
@@ -288,7 +296,9 @@ This creates `database/paraguay_macro_rebuilt_from_archive.duckdb` and never ove
 - `docs/OPERATIONS.md`: replacement procedure, acceptance checklist and recovery.
 - `docs/VERIFICATION.md`: verified workbook facts, test targets and environment limitation.
 - `docs/SCHEMA_MIGRATIONS.md`: generated from the migration registry on every run — which version the database is at, what each step changed, and which sources it re-ingested.
-- `revisiones/EMPIRICAL_READINESS_2026-09-03.md`: current limitations, evidence and ordered remediation plan.
+- `Paraguay_Macro_Database_Audit.md`: consolidated limitations, evidence and remediation rationale.
+- `docs/RELEASE_BASELINE_SCHEMA41.md`: frozen metrics for the published schema-41 research surface.
+- `docs/REVIEW_WORKFLOW.md`: remaining economist-review queues and governed sign-off procedure.
 - `config/table_dictionary.csv`: machine-readable database object catalogue.
 
 ## Pilot boundary

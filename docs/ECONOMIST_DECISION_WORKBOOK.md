@@ -4,7 +4,7 @@
 **Product:** Paraguay Macro Database  
 **Primary publisher currently in scope:** Banco Central del Paraguay (BCP)  
 **Companion technical audit and implementation plan:**
-[`revisiones/EMPIRICAL_READINESS_2026-09-03.md`](../revisiones/EMPIRICAL_READINESS_2026-09-03.md)
+[`Paraguay_Macro_Database_Audit.md`](../Paraguay_Macro_Database_Audit.md)
 
 ## 1. Purpose and redefined target
 

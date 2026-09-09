@@ -1,4 +1,4 @@
-schema40_database <- function() {
+research_platform_database <- function() {
   source <- file.path(project_test_root, "database", "paraguay_macro_pilot.duckdb")
   testthat::skip_if_not(file.exists(source), "production database not present")
   path <- tempfile(fileext = ".duckdb")
@@ -17,7 +17,7 @@ schema40_database <- function() {
 }
 
 testthat::test_that("schema 41 publishes exactly the governed grain-aware research API", {
-  con <- schema40_database()
+  con <- research_platform_database()
   testthat::expect_equal(
     DBI::dbGetQuery(con, "SELECT max(version) AS version FROM audit.schema_version")$version,
     41L
@@ -37,7 +37,7 @@ testthat::test_that("schema 41 publishes exactly the governed grain-aware resear
 })
 
 testthat::test_that("rule-certified rows are usable without claiming human sign-off", {
-  con <- schema40_database()
+  con <- research_platform_database()
   testthat::expect_gt(
     DBI::dbGetQuery(con, "SELECT count(*) AS n FROM research.observations_latest_actual")$n,
     0
@@ -55,7 +55,7 @@ testthat::test_that("rule-certified rows are usable without claiming human sign-
 })
 
 testthat::test_that("certification is evidence-hashed, complete, and conservative", {
-  con <- schema40_database()
+  con <- research_platform_database()
   registered <- readr::read_csv(
     file.path(project_test_root, "config", "source_registry.csv"), show_col_types = FALSE
   )$source_id
@@ -87,7 +87,7 @@ testthat::test_that("certification is evidence-hashed, complete, and conservativ
 })
 
 testthat::test_that("grain-specific views do not silently retain duplicate panel keys", {
-  con <- schema40_database()
+  con <- research_platform_database()
   duplicated <- DBI::dbGetQuery(con, paste(
     "SELECT source_id,reference_period,entity_id,item_id,currency,measure,count(*) n",
     "FROM research.entity_panel GROUP BY 1,2,3,4,5,6 HAVING count(*)>1"
@@ -101,7 +101,7 @@ testthat::test_that("grain-specific views do not silently retain duplicate panel
 })
 
 testthat::test_that("every source declares missingness and legacy vintages declare their limit", {
-  con <- schema40_database()
+  con <- research_platform_database()
   registered <- readr::read_csv(
     file.path(project_test_root, "config", "source_registry.csv"), show_col_types = FALSE
   )$source_id
@@ -121,7 +121,7 @@ testthat::test_that("every source declares missingness and legacy vintages decla
 })
 
 testthat::test_that("source labels and full paths are separate research metadata", {
-  con <- schema40_database()
+  con <- research_platform_database()
   columns <- DBI::dbGetQuery(con, paste(
     "SELECT column_name FROM information_schema.columns",
     "WHERE table_schema = 'canonical' AND table_name = 'dim_series'"
@@ -136,7 +136,7 @@ testthat::test_that("source labels and full paths are separate research metadata
 })
 
 testthat::test_that("canonical membership carries effective precedence policy", {
-  con <- schema40_database()
+  con <- research_platform_database()
   columns <- DBI::dbGetQuery(con, paste(
     "SELECT column_name FROM information_schema.columns",
     "WHERE table_schema = 'canonical' AND table_name = 'map_canonical_series'"
@@ -147,27 +147,27 @@ testthat::test_that("canonical membership carries effective precedence policy", 
 })
 
 testthat::test_that("research interfaces satisfy the active-release contract", {
-  con <- schema40_database()
-  validate_published_release_filter(con, "release:schema40-test", project_test_root)
+  con <- research_platform_database()
+  validate_published_release_filter(con, "release:schema41-test", project_test_root)
   failures <- DBI::dbGetQuery(con, paste(
-    "SELECT * FROM audit.quality_flags WHERE release_id = 'release:schema40-test'",
+    "SELECT * FROM audit.quality_flags WHERE release_id = 'release:schema41-test'",
     "AND severity = 'error'"
   ))
   testthat::expect_equal(nrow(failures), 0L)
 })
 
 testthat::test_that("the research flag view cannot shadow the writable audit table", {
-  con <- schema40_database()
-  release <- "release:schema40-shadow-test"
+  con <- research_platform_database()
+  release <- "release:schema41-shadow-test"
   testthat::expect_silent(insert_quality_flag(
-    con, release, "warning", "schema40_shadow_test", "economic_annex", "fixture"
+    con, release, "warning", "schema41_shadow_test", "economic_annex", "fixture"
   ))
   testthat::expect_equal(DBI::dbGetQuery(con, paste(
     "SELECT count(*) AS n FROM audit.quality_flags",
-    "WHERE release_id = 'release:schema40-shadow-test'"
+    "WHERE release_id = 'release:schema41-shadow-test'"
   ))$n, 1)
   testthat::expect_equal(DBI::dbGetQuery(con, paste(
     "SELECT count(*) AS n FROM research.quality_flags",
-    "WHERE release_id = 'release:schema40-shadow-test'"
+    "WHERE release_id = 'release:schema41-shadow-test'"
   ))$n, 0)
 })
