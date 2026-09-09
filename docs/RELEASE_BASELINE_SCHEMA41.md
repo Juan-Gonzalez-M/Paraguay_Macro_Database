@@ -1,10 +1,10 @@
 # Frozen release baseline
 
-Baseline ID: `schema41-2026-09-09`  
-Frozen at: `2026-09-09 09:08:58.314904`  
-Active data release: `build:57fe1ff64fb654508b2a8f0a`  
-Source bundle: `release:748d41036c3a73638a1c2086`  
-Database SHA-256: `17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180`  
+Baseline ID: `schema41-2026-09-09`
+Frozen at: `2026-09-09 09:08:58.314904`
+Active data release: `build:57fe1ff64fb654508b2a8f0a`
+Source bundle: `release:748d41036c3a73638a1c2086`
+Database SHA-256: `17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180`
 Database bytes: `418918400`
 
 This is the immutable comparison point for subsequent economic review. It records the bytes and

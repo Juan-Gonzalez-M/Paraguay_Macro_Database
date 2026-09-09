@@ -3,6 +3,9 @@
 This workflow covers the first flagship and duplicate-resolution waves. It separates evidence
 preparation from the decision that changes the research surface.
 
+Regenerate the packets at any time with `Rscript prepare_review_packets.R`. The script opens the
+published DuckDB read-only and does not ingest or modify database state.
+
 ## Series review
 
 1. Start with `outputs/flagship_review_queue.csv`, ordered by source priority and economic relevance.
