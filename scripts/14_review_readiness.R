@@ -160,10 +160,3 @@ write_duplicate_resolution_queue <- function(con, root) {
   readr::write_csv(queue, file.path(root, "outputs", "duplicate_canonical_resolution_queue.csv"))
   invisible(queue)
 }
-
-write_review_readiness_packets <- function(con, root) {
-  write_release_baseline(con, root)
-  write_flagship_review_queue(con, root)
-  write_duplicate_resolution_queue(con, root)
-  invisible(TRUE)
-}

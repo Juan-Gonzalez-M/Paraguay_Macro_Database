@@ -18,6 +18,47 @@ test_that("project loader fails clearly for unknown profiles", {
   )
 })
 
+test_that("supported entry points use the canonical loader", {
+  entry_points <- c(
+    "run_update.R", "rebuild_from_archive.R", "prepare_review_packets.R",
+    "sign_off_reviews.R", "worksheet_review.R", "build_migration_map.R"
+  )
+  code <- vapply(entry_points, function(path) paste(
+    readLines(file.path(project_test_root, path), warn = FALSE), collapse = "\n"
+  ), character(1))
+  expect_true(all(grepl("scripts.*load_project[.]R", code)))
+  expect_false(any(grepl("for \\(script in c", code)))
+})
+
+test_that("current Markdown links resolve inside the repository", {
+  documents <- c("README.md", list.files(
+    file.path(project_test_root, "docs"), pattern = "[.]md$", full.names = TRUE
+  ))
+  documents[[1]] <- file.path(project_test_root, documents[[1]])
+  broken <- character()
+  for (document in documents) {
+    text <- paste(readLines(document, warn = FALSE), collapse = "\n")
+    links <- regmatches(text, gregexpr("\\[[^]]+\\]\\([^)]+\\)", text, perl = TRUE))[[1]]
+    if (identical(links, character(0)) || identical(links, "")) next
+    targets <- sub("^.*\\]\\(([^)#]+)(?:#[^)]*)?\\)$", "\\1", links, perl = TRUE)
+    targets <- targets[!grepl("^(https?:|mailto:)", targets)]
+    missing <- targets[!file.exists(file.path(dirname(document), targets))]
+    if (length(missing)) broken <- c(broken, paste(basename(document), missing, sep = ": "))
+  }
+  if (length(broken)) testthat::fail(paste("Broken local Markdown links:", paste(
+    broken, collapse = "\n"
+  ), sep = "\n"))
+  expect_length(broken, 0L)
+})
+
+test_that("README advertises the current executable schema", {
+  version <- max(vapply(SCHEMA_MIGRATIONS, function(step) step$version, integer(1)))
+  title <- readLines(file.path(project_test_root, "README.md"), n = 1L, warn = FALSE)
+  expect_match(title, paste0("v", version, "$"))
+})
+
 test_that("retired schema-40 view builder is absent", {
   expect_false(exists("create_schema40_compat_views", inherits = TRUE))
+  expect_false(exists("register_column_order", inherits = TRUE))
+  expect_false(exists("write_review_readiness_packets", inherits = TRUE))
 })

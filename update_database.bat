@@ -6,5 +6,5 @@ echo Open the R project in RStudio and run source("run_update.R").
 pause
 exit /b 1
 :run
-Rscript run_update.R
+Rscript --vanilla run_update.R
 pause

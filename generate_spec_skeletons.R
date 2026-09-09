@@ -1,7 +1,10 @@
 # Generates review-required YAML companions for documented-table worksheets.
-# The v7 parsers are already active; these files are a queue for optional semantic
+# The parsers are already active; these files are a queue for optional semantic
 # refinements such as unit overrides and cross-source concept mappings.
 root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+if (!file.exists(file.path(root, "config", "source_registry.csv"))) {
+  stop("Run from the project root: Rscript --vanilla generate_spec_skeletons.R", call. = FALSE)
+}
 source(file.path(root, "scripts", "01_utils.R"))
 registry <- readr::read_csv(file.path(root, "config", "source_registry.csv"), show_col_types = FALSE) %>%
   filter(ingest_mode == "semantic_table")

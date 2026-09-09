@@ -14,11 +14,12 @@
 #                               baseline did not
 #   period_corrections.csv      cells both read, dated differently
 #
-# The baseline is the last database that predates the repairs, kept in
-# database/backups/. Pass a different one as the first argument to re-cut the
-# fixtures against another release.
+# The baseline is the last database that predates the repairs. It is deliberately
+# not bundled or assumed to have a permanent local filename: backup retention is
+# an operator concern, and silently selecting the wrong comparison release would
+# re-cut the golden fixtures against the wrong history.
 #
-# Usage:  Rscript generate_regression_fixtures.R [baseline.duckdb]
+# Usage:  Rscript --vanilla generate_regression_fixtures.R baseline.duckdb
 
 suppressPackageStartupMessages({
   library(DBI)
@@ -31,9 +32,11 @@ if (!file.exists(file.path(root, "config", "source_registry.csv"))) {
   stop("Run from the project root.", call. = FALSE)
 }
 args <- commandArgs(trailingOnly = TRUE)
-baseline <- if (length(args)) args[[1]] else file.path(
-  root, "database", "backups", "paraguay_macro_pilot_pre_v16_20260829_092745.duckdb"
+if (length(args) != 1L) stop(
+  "Usage: Rscript --vanilla generate_regression_fixtures.R <baseline.duckdb>",
+  call. = FALSE
 )
+baseline <- normalizePath(args[[1]], winslash = "/", mustWork = FALSE)
 if (!file.exists(baseline)) stop("Baseline database not found: ", baseline, call. = FALSE)
 current <- file.path(root, "database", "paraguay_macro_pilot.duckdb")
 

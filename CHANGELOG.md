@@ -18,8 +18,10 @@ observation.
   units, historical vintages, or methodological splices.
 - Consolidated entry-point dependency order in `scripts/load_project.R`, removed the unreachable
   schema-40 research-view builder, renamed the active platform regression suite for schema 41, and
-  repaired current documentation links to the consolidated audit and review workflow. These are
-  codebase-maintenance changes and do not alter the published database or research SQL contract.
+  repaired current documentation links to the consolidated audit and review workflow. Repository
+  tests now enforce those contracts. Fixture regeneration requires an explicit historical baseline,
+  and unattended launchers use vanilla R sessions. These are codebase-maintenance changes and do
+  not alter the published database or research SQL contract.
 
 ## v40
 

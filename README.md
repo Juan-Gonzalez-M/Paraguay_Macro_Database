@@ -208,6 +208,7 @@ dbGetQuery(con, "SELECT * FROM v_securities_daily_activity ORDER BY operation_da
 dbGetQuery(con, "SELECT * FROM v_series_catalogue ORDER BY source_id, series_id")
 series_latest(con, "icc:icc")
 series_as_of(con, "2026-06-30", "icc:icc")
+series_publisher_statement(con, "icc:icc") # current statement, projections included
 series_revision_history(con)
 concept_catalogue(con)
 # series_by_concept(con, "concept:bcp:reviewed_identifier")
@@ -223,6 +224,7 @@ status on one row:
 ```r
 source("scripts/05_query_helpers.R")
 con <- open_macro_database()
+research_quality_flags(con) # open issues scoped to the active published release
 
 # Discovery. A label that names more than one series is an error naming the
 # candidates, not an arbitrary choice among them -- 4,015 of the 7,229 scalar

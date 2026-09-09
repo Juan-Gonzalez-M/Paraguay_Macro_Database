@@ -200,12 +200,6 @@ read_register <- function(root, register_name) {
   register
 }
 
-# The order the register file itself uses, so signing a row does not silently
-# rewrite the whole file into a different column order.
-register_column_order <- function(root, register_name) {
-  names(read_register(root, register_name))
-}
-
 proposal_key <- function(rows, spec) {
   if (!nrow(rows)) return(character())
   do.call(paste, c(lapply(spec$key, function(column) rows[[column]]), sep = " / "))

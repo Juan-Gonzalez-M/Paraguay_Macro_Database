@@ -21,6 +21,9 @@ organization only where behavior can be held constant and tested.
 | The README title still said v40. | Users could mistake the current database contract. | Updated it to v41. |
 | The active platform regression file and fixture helper were still named for schema 40. | Test discovery worked, but names misrepresented what was under test. | Renamed the suite and helper for the current research platform; retained genuine schema-40 migration history. |
 | Current docs linked to a removed `revisiones/` file. | Readers encountered broken links and competing claims about the authoritative audit. | Pointed current guidance to the consolidated audit, schema-41 baseline, and review workflow; left changelog references untouched as history. |
+| Two unreferenced convenience functions survived earlier workflow changes. | They implied supported paths that no entry point or test exercised; one could regenerate a release baseline that is meant to stay frozen. | Removed `register_column_order()` and `write_review_readiness_packets()`; kept the individually invoked review-queue writers and user-facing query helpers. |
+| The regression-fixture generator defaulted to a backup filename that no longer exists. | Its documented no-argument invocation always failed, and a future similarly named file could select the wrong comparison release. | Made the historical baseline path a required explicit argument. |
+| Platform launchers inherited user/site R profiles. | A local profile could alter a supposedly reproducible unattended run before environment checks begin. | Both shell launchers now call `Rscript --vanilla`. |
 | Ignored database recovery files occupy about 4.0 GiB in addition to the published file. | Local storage cost and visual clutter; no source-control impact. | Ran the existing retention policy in dry-run mode. Seven old pre-swap backups (about 2.5 GiB) are eligible; no recovery file was deleted implicitly. |
 | Generated outputs, logs, archive copies, candidates, and backups coexist with source files. | A directory listing looks larger and less structured than the tracked product. | Existing directory boundaries and `.gitignore` rules are correct; this document makes their ownership explicit. |
 
@@ -39,6 +42,8 @@ organization only where behavior can be held constant and tested.
 Standalone operational utilities intentionally load only what they use:
 `compact_database.R`, `prepare_distribution.R`, `prune_backups.R`,
 `generate_regression_fixtures.R`, and `generate_spec_skeletons.R`.
+Fixture regeneration requires an explicit historical baseline database; no retained backup is
+silently treated as canonical.
 `scripts/upgrade_v1_to_v12.R` is retained as a supported legacy bootstrap referenced by the
 migration guide; it is not part of normal schema-41 execution.
 
