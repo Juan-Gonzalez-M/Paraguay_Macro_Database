@@ -22,10 +22,14 @@ observation.
   tests now enforce those contracts. Fixture regeneration requires an explicit historical baseline,
   and unattended launchers use vanilla R sessions. These are codebase-maintenance changes and do
   not alter the published database or research SQL contract.
+- Consolidated the current audit, frozen baseline, economic-review workbook, review workflow,
+  codebase audit, verification narrative, completed remediation, and future roadmap into the single
+  authoritative `PROJECT_HANDOVER.md`. Superseded parallel planning files were removed; detailed
+  live technical contracts and executable tests remain in place.
 
 ## v40
 
-Canonical-platform remediation from `Paraguay_Macro_Database_Audit.md`. Changes no source
+Canonical-platform remediation now summarized in `PROJECT_HANDOVER.md`. Changes no source
 observation.
 
 - Added a compact nine-view `research` schema. Canonical observations require reviewed source
@@ -47,7 +51,7 @@ observation.
 
 ## v39
 
-Empirical-readiness remediation, `revisiones/EMPIRICAL_READINESS_2026-09-03.md`, items ER-01, ER-02,
+Empirical-readiness remediation now summarized in `PROJECT_HANDOVER.md`, items ER-01, ER-02,
 ER-04, ER-05, ER-06, ER-07, ER-08, ER-09 and ER-12. Changes no observation.
 
 - **A cross-source monthly join returned zero rows, silently.** Monthly series do not share a day
@@ -135,8 +139,8 @@ backed proposals and the sign-off command that promotes them are the next step.
 Schema and published observations are unchanged. Superseded audit narratives, version-specific
 repair notes, stale schema-12/14 CSV exports, obsolete version-1 compatibility wrappers and local
 generated/session artifacts were removed. Living regression tests were retained and renamed by the
-behavior they protect. `revisiones/EMPIRICAL_READINESS_2026-09-03.md` is now the only current audit
-and remediation guide; Git history remains the archive for deleted historical reports.
+behavior they protect. That round temporarily designated a versioned readiness audit as current;
+`PROJECT_HANDOVER.md` now supersedes it and Git history remains the archive for deleted reports.
 
 ## v38
 
@@ -739,9 +743,9 @@ Fourth technical audit, roadmap item P2. Changes no observation.
   actually does: modification time is when the file reached this disk, not when it was published.
 - Documentation: `README.md` and `docs/OPERATIONS.md` drop `completed_with_errors` and explain what a
   blocked release means for the research views; the README's provenance claim is narrowed to what
-  each source family actually carries; `docs/VERIFICATION.md` describes the current executable
-  environment instead of asserting that R is unavailable. Superseded review notes were later removed
-  from the current distribution and remain available through Git history.
+  each source family actually carries; the verification record was updated to describe the
+  executable environment instead of asserting that R was unavailable. That historical narrative was
+  later consolidated into `PROJECT_HANDOVER.md`; maintained targets live in executable tests.
 
 ## v25
 

@@ -6,8 +6,7 @@ This document exists because of a defect that produced no error message. Joining
 index to the exchange rate through the documented read path returned **zero rows** — not a warning,
 not a partial sample, an empty estimation sample — because the two sources date monthly observations
 to different days of the month. The consolidated audit at
-[`Paraguay_Macro_Database_Audit.md`](../Paraguay_Macro_Database_Audit.md) records the defect and its
-remediation.
+[`PROJECT_HANDOVER.md`](../PROJECT_HANDOVER.md) records the defect and its remediation.
 
 ## The three columns
 

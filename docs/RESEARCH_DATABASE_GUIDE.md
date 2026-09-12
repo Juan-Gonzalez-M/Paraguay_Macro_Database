@@ -57,7 +57,7 @@ stored. `value_in_base_units` is only the deterministic published scale multipli
 
 ## First review workstream
 
-The frozen baseline is `docs/RELEASE_BASELINE_SCHEMA41.md`. The ranked economist queue is
+The frozen baseline and complete continuation plan are in `PROJECT_HANDOVER.md`. The ranked economist queue is
 `outputs/flagship_review_queue.csv`; it contains 50 scalar candidates with blank decision fields.
 `outputs/duplicate_canonical_resolution_queue.csv` combines value-signature duplicates, panel
 collisions, canonical proposals, and membership proposals. Complete those packets only after

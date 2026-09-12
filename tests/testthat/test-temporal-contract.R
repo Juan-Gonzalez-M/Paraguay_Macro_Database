@@ -54,7 +54,7 @@ testthat::test_that("the interval contains its own observation and the canonical
 
 testthat::test_that("the audit's zero-row join is the raw-date join, and the canonical key fixes it", {
   con <- temporal_production()
-  # The exact monthly-date mismatch documented by Paraguay_Macro_Database_Audit.md:
+  # The exact monthly-date mismatch documented by PROJECT_HANDOVER.md:
   # the consumer price index on the economic annex (dated day 1) against the
   # monthly average PYG/USD rate on exchange_rates (dated month end).
   cpi <- "economic_annex:cuadro_60b:293a83a82f814b7fc49afadc"

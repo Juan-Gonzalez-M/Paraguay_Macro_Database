@@ -20,12 +20,11 @@ What this buys a researcher or analyst working with Paraguayan macro/financial d
 - **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `release_blocked` produced error-severity flags, is never published through the research views, and stops the caller with a nonzero status.
 - **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
 
-The schema is at version 41. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. The current readiness limitations and remediation plan are in `Paraguay_Macro_Database_Audit.md`.
+The schema is at version 41. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. Current status, the frozen handover baseline, completed remediation, and all remaining plans are consolidated in [`PROJECT_HANDOVER.md`](PROJECT_HANDOVER.md).
 
-The supported commands, script dependency profiles, directory ownership, and latest dead-code and
-storage audit are recorded in [`docs/CODEBASE_AUDIT.md`](docs/CODEBASE_AUDIT.md). Entry points load
-pipeline stages through `scripts/load_project.R`; the numeric filenames are historical stage labels,
-not a lexical execution order.
+Entry points load pipeline stages through `scripts/load_project.R`; the numeric filenames are
+historical stage labels, not a lexical execution order. Repository ownership and maintenance rules
+are recorded in the handover guide.
 
 **What is and is not research-ready, as of schema 41.** The `research` schema is usable now, but its
 scope is intentionally smaller than the raw database. Deterministic high-confidence source-series
@@ -123,11 +122,8 @@ Replace it only when an official reviewed reference version changes. Its fifteen
 The active project is schema 41. `CHANGELOG.md` is the single maintained implementation history;
 `docs/SCHEMA_MIGRATIONS.md` is generated from the migration registry and records the executable
 upgrade path. Historical audit narratives and version-specific repair notes are intentionally not
-part of the current distribution. The current consolidated assessment is
-[`Paraguay_Macro_Database_Audit.md`](Paraguay_Macro_Database_Audit.md); the implemented schema-41
-release baseline and remaining human-review work are documented in
-[`docs/RELEASE_BASELINE_SCHEMA41.md`](docs/RELEASE_BASELINE_SCHEMA41.md) and
-[`docs/REVIEW_WORKFLOW.md`](docs/REVIEW_WORKFLOW.md).
+part of the current distribution. [`PROJECT_HANDOVER.md`](PROJECT_HANDOVER.md) is the single current
+assessment, baseline, remediation record, and roadmap.
 
 ## Data layers
 
@@ -292,15 +288,11 @@ This creates `database/paraguay_macro_rebuilt_from_archive.duckdb` and never ove
 - `docs/SEMANTIC_REFERENCE.md`: exact reference tables, mappings and coverage behavior.
 - `docs/DOCUMENTED_SOURCES.md`: parser orientations, series identity, hierarchy, units, all expanded sources and review queries.
 - `docs/CONCEPT_GOVERNANCE.md`: safe cross-source mapping workflow and review contract.
-- `docs/ECONOMIST_DECISION_WORKBOOK.md`: source-review, minimal-catalogue, coverage, and release approvals required before implementation handoff.
+- `PROJECT_HANDOVER.md`: authoritative status, baseline, completed corrections, review workflow, roadmap, ownership, and restart checklist.
 - `docs/TEMPORAL_CONTRACT.md`: what a period means per frequency, which column you may join on, and why `period` is not it.
 - `docs/ACQUISITION_RUNBOOK.md`: how a publication is retained, what must be recorded about it, and what real-time history is irrecoverable.
 - `docs/OPERATIONS.md`: replacement procedure, acceptance checklist and recovery.
-- `docs/VERIFICATION.md`: verified workbook facts, test targets and environment limitation.
 - `docs/SCHEMA_MIGRATIONS.md`: generated from the migration registry on every run — which version the database is at, what each step changed, and which sources it re-ingested.
-- `Paraguay_Macro_Database_Audit.md`: consolidated limitations, evidence and remediation rationale.
-- `docs/RELEASE_BASELINE_SCHEMA41.md`: frozen metrics for the published schema-41 research surface.
-- `docs/REVIEW_WORKFLOW.md`: remaining economist-review queues and governed sign-off procedure.
 - `config/table_dictionary.csv`: machine-readable database object catalogue.
 
 ## Pilot boundary

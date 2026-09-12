@@ -31,10 +31,9 @@ test_that("supported entry points use the canonical loader", {
 })
 
 test_that("current Markdown links resolve inside the repository", {
-  documents <- c("README.md", list.files(
+  documents <- c(file.path(project_test_root, c("README.md", "PROJECT_HANDOVER.md")), list.files(
     file.path(project_test_root, "docs"), pattern = "[.]md$", full.names = TRUE
   ))
-  documents[[1]] <- file.path(project_test_root, documents[[1]])
   broken <- character()
   for (document in documents) {
     text <- paste(readLines(document, warn = FALSE), collapse = "\n")

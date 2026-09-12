@@ -69,7 +69,7 @@ write_release_baseline <- function(con, root, baseline_id = "schema41-2026-09-09
     "|---|---:|",
     paste0("| ", metrics$metric, " | ", metrics$value, " |")
   )
-  writeLines(lines, file.path(root, "docs", "RELEASE_BASELINE_SCHEMA41.md"))
+  writeLines(lines, file.path(root, "outputs", "release_baseline.md"))
   invisible(metrics)
 }
 
