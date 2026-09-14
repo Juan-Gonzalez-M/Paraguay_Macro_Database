@@ -1,4 +1,4 @@
-# Paraguay macroeconomic database — governed pilot v41
+# Paraguay macroeconomic database — governed pilot v43
 
 ## About this project
 
@@ -20,13 +20,15 @@ What this buys a researcher or analyst working with Paraguayan macro/financial d
 - **Fail-closed data quality.** The pipeline does not silently coerce ambiguous data: unresolved units, unreviewed cross-source concept mappings, and hierarchy ambiguities are explicitly flagged rather than guessed at, and a run reporting `release_blocked` produced error-severity flags, is never published through the research views, and stops the caller with a nonzero status.
 - **Explicit series identity.** A series is only merged with another when a human has reviewed and recorded the relationship in `config/concept_mappings.csv` — the pipeline never infers economic equivalence from similar-looking labels alone.
 
-The schema is at version 41. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. Current status, the frozen handover baseline, completed remediation, and all remaining plans are consolidated in [`PROJECT_HANDOVER.md`](PROJECT_HANDOVER.md).
+The schema is at version 43. `CHANGELOG.md` records the implementation history, while `docs/SCHEMA_MIGRATIONS.md` is regenerated from the executable migration registry on every run so it describes the database in front of you. Current status, the frozen handover baseline, completed remediation, and all remaining plans are consolidated in [`PROJECT_HANDOVER.md`](PROJECT_HANDOVER.md).
 
 Entry points load pipeline stages through `scripts/load_project.R`; the numeric filenames are
 historical stage labels, not a lexical execution order. Repository ownership and maintenance rules
 are recorded in the handover guide.
 
-**What is and is not research-ready, as of schema 41.** The `research` schema is usable now, but its
+**What is and is not research-ready, as of schema 43.** The `catalog` schema discovers every identified
+candidate, `explore` provides mechanically gated preliminary observations, and the `research` schema
+remains the governed admitted subset. The `research` schema is usable now, but its
 scope is intentionally smaller than the raw database. Deterministic high-confidence source-series
 proposals may enter as visibly labelled `rule_certified`; this is not represented as human review.
 Long-format curves and transactions are certified for structural use, and the entity panel exposes
@@ -119,7 +121,7 @@ Replace it only when an official reviewed reference version changes. Its fifteen
 
 ## Current release and change history
 
-The active project is schema 41. `CHANGELOG.md` is the single maintained implementation history;
+The active project is schema 43. `CHANGELOG.md` is the single maintained implementation history;
 `docs/SCHEMA_MIGRATIONS.md` is generated from the migration registry and records the executable
 upgrade path. Historical audit narratives and version-specific repair notes are intentionally not
 part of the current distribution. [`PROJECT_HANDOVER.md`](PROJECT_HANDOVER.md) is the single current

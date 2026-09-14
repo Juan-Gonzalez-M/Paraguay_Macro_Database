@@ -1,5 +1,5 @@
 rule_id,rule_version,object_type,assurance_level,description,enabled
 proposal_high_no_open,1,series,rule_certified,"Certifies a source series only when its proposal is high confidence with no open question, all transformation-critical fields are explicit, the identity is semantic, and every contributing worksheet reconciles without parser defects.",TRUE
 canonical_high_no_dependency,1,canonical_series,rule_certified,"Maps a rule-certified source series to a canonical identifier only when both canonical and membership proposals are high confidence with no open question and no unsigned methodology regime is required.",TRUE
-collision_free_panel_row,1,entity_panel_row,rule_certified,"Publishes only rows unique at the declared entity-period-item-currency-measure grain; all collisions remain outside the research view.",TRUE
+collision_free_panel_row,2,entity_panel_row,rule_certified,"Publishes EEFF rows at the source-period-entity-item-source-currency-code-measure grain; source-to-research row conservation and target-release collisions are release-blocking.",TRUE
 accounted_long_source,1,dataset,rule_certified,"Publishes a long-format curve or transaction source only after parser row accounting and the accepted-release boundary succeed; this certifies structure, not redistribution rights or point-in-time history.",TRUE

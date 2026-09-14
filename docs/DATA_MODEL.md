@@ -137,7 +137,7 @@ Every filtered view has an unfiltered `_all` twin. Those exist for diagnostics a
 
 ## What is published, declared rather than inferred
 
-`config/public_view_contract.csv` gives every view and macro in `main`, `marts`, and `research` a `public_scope`, with a reason and a reviewer:
+`config/public_view_contract.csv` gives every view and macro in `main`, `marts`, `catalog`, `explore`, and `research` a `public_scope`, with a reason and a reviewer:
 
 | Scope | Meaning |
 | --- | --- |
@@ -235,15 +235,40 @@ periods. Equal-precedence overlapping carriers block unless they are an explicit
 primary/replica pair. A canonical relationship that stops holding is a fact about the sources, and
 it should stop the release rather than be discovered by a reader.
 
-## Stable research schema
+## Researcher-facing catalogue, exploration, and research schemas
 
-Schema 41 publishes exactly nine stable views under `research`: `dataset_catalog`, `series_catalog`,
+Schema 43 adds discovery without changing formal admission. `catalog.series` has exactly one row per
+`canonical.dim_series.series_id` and combines the source label/path, available dimensions and economic
+metadata, current coverage, declared-frequency gap diagnostics, normalized-key checks, lineage,
+machine-readable validation tier, and explicit warnings. `catalog.series_warnings` normalizes those
+limitations and `catalog.datasets` covers direct panels and long-format source datasets that are not
+fully described by scalar candidate rows. `catalog.profile(candidate_id)` is the one-candidate lookup.
+
+`explore.observations` contains current actual scalar observations only for semantic identities with at
+least three finite observations, ordered normalized period bounds, no normalized-period collision, no
+applicable error flag, and no quarantined/invalid table status. `explore.events`,
+`explore.panel_observations`, and `explore.curve_observations` keep special structures separate. All
+rows carry their validation tier, status, warning, source/vintage lineage, and available source
+coordinates. These are mechanical retrieval conditions, not economic certification.
+
+Worksheet lineage in `explore.*` is resolved at the observation natural key
+`(vintage_id, series_id, period)` from `staging.documented_series_snapshot`. `source_sheet`,
+`table_title`, `source_row`, and `source_column` therefore describe one source cell together. The
+series identity remains separately visible as `identity_basis` and `identity_source_sheet`, while
+`title_record_source_sheet` and `title_record_table_title` retain the one-row canonical title record.
+`worksheet_lineage_correction_reason` explains rows where that series-level record differs from the
+observation worksheet. A catalogue profile publishes `source_sheet` only when every current
+coordinate belongs to one worksheet; `source_sheets`, `source_sheet_count`, and
+`worksheet_lineage_status` represent continuation groups honestly. An invalid locator quarantines
+the candidate, and the staging natural-key constraint rejects ambiguous observation lineage.
+
+Schema 43 continues to publish exactly nine stable views under `research`: `dataset_catalog`, `series_catalog`,
 `observations_latest_actual`, `observations_latest_statement`, `entity_panel`, `events`, `curves`,
 `transactions`, and `quality_flags`. The table macro `research.observations_as_of(timestamp)` is the
 point-in-time scalar interface. Every data row carries its assurance level and rule. Automated
 certification is stored separately from `canonical.series_review`, so it cannot be mistaken for a
-human signature. Unresolved series, colliding panel keys, and unsafe canonical mappings remain out
-of the data views while their source-level disposition remains queryable in `dataset_catalog`.
+human signature. Unresolved series and unsafe canonical mappings remain out of the data views while
+their source-level disposition remains queryable in `dataset_catalog`.
 
 ## Series grain
 
@@ -338,6 +363,13 @@ Since schema 27 each panel row also records `source_row`, the physical worksheet
 `codigo_entidad` and `codigo_moneda` are stored as **text**, not as numbers. They are labels — a leading zero is part of the identifier and a code is not a quantity — and storing them as `DOUBLE` was how a join between a panel and its reference dimension came to depend on a `TRY_CAST` round-trip surviving.
 
 For the current bulletins, code `6900` represents operations in PYG measured in PYG. Code `6200` represents foreign-currency operations converted and reported in PYG. Therefore `6200` has `currency_of_origin = FX` and `unit_currency = PYG`; it must never be interpreted or aggregated as a USD amount.
+
+`research.entity_panel` preserves all four currency representations needed to use this distinction:
+`source_currency_code`, `currency_of_origin`, `unit_currency`, and the deprecated
+`economic_currency` reporting-unit alias. Its natural key uses `source_currency_code`, not
+`economic_currency`. This matters because 6200 and 6900 legitimately share the reporting unit PYG.
+The release gate checks the target release for duplicate source keys and checks current
+source-to-research row conservation, so a collision blocks publication rather than suppressing rows.
 
 ## Deduplicated report cells
 

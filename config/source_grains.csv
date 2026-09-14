@@ -23,3 +23,5 @@ liquidity_facility,*,event,One row per dated liquidity-facility operation.,unrev
 lrm_auctions,*,event,One row per monetary-regulation auction tender.,unreviewed,NA
 payments,*,scalar_series,Payment-system volumes and values.,unreviewed,NA
 securities_trades,*,event,One row per securities transaction; held in a snapshot table.,unreviewed,NA
+cda_curve,*,curve_panel,Monthly deposit-rate and activity curve nodes by published maturity and institution class; economic interpretation remains unreviewed.,unreviewed,NA
+tcn_referential_daily,*,scalar_series,One numeric quotation per published quote side and valid calendar date; annual worksheets remain distinct identities pending continuity review.,unreviewed,NA

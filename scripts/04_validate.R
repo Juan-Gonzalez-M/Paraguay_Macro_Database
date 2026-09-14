@@ -2617,7 +2617,10 @@ release_filtered_object <- function(name, stored, carriers, seen = character()) 
   if (name %in% seen) return(FALSE)
   body <- stored$body[stored$object_name == name]
   if (!length(body)) return(FALSE)
-  body <- body[[1]]
+  # DuckDB quotes a same-schema qualifier when it serializes a stored view or
+  # macro (for example `"catalog".series`). Normalize those harmless quotes so
+  # the dependency walk compares canonical `schema.object` identifiers.
+  body <- gsub('"', "", body[[1]], fixed = TRUE)
   dependencies <- setdiff(
     stored$object_name[vapply(
       stored$object_name, function(candidate) grepl(candidate, body, fixed = TRUE), logical(1)
@@ -2704,7 +2707,7 @@ validate_published_release_filter <- function(con, release_id, root = NULL) {
     problems <- c(problems, "config/public_view_contract.csv is missing, so no object declares what it publishes")
     required <- character()
   } else {
-    published <- grep("^(main|marts|research)\\.", stored$object_name, value = TRUE)
+    published <- grep("^(main|marts|research|catalog|explore)\\.", stored$object_name, value = TRUE)
     # An object nobody has classified is the failure this register exists to
     # catch: a view added without anyone saying whether researchers should read
     # it. Undeclared is not the same as diagnostic, and must not default to it.

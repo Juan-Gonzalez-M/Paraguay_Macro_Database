@@ -440,6 +440,10 @@ SCHEMA_MIGRATIONS <- list(
        change = "Canonical members gain effective dates, precedence and explicit overlap policy; source semantics retain publisher labels and full paths; missingness and panel-resolution contracts become governed inputs; quality flags gain row and series scope; legacy vintages are explicitly snapshot-only; and a nine-view research schema publishes only reviewed, collision-free data while compatibility views remain available. Changes no source observation.")
   ,list(version = 41L, reingests = character(), registry_driven = TRUE,
        change = "A separate append-only assurance ledger admits deterministic high-confidence proposal rows as rule_certified without impersonating human review; every source receives an explicit dataset disposition and forward-acquisition contract; and the research schema becomes a grain-aware nine-view API plus an as-of table macro. Ambiguous rows remain provisional or quarantined. Changes no source observation.")
+  ,list(version = 42L, reingests = character(), registry_driven = TRUE,
+       change = "The research EEFF panel preserves the publisher's source currency code, currency of origin and reporting unit; its key no longer collapses foreign-origin balances converted to PYG with PYG-origin balances, and release-blocking accounting prevents collided rows from disappearing. Changes no source observation.")
+  ,list(version = 43L, reingests = character(), registry_driven = TRUE,
+       change = "A comprehensive catalog schema profiles every parser-identified candidate with coverage, lineage, mechanical diagnostics, validation tier and warnings; a separate explore schema exposes mechanically eligible scalar observations and grain-specific event, entity-panel and curve-panel observations without changing research admission. Changes no source observation.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -2013,6 +2017,12 @@ initialize_database <- function(con, root = NULL) {
   }
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 41")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (41, current_timestamp, 'Explicit automated assurance, dataset dispositions, forward acquisition contracts, and a grain-aware research API')")
+  }
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 42")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (42, current_timestamp, 'The research EEFF panel preserves source currency code, currency of origin and reporting unit and blocks source-key collisions or row loss instead of filtering them')")
+  }
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 43")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (43, current_timestamp, 'Comprehensive candidate discovery and mechanically gated exploratory access remain separate from unchanged research admission')")
   }
 }
 

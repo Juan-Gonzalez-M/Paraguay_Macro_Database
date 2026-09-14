@@ -24,6 +24,8 @@ These layers preserve source meaning; they do not assert that similarly named in
 | Interbank market | Three worksheets; workbook chartsheet ignored and extreme blank formatting bounded |
 | LRM auctions | Fourteen annual auction-result sheets |
 | Compensatory FX sales | Monthly year blocks; future formula-only template months excluded |
+| CDA maturity curves | 412 monthly worksheet snapshots; published date, maturity, institution and rate/count/volume cells retained; semantics provisional |
+| TCN referential daily | Thirty annual Compra/Venta calendar grids; numeric cells retained at daily grain, with unit, currency, `ND` meaning and cross-year continuity unresolved |
 | Corporate bond curves | Typed long CSV with curve parameters and rate points |
 | Securities trades | Typed long CSV with deterministic transaction identities and daily aggregate view |
 

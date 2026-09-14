@@ -4,6 +4,35 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
   testthat::expect_true(file.copy(file.path(project_test_root, "config"), smoke_root, recursive = TRUE))
   testthat::expect_true(file.copy(file.path(project_test_root, "input"), smoke_root, recursive = TRUE))
   ensure_dirs(smoke_root)
+  # The real CDA file deliberately has no invented acquisition metadata and a
+  # production candidate must therefore block. This smoke test exercises the
+  # downstream accepted-release interfaces, so give only its private copied
+  # config an explicit synthetic provenance record. Nothing here is written to
+  # the project registry or presented as publisher evidence.
+  vintage_path <- file.path(smoke_root, "config", "source_vintages.csv")
+  vintages <- readr::read_csv(
+    vintage_path, show_col_types = FALSE,
+    col_types = readr::cols(.default = readr::col_character())
+  )
+  cda_path <- file.path(smoke_root, "input", "current", "Curva_CDA.xlsx")
+  vintages <- dplyr::bind_rows(vintages, tibble::tibble(
+    source_id = "cda_curve", sha256 = file_sha256(cda_path),
+    original_filename = "Curva_CDA.xlsx", official_release_date = "2026-08-01",
+    official_url = "https://example.invalid/cda-test-fixture",
+    release_identifier = "test-fixture-cda-2026-07", retrieved_at = "2026-08-01T00:00:00Z",
+    retrieval_method = "test_fixture", availability_quality = "retrieval_time",
+    license = "test_fixture", evidence = "Synthetic provenance confined to the full-pipeline smoke test."
+  ))
+  tcn_path <- file.path(smoke_root, "input", "current", "TCN_Referencial_Diario.xlsx")
+  vintages <- dplyr::bind_rows(vintages, tibble::tibble(
+    source_id = "tcn_referential_daily", sha256 = file_sha256(tcn_path),
+    original_filename = "TCN_Referencial_Diario.xlsx", official_release_date = "2026-08-26",
+    official_url = "https://example.invalid/tcn-test-fixture",
+    release_identifier = "test-fixture-tcn-2026-08", retrieved_at = "2026-08-26T00:00:00Z",
+    retrieval_method = "test_fixture", availability_quality = "retrieval_time",
+    license = "test_fixture", evidence = "Synthetic provenance confined to the full-pipeline smoke test."
+  ))
+  readr::write_csv(vintages, vintage_path)
   registry <- readr::read_csv(file.path(smoke_root, "config", "source_registry.csv"), show_col_types = FALSE)
   resolved <- build_current_manifest(registry, smoke_root)
   expected_sources <- registry %>% dplyr::filter(.data$required) %>% dplyr::pull(.data$source_id)
@@ -195,6 +224,73 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
   testthat::expect_gte(DBI::dbGetQuery(con, "SELECT min(source_row) n FROM securities_transactions_snapshot")$n[[1]], 2L)
   testthat::expect_gt(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM v_bond_curves_latest")$n[[1]], 0)
   testthat::expect_gt(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM v_securities_daily_activity")$n[[1]], 0)
+  cda <- DBI::dbGetQuery(con, paste0(
+    "SELECT COUNT(*) observations, COUNT(DISTINCT series_id) series, ",
+    "COUNT(DISTINCT source_sheet) sheets, MIN(period) first_period, MAX(period) last_period ",
+    "FROM documented_series_snapshot WHERE source_id = 'cda_curve'"
+  ))
+  testthat::expect_equal(cda$observations[[1]], 21854L)
+  testthat::expect_equal(cda$series[[1]], 471L)
+  testthat::expect_equal(cda$sheets[[1]], 412L)
+  testthat::expect_equal(as.Date(cda$first_period[[1]]), as.Date("2018-01-31"))
+  testthat::expect_equal(as.Date(cda$last_period[[1]]), as.Date("2026-07-31"))
+  cda_accounting <- DBI::dbGetQuery(con, paste0(
+    "SELECT SUM(cell_reuse) reuse, SUM(unmapped_in_region) unmapped, ",
+    "SUM(unclassified_cells) unclassified, SUM(parser_defect_cells) defects ",
+    "FROM table_reconciliation WHERE source_id = 'cda_curve'"
+  ))
+  testthat::expect_equal(unlist(cda_accounting[1, ]), c(reuse = 0, unmapped = 0, unclassified = 0, defects = 0))
+  testthat::expect_equal(DBI::dbGetQuery(
+    con, "SELECT COUNT(*) n FROM source_region_classification WHERE source_id = 'cda_curve'"
+  )$n[[1]], 0L)
+  testthat::expect_equal(DBI::dbGetQuery(
+    con, "SELECT COUNT(*) n FROM v_research_series WHERE source_id = 'cda_curve'"
+  )$n[[1]], 0L)
+  testthat::expect_setequal(DBI::dbGetQuery(
+    con, "SELECT DISTINCT status FROM v_series_table_status WHERE source_id = 'cda_curve'"
+  )$status, "provisional")
+  tcn <- DBI::dbGetQuery(con, paste0(
+    "SELECT COUNT(*) observations, COUNT(DISTINCT series_id) series, ",
+    "COUNT(DISTINCT source_sheet) sheets, MIN(period) first_period, MAX(period) last_period, ",
+    "COUNT(DISTINCT unit) units, COUNT(currency) currencies ",
+    "FROM documented_series_snapshot WHERE source_id = 'tcn_referential_daily'"
+  ))
+  testthat::expect_equal(tcn$observations[[1]], 7004L)
+  testthat::expect_equal(tcn$series[[1]], 30L)
+  testthat::expect_equal(tcn$sheets[[1]], 30L)
+  testthat::expect_equal(as.Date(tcn$first_period[[1]]), as.Date("2012-08-06"))
+  testthat::expect_equal(as.Date(tcn$last_period[[1]]), as.Date("2026-08-25"))
+  testthat::expect_equal(tcn$units[[1]], 1L)
+  testthat::expect_equal(tcn$currencies[[1]], 0L)
+  tcn_accounting <- DBI::dbGetQuery(con, paste0(
+    "SELECT SUM(cell_reuse) reuse, SUM(unmapped_in_region) unmapped, ",
+    "SUM(unclassified_cells) unclassified, SUM(parser_defect_cells) defects ",
+    "FROM table_reconciliation WHERE source_id = 'tcn_referential_daily'"
+  ))
+  testthat::expect_equal(
+    unlist(tcn_accounting[1, ]), c(reuse = 0, unmapped = 0, unclassified = 0, defects = 0)
+  )
+  testthat::expect_equal(DBI::dbGetQuery(
+    con, paste0(
+      "SELECT COUNT(*) n FROM source_region_classification ",
+      "WHERE source_id = 'tcn_referential_daily' AND classification = 'row_index'"
+    )
+  )$n[[1]], 930L)
+  testthat::expect_equal(DBI::dbGetQuery(
+    con, paste0(
+      "SELECT COUNT(*) n FROM main.v_report_cells_a1 ",
+      "WHERE source_id = 'tcn_referential_daily' AND raw_value_text = 'ND'"
+    )
+  )$n[[1]], 4156L)
+  testthat::expect_equal(DBI::dbGetQuery(
+    con, "SELECT COUNT(*) n FROM observation_missingness WHERE source_id = 'tcn_referential_daily'"
+  )$n[[1]], 0L)
+  testthat::expect_equal(DBI::dbGetQuery(
+    con, "SELECT COUNT(*) n FROM v_research_series WHERE source_id = 'tcn_referential_daily'"
+  )$n[[1]], 0L)
+  testthat::expect_setequal(DBI::dbGetQuery(
+    con, "SELECT DISTINCT status FROM v_series_table_status WHERE source_id = 'tcn_referential_daily'"
+  )$status, "provisional")
   testthat::expect_equal(DBI::dbGetQuery(con, "SELECT COUNT(*) n FROM (SELECT series_id, period, COUNT(*) AS rows FROM documented_series_snapshot GROUP BY 1,2 HAVING COUNT(*) > 1) x")$n[[1]], 0)
   currency <- DBI::dbGetQuery(con, "SELECT currency_of_origin, unit_currency, economic_currency FROM dim_currency WHERE currency_code = '6200'")
   testthat::expect_identical(currency$currency_of_origin[[1]], "FX")

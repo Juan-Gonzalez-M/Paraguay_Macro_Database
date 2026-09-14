@@ -1,5 +1,27 @@
 # Changelog
 
+## v43
+
+Candidate discovery and preliminary researcher access. Changes no source observation or research
+admission decision.
+
+- Added `catalog.series`, `catalog.series_warnings`, `catalog.datasets`, and
+  `catalog.profile(candidate_id)` over every parser-identified series and governed source dataset.
+- Added mechanically gated scalar access and separate event, interval, entity-panel, and curve-panel
+  relations under `explore`, with validation tier, warning, and source/build lineage on every row.
+- Added release-blocking catalogue, observation-link, key/date/value, special-grain, warning, and
+  dataset reconciliation checks plus an adversarial normalized-period collision test.
+- Extended the public-view contract and stored-SQL release-boundary lint to the new schemas while
+  preserving exactly nine research views and the existing research macro.
+
+## v42
+
+Corrected the research EEFF panel without changing source observations.
+
+- Preserved source currency code, currency of origin, and reporting unit in `research.entity_panel`.
+- Replaced the currency-collapsing key and silent collision filter with source-grain row conservation
+  and release-blocking collision checks.
+
 ## v41
 
 Research-usability implementation following the final DuckDB re-audit. Changes no source

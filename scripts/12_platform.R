@@ -1,4 +1,4 @@
-# --- Schemas 40-41: governed research platform -----------------------------
+# --- Schemas 40-43: governed research platform -----------------------------
 
 MISSINGNESS_CONTRACT_TYPES <- c(
   "regular_calendar", "event_structural_absence", "panel_conditional", "observed_only"
@@ -24,6 +24,8 @@ platform_table_columns <- function(con, table_name) {
 
 initialize_platform_contracts <- function(con) {
   DBI::dbExecute(con, "CREATE SCHEMA IF NOT EXISTS research")
+  DBI::dbExecute(con, "CREATE SCHEMA IF NOT EXISTS catalog")
+  DBI::dbExecute(con, "CREATE SCHEMA IF NOT EXISTS explore")
   if (database_object_exists(con, "dim_series")) {
     DBI::dbExecute(con, paste(
       "UPDATE", project_qualified_name("dim_series"),
@@ -566,10 +568,12 @@ create_research_views <- function(con) {
   panel_sql <- if (bank_inputs_exist) paste(
     "WITH source AS (SELECT * FROM main.v_banks_eeff_documented UNION ALL BY NAME",
     " SELECT * FROM main.v_financial_eeff_documented), keyed AS (SELECT x.*,",
-    " count(*) OVER(PARTITION BY source_id,fecha,entity_id,statement_item_id,economic_currency) n",
+    " count(*) OVER(PARTITION BY source_id,fecha,entity_id,statement_item_id,codigo_moneda) n",
     " FROM source x) SELECT vintage_id,source_id,source_sheet,source_file,fecha AS reference_period,",
     " entity_id,short_name AS entity_name,statement_item_id AS item_id,semantic_classification,",
-    " semantic_rubro,semantic_sub_rubro,economic_currency AS currency,'balance' AS measure,",
+    " semantic_rubro,semantic_sub_rubro,codigo_moneda AS source_currency_code,",
+    " currency_of_origin,unit_currency,economic_currency,economic_currency AS currency,",
+    " 'balance' AS measure,",
     " importe AS value,source_row,'rule_certified' AS assurance_level,",
     " 'collision_free_panel_row' AS certification_rule_id FROM keyed WHERE n=1",
     " AND EXISTS(SELECT 1 FROM audit.active_data_release)"
@@ -577,7 +581,9 @@ create_research_views <- function(con) {
     "SELECT NULL::VARCHAR vintage_id,NULL::VARCHAR source_id,NULL::VARCHAR source_sheet,",
     "NULL::VARCHAR source_file,NULL::TIMESTAMP reference_period,NULL::VARCHAR entity_id,",
     "NULL::VARCHAR entity_name,NULL::VARCHAR item_id,NULL::VARCHAR semantic_classification,",
-    "NULL::VARCHAR semantic_rubro,NULL::VARCHAR semantic_sub_rubro,NULL::VARCHAR currency,",
+    "NULL::VARCHAR semantic_rubro,NULL::VARCHAR semantic_sub_rubro,",
+    "NULL::VARCHAR source_currency_code,NULL::VARCHAR currency_of_origin,",
+    "NULL::VARCHAR unit_currency,NULL::VARCHAR economic_currency,NULL::VARCHAR currency,",
     "NULL::VARCHAR AS measure,NULL::DOUBLE AS value,NULL::BIGINT AS source_row,",
     "NULL::VARCHAR assurance_level,NULL::VARCHAR certification_rule_id WHERE FALSE"
   )
@@ -621,6 +627,7 @@ create_research_views <- function(con) {
     "WHERE NOT o.is_deleted AND o.observation_status='observed' ",
     "AND o.available_at<=cutoff) SELECT * EXCLUDE(rn) FROM ranked WHERE rn=1)"
   ))
+  create_catalog_explore_views(con)
   invisible(TRUE)
 }
 
@@ -714,17 +721,257 @@ validate_platform_contracts <- function(con, release_id, root) {
     "FROM research.observations_latest_actual GROUP BY 1,2 HAVING count(*)>1)"
   ))$n[[1]]
   duplicate_panel <- DBI::dbGetQuery(con, paste(
-    "SELECT count(*) AS n FROM (SELECT source_id,reference_period,entity_id,item_id,currency,measure,count(*) n",
+    "SELECT count(*) AS n FROM (SELECT source_id,reference_period,entity_id,item_id,source_currency_code,measure,count(*) n",
     "FROM research.entity_panel GROUP BY 1,2,3,4,5,6 HAVING count(*)>1)"
   ))$n[[1]]
   if (duplicate_actual || duplicate_panel) insert_quality_flag(
     con, release_id, "error", "research_grain_not_unique", NA_character_,
     paste(duplicate_actual, "scalar keys and", duplicate_panel, "entity-panel keys are duplicated.")
   )
+  panel_inputs <- c("v_banks_eeff_documented", "v_financial_eeff_documented")
+  if (all(vapply(panel_inputs, function(x) database_object_exists(con, x), logical(1)))) {
+    active_panel_rows <- DBI::dbGetQuery(con, paste(
+      "SELECT count(*) AS n FROM (SELECT * FROM main.v_banks_eeff_documented",
+      "UNION ALL BY NAME SELECT * FROM main.v_financial_eeff_documented)"
+    ))$n[[1]]
+    research_panel_rows <- DBI::dbGetQuery(
+      con, "SELECT count(*) AS n FROM research.entity_panel"
+    )$n[[1]]
+    if (active_panel_rows != research_panel_rows) insert_quality_flag(
+      con, release_id, "error", "research_entity_panel_row_loss", NA_character_,
+      paste0(
+        "research.entity_panel exposes ", research_panel_rows, " of ", active_panel_rows,
+        " accepted EEFF row(s). The source currency code is part of the panel grain; ",
+        "collisions must block a release rather than be filtered from the research view."
+      )
+    )
+  }
+  all_panel_inputs <- paste0(panel_inputs, "_all")
+  if (all(vapply(all_panel_inputs, function(x) database_object_exists(con, x), logical(1)))) {
+    target_panel_collisions <- DBI::dbGetQuery(con, paste0(
+      "WITH source AS (SELECT * FROM main.v_banks_eeff_documented_all ",
+      "UNION ALL BY NAME SELECT * FROM main.v_financial_eeff_documented_all), ",
+      "target AS (SELECT s.* FROM source s JOIN audit.release_sources r USING(vintage_id) ",
+      "WHERE r.release_id = ", sql_string(release_id), "), ",
+      "collisions AS (SELECT source_id,fecha,entity_id,statement_item_id,codigo_moneda,",
+      "count(*) AS n,count(DISTINCT importe) AS distinct_values FROM target GROUP BY 1,2,3,4,5 ",
+      "HAVING count(*)>1) SELECT count(*) AS groups,",
+      "coalesce(sum(n),0) AS rows,coalesce(sum((distinct_values>1)::INTEGER),0) AS conflicts ",
+      "FROM collisions"
+    ))
+    if (target_panel_collisions$groups[[1]] > 0) insert_quality_flag(
+      con, release_id, "error", "research_entity_panel_source_key_collision", NA_character_,
+      paste0(
+        target_panel_collisions$groups[[1]], " target-release EEFF source key(s) collide across ",
+        target_panel_collisions$rows[[1]], " row(s) at ",
+        "(source, period, entity, item, source_currency_code); ",
+        target_panel_collisions$conflicts[[1]], " group(s) contain different values."
+      )
+    )
+  }
+  catalogue_exists <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS n FROM duckdb_views()",
+    "WHERE schema_name='catalog' AND view_name='series' AND NOT internal"
+  ))$n[[1]] > 0
+  if (catalogue_exists) {
+    coverage <- DBI::dbGetQuery(con, paste(
+      "SELECT",
+      " (SELECT count(*) FROM canonical.dim_series) AS dimension_rows,",
+      " (SELECT count(*) FROM catalog.series) AS catalogue_rows,",
+      " (SELECT count(DISTINCT candidate_id) FROM catalog.series) AS catalogue_ids,",
+      " (SELECT count(*) FROM main.v_series_latest o LEFT JOIN catalog.series c",
+      "  ON c.candidate_id=o.series_id WHERE c.candidate_id IS NULL) AS orphan_observations,",
+      " (SELECT count(*) FROM catalog.series WHERE candidate_id IS NULL OR source_id IS NULL",
+      "  OR validation_tier IS NULL OR status_code IS NULL OR concise_warning IS NULL",
+      "  OR warning_codes IS NULL OR profile_interface IS NULL) AS incomplete_profiles"
+    ))
+    if (coverage$dimension_rows != coverage$catalogue_rows ||
+        coverage$catalogue_rows != coverage$catalogue_ids ||
+        coverage$orphan_observations > 0 || coverage$incomplete_profiles > 0) {
+      insert_quality_flag(
+        con, release_id, "error", "candidate_catalogue_not_reconciled", NA_character_,
+        paste0(
+          "dim_series=", coverage$dimension_rows, ", catalog_rows=", coverage$catalogue_rows,
+          ", catalog_ids=", coverage$catalogue_ids, ", orphan_current_observations=",
+          coverage$orphan_observations, ", incomplete_profiles=", coverage$incomplete_profiles, "."
+        )
+      )
+    }
+
+    dataset_coverage <- DBI::dbGetQuery(con, paste(
+      "SELECT",
+      " (SELECT count(*) FROM canonical.dataset_catalog) AS governed_datasets,",
+      " (SELECT count(*) FROM catalog.datasets) AS catalogue_datasets,",
+      " (SELECT count(DISTINCT dataset_id) FROM catalog.datasets) AS catalogue_dataset_ids"
+    ))
+    if (dataset_coverage$governed_datasets != dataset_coverage$catalogue_datasets ||
+        dataset_coverage$catalogue_datasets != dataset_coverage$catalogue_dataset_ids) {
+      insert_quality_flag(
+        con, release_id, "error", "dataset_catalogue_not_reconciled", NA_character_,
+        paste0(
+          "governed_datasets=", dataset_coverage$governed_datasets,
+          ", catalog_datasets=", dataset_coverage$catalogue_datasets,
+          ", catalog_dataset_ids=", dataset_coverage$catalogue_dataset_ids, "."
+        )
+      )
+    }
+
+    exploratory <- data.frame(
+      expected_rows = DBI::dbGetQuery(con, paste(
+        "SELECT coalesce(sum(observation_count),0) AS n FROM catalog.series",
+        "WHERE data_structure='scalar_series' AND validation_tier IN",
+        "('research_ready','exploratory_structurally_valid')"
+      ))$n,
+      exposed_rows = DBI::dbGetQuery(
+        con, "SELECT count(*) AS n FROM explore.observations"
+      )$n,
+      invalid_links = DBI::dbGetQuery(con, paste(
+        "SELECT count(*) AS n FROM explore.observations o",
+        "LEFT JOIN catalog.series c USING(candidate_id) WHERE c.candidate_id IS NULL",
+        "OR c.validation_tier NOT IN ('research_ready','exploratory_structurally_valid')"
+      ))$n,
+      malformed_rows = DBI::dbGetQuery(con, paste(
+        "SELECT count(*) AS n FROM explore.observations WHERE value IS NULL OR NOT isfinite(value)",
+        "OR reference_period_start IS NULL OR reference_period_end IS NULL",
+        "OR reference_period_end<reference_period_start OR observation_status<>'observed'",
+        "OR validation_tier IS NULL OR status_code IS NULL OR concise_warning IS NULL",
+        "OR warning_codes IS NULL OR vintage_id IS NULL OR source_id IS NULL"
+      ))$n,
+      duplicate_keys = DBI::dbGetQuery(con, paste(
+        "SELECT count(*) AS n FROM (SELECT candidate_id,reference_period_start,count(*) AS rows_per_key",
+        "FROM explore.observations GROUP BY 1,2 HAVING count(*)>1)"
+      ))$n,
+      ineligible_rows = DBI::dbGetQuery(con, paste(
+        "SELECT count(*) AS n FROM explore.observations o JOIN catalog.series c USING(candidate_id)",
+        "WHERE c.identity_stability<>'semantic' OR c.non_missing_observation_count<3"
+      ))$n
+    )
+    if (exploratory$expected_rows != exploratory$exposed_rows || exploratory$invalid_links > 0 ||
+        exploratory$malformed_rows > 0 || exploratory$duplicate_keys > 0 ||
+        exploratory$ineligible_rows > 0) {
+      insert_quality_flag(
+        con, release_id, "error", "exploratory_scalar_integrity_failed", NA_character_,
+        paste0(
+          "expected_rows=", exploratory$expected_rows, ", exposed_rows=", exploratory$exposed_rows,
+          ", invalid_links=", exploratory$invalid_links, ", malformed_rows=",
+          exploratory$malformed_rows, ", duplicate_keys=", exploratory$duplicate_keys,
+          ", ineligible_rows=", exploratory$ineligible_rows, "."
+        )
+      )
+    }
+
+    corrected_observations <- DBI::dbGetQuery(con, paste(
+      "SELECT count(*) AS n FROM explore.observations",
+      "WHERE worksheet_lineage_correction_reason IS NOT NULL"
+    ))$n[[1]]
+    if (corrected_observations > 0 && database_object_exists(con, "v_report_cells_a1")) {
+      corrected_cells <- DBI::dbGetQuery(con, paste(
+        "SELECT",
+        " count(*) FILTER(WHERE e.source_sheet IS DISTINCT FROM d.source_sheet",
+        "  OR e.table_title IS DISTINCT FROM d.table_title",
+        "  OR e.source_row IS DISTINCT FROM d.source_row",
+        "  OR e.source_column IS DISTINCT FROM d.source_column) AS staging_disagreements,",
+        " count(*) FILTER(WHERE c.raw_value_text IS NULL AND c.raw_value_num IS NULL)",
+        "  AS missing_raw_cells,",
+        " count(*) FILTER(WHERE c.raw_value_num IS NULL",
+        "  OR abs(c.raw_value_num-e.value)>1e-8*greatest(1,abs(e.value))) AS numeric_differences",
+        " FROM explore.observations e JOIN staging.documented_series_snapshot d",
+        " ON d.series_id=e.candidate_id AND d.period=e.source_period_date",
+        " AND d.vintage_id=e.vintage_id LEFT JOIN main.v_report_cells_a1 c",
+        " ON c.vintage_id=d.vintage_id AND c.source_sheet=d.source_sheet",
+        " AND c.row_id=d.source_row AND c.column_id=d.source_column",
+        " WHERE e.worksheet_lineage_correction_reason IS NOT NULL"
+      ))
+    } else corrected_cells <- data.frame(
+      staging_disagreements = 0,
+      missing_raw_cells = if (corrected_observations > 0) corrected_observations else 0,
+      numeric_differences = 0
+    )
+    profile_lineage <- DBI::dbGetQuery(con, paste(
+      "SELECT",
+      " count(*) FILTER(WHERE (invalid_lineage_rows>0 OR ambiguous_lineage_rows>0)",
+      "  AND validation_tier<>'quarantined_or_invalid') AS unsafe_profiles,",
+      " count(*) FILTER(WHERE coordinate_lineage_status='complete_for_current_observations'",
+      "  AND coordinate_lineage_rows<>observation_count) AS false_complete_profiles,",
+      " count(*) FILTER(WHERE source_sheet_count>1 AND source_sheet IS NOT NULL)",
+      "  AS misleading_multi_sheet_profiles FROM catalog.series"
+    ))
+    worksheet_lineage <- as.data.frame(as.list(c(
+      unlist(corrected_cells[1, ], use.names = TRUE),
+      unlist(profile_lineage[1, ], use.names = TRUE)
+    )))
+    if (any(unlist(worksheet_lineage[1, ], use.names = FALSE) > 0)) {
+      insert_quality_flag(
+        con, release_id, "error", "exploratory_worksheet_lineage_failed", NA_character_,
+        paste0(
+          "staging_disagreements=", worksheet_lineage$staging_disagreements,
+          ", missing_raw_cells=", worksheet_lineage$missing_raw_cells,
+          ", numeric_differences=", worksheet_lineage$numeric_differences,
+          ", unsafe_profiles=", worksheet_lineage$unsafe_profiles,
+          ", false_complete_profiles=", worksheet_lineage$false_complete_profiles,
+          ", misleading_multi_sheet_profiles=", worksheet_lineage$misleading_multi_sheet_profiles,
+          ". Observation worksheet lineage must resolve uniquely through the documented snapshot",
+          " and its A1 raw source cell."
+        )
+      )
+    }
+
+    special <- DBI::dbGetQuery(con, paste(
+      "SELECT",
+      " (SELECT coalesce(sum(observation_count),0) FROM catalog.series",
+      "  WHERE (data_structure='event' OR frequency='irregular_interval')",
+      "  AND validation_tier='non_scalar_or_special_structure') AS expected_events,",
+      " (SELECT count(*) FROM explore.events) AS exposed_events,",
+      " (SELECT coalesce(sum(observation_count),0) FROM catalog.series WHERE data_structure='entity_panel'",
+      "  AND validation_tier='non_scalar_or_special_structure') AS expected_panels,",
+      " (SELECT count(*) FROM explore.panel_observations) AS exposed_panels,",
+      " (SELECT coalesce(sum(observation_count),0) FROM catalog.series WHERE data_structure='curve_panel'",
+      "  AND validation_tier='non_scalar_or_special_structure') AS expected_curves,",
+      " (SELECT count(*) FROM explore.curve_observations) AS exposed_curves"
+    ))
+    if (special$expected_events != special$exposed_events ||
+        special$expected_panels != special$exposed_panels ||
+        special$expected_curves != special$exposed_curves) {
+      insert_quality_flag(
+        con, release_id, "error", "exploratory_special_grain_not_reconciled", NA_character_,
+        paste0(
+          "event=", special$exposed_events, "/", special$expected_events,
+          ", panel=", special$exposed_panels, "/", special$expected_panels,
+          ", curve=", special$exposed_curves, "/", special$expected_curves, "."
+        )
+      )
+    }
+
+    warnings <- DBI::dbGetQuery(con, paste(
+      "SELECT",
+      " (SELECT coalesce(sum(warning_count),0) FROM catalog.series) AS expected_warnings,",
+      " (SELECT count(*) FROM catalog.series_warnings) AS warning_rows,",
+      " (SELECT count(*) FROM catalog.series_warnings WHERE warning_code IS NULL OR warning IS NULL)",
+      "  AS incomplete_warnings"
+    ))
+    if (warnings$expected_warnings != warnings$warning_rows || warnings$incomplete_warnings > 0) {
+      insert_quality_flag(
+        con, release_id, "error", "candidate_warnings_not_reconciled", NA_character_,
+        paste0(
+          "expected_warnings=", warnings$expected_warnings, ", warning_rows=",
+          warnings$warning_rows, ", incomplete_warnings=", warnings$incomplete_warnings, "."
+        )
+      )
+    }
+  }
   tryCatch(
     DBI::dbGetQuery(con, "SELECT * FROM research.observations_as_of(current_timestamp) LIMIT 0"),
     error = function(e) insert_quality_flag(
       con, release_id, "error", "research_as_of_unusable", NA_character_, conditionMessage(e)
+    )
+  )
+  for (query in c(
+    "SELECT * FROM catalog.profile('catalogue-bind-test') LIMIT 0",
+    "SELECT * FROM explore.series('catalogue-bind-test') LIMIT 0"
+  )) tryCatch(
+    DBI::dbGetQuery(con, query),
+    error = function(e) insert_quality_flag(
+      con, release_id, "error", "catalogue_macro_unusable", NA_character_, conditionMessage(e)
     )
   )
   invisible(TRUE)

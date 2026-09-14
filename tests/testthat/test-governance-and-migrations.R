@@ -470,7 +470,16 @@ testthat::test_that("derived measurement values carry the published wording they
 })
 
 testthat::test_that("the migration runbook is generated from the registry, not maintained beside it", {
-  con <- p1_production()
+  source <- file.path(project_test_root, "database", "paraguay_macro_pilot.duckdb")
+  testthat::skip_if_not(file.exists(source), "production database not present")
+  path <- tempfile(fileext = ".duckdb")
+  testthat::expect_true(file.copy(source, path))
+  con <- connect_project_database(path)
+  initialize_database(con, project_test_root)
+  withr::defer({
+    DBI::dbDisconnect(con, shutdown = TRUE)
+    unlink(path)
+  })
   runbook <- file.path(project_test_root, "docs", "SCHEMA_MIGRATIONS.md")
   testthat::expect_true(file.exists(runbook))
   lines <- readLines(runbook, warn = FALSE)

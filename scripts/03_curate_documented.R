@@ -1760,6 +1760,175 @@ documented_parse_credit_sheet <- function(raw, source_sheet) {
 #                  is the publisher's nesting marker, so "- Euros" means one
 #                  thing under Arbitraje and another under Operación Nominal and
 #                  the parent has to stay in the identity.
+# Monthly CDA term panels publish one observation date for the whole worksheet,
+# with maturity buckets down rows and institution/measure columns across them.
+# They are dated curve snapshots, not generic time-axis tables or row events.
+documented_parse_cda_curve_sheet <- function(raw, source_sheet) {
+  text <- documented_text_matrix(raw)
+  numbers <- documented_number_matrix(raw)
+  if (nrow(text) < 12L || ncol(text) < 8L) stop(
+    "CDA curve structure guard: worksheet is smaller than the supported layout: ",
+    source_sheet, ".", call. = FALSE
+  )
+
+  title <- text[7, 1]
+  period_label <- text[8, 1]
+  if (documented_blank(title) || documented_blank(period_label)) stop(
+    "CDA curve structure guard: title or 'Datos al' evidence is missing in A7:A8: ",
+    source_sheet, ".", call. = FALSE
+  )
+  matched <- stringr::str_match(
+    trimws(period_label),
+    stringr::regex("^Datos\\s+al\\s+([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})$", ignore_case = TRUE)
+  )
+  if (is.na(matched[1, 1])) stop(
+    "CDA curve period guard: A8 is not 'Datos al dd/mm/yyyy' in ", source_sheet,
+    ": ", period_label, call. = FALSE
+  )
+  period <- as.Date(sprintf(
+    "%04d-%02d-%02d", as.integer(matched[1, 4]), as.integer(matched[1, 3]),
+    as.integer(matched[1, 2])
+  ))
+  if (is.na(period)) stop("CDA curve period guard: invalid date in A8: ", period_label, call. = FALSE)
+
+  title_key <- normalize_semantic_label(title)
+  is_rate <- stringr::str_detect(title_key, "tasas ponderadas de depositos a plazo")
+  is_operations <- stringr::str_detect(title_key, "depositos a plazo") && !is_rate
+  local_origin <- stringr::str_detect(title_key, "moneda local")
+  foreign_origin <- stringr::str_detect(title_key, "moneda extranjera")
+  if ((!is_rate && !is_operations) || local_origin == foreign_origin) stop(
+    "CDA curve structure guard: unsupported A7 title/currency-origin evidence: ",
+    title, call. = FALSE
+  )
+  origin_label <- if (local_origin) "MONEDA LOCAL" else "MONEDA EXTRANJERA"
+
+  if (is_rate) {
+    rate_header <- normalize_semantic_label(text[9, 8:9])
+    labelled_header <- identical(rate_header, c("bancos", "financieras"))
+    omitted_header <- all(is.na(rate_header))
+    if (!labelled_header && !omitted_header) stop(
+      "CDA rate structure guard: H9:I9 must be BANCOS/FINANCIERAS or both explicitly blank in ",
+      source_sheet, ".", call. = FALSE
+    )
+    maturity_col <- 6L; display_col <- 7L; data_cols <- 8:9
+    # CDA_ML_102021 omits both column labels. Retain its values without silently
+    # borrowing semantics from adjacent sheets; explicit column labels keep the
+    # unresolved identities separate until governed evidence maps them.
+    institutions <- if (labelled_header) text[9, data_cols] else c("UNLABELED COLUMN H", "UNLABELED COLUMN I")
+    measures <- rep("TASA PONDERADA", 2L)
+    units <- rep("percent", 2L)
+    identity_sheet <- "CDA_RATE_CURVE"
+  } else {
+    expected_measures <- c("cantidad de operaciones", NA_character_, "volumen captado", NA_character_)
+    expected_institutions <- c("bancos", "financieras", "bancos", "financieras")
+    if (!identical(normalize_semantic_label(text[10, 5:8]), expected_measures) ||
+        !identical(normalize_semantic_label(text[11, 5:8]), expected_institutions)) stop(
+      "CDA operations structure guard: E10:H11 do not match the published blocks in ",
+      source_sheet, ".", call. = FALSE
+    )
+    maturity_col <- 3L; display_col <- 4L; data_cols <- 5:8
+    institutions <- text[11, data_cols]
+    measures <- c("CANTIDAD DE OPERACIONES", "CANTIDAD DE OPERACIONES",
+                  "VOLUMEN CAPTADO", "VOLUMEN CAPTADO")
+    # Counts are explicit. The volume title and stored numeric cells do not
+    # establish one consistent scale across vintages, so never rescale here.
+    units <- c("count", "count", "source_units", "source_units")
+    identity_sheet <- "CDA_OPERATIONS_CURVE"
+  }
+
+  maturity <- text[, maturity_col]
+  maturity_rows <- which(stringr::str_detect(
+    trimws(maturity), "^(?:[+]\\s*)?[0-9]+\\s+D[IÍ]AS(?:\\s*[+])?$"
+  ))
+  if (!length(maturity_rows)) stop(
+    "CDA curve structure guard: no published DÍAS maturity rows in ", source_sheet, ".",
+    call. = FALSE
+  )
+
+  records <- list(); k <- 0L
+  for (r in maturity_rows) for (z in seq_along(data_cols)) {
+    j <- data_cols[[z]]
+    value <- numbers[r, j]
+    if (is.na(value)) next
+    maturity_label <- text[r, maturity_col]
+    display_label <- text[r, display_col]
+    institution <- institutions[[z]]
+    measure <- measures[[z]]
+    series_label <- paste(
+      origin_label, measure, institution, maturity_label, display_label, sep = " — "
+    )
+    k <- k + 1L
+    records[[k]] <- documented_record(
+      source_sheet, title, "cda_monthly_curve", period, period_label, "monthly",
+      series_label, origin_label, measure, value, r, j
+    )
+    records[[k]]$unit <- units[[z]]
+    records[[k]]$scale <- "units"
+    # The publisher's currency-origin wording remains in category/series_path.
+    # A single currency field cannot represent origin and reporting currency;
+    # leave it unknown instead of collapsing those two concepts.
+    records[[k]]$currency <- NA_character_
+  }
+  if (is_operations) {
+    # Two worksheets contain numeric publisher cells outside the regular E:H
+    # block. Retain them as explicitly unresolved observations rather than
+    # dropping them or assigning semantics from neighbouring cells.
+    extra_cols <- if (ncol(text) > max(data_cols)) seq.int(max(data_cols) + 1L, ncol(text)) else integer()
+    extra_cols <- extra_cols[
+      !documented_blank(text[11, extra_cols]) &
+        colSums(!is.na(numbers[maturity_rows, extra_cols, drop = FALSE])) > 0L
+    ]
+    for (j in extra_cols) for (r in maturity_rows) {
+      value <- numbers[r, j]
+      if (is.na(value)) next
+      measure <- text[11, j]
+      series_label <- paste(
+        origin_label, measure, "INSTITUTION NOT PUBLISHED", text[r, maturity_col],
+        text[r, display_col], sep = " — "
+      )
+      k <- k + 1L
+      records[[k]] <- documented_record(
+        source_sheet, title, "cda_monthly_curve_unresolved_column", period, period_label,
+        "monthly", series_label, origin_label, measure, value, r, j
+      )
+      records[[k]]$unit <- "source_units"
+      records[[k]]$scale <- "units"
+      records[[k]]$currency <- NA_character_
+    }
+
+    candidate_rows <- seq.int(min(maturity_rows), min(nrow(text), max(maturity_rows) + 1L))
+    unlabeled_rows <- setdiff(candidate_rows, maturity_rows)
+    for (r in unlabeled_rows) for (z in seq_along(data_cols)) {
+      j <- data_cols[[z]]
+      value <- numbers[r, j]
+      if (is.na(value)) next
+      measure <- measures[[z]]
+      series_label <- paste(
+        origin_label, measure, institutions[[z]], paste0("UNLABELED ROW ", r), sep = " — "
+      )
+      k <- k + 1L
+      records[[k]] <- documented_record(
+        source_sheet, title, "cda_monthly_curve_unresolved_row", period, period_label,
+        "monthly", series_label, origin_label, measure, value, r, j
+      )
+      records[[k]]$unit <- units[[z]]
+      records[[k]]$scale <- "units"
+      records[[k]]$currency <- NA_character_
+    }
+  }
+  observations <- documented_bind_records(records)
+  if (!nrow(observations)) stop(
+    "CDA curve structure guard: no numeric observations in ", source_sheet, ".",
+    call. = FALSE
+  )
+  observations$identity_sheet <- identity_sheet
+  list(
+    observations = observations, mode = "cda_monthly_curve",
+    hierarchy_status = "unresolved", raw_nonempty_cells = sum(!documented_blank(text)),
+    title = title
+  )
+}
+
 # Columns 12+ and the rows after the last period carry a stray duplicated block
 # and the published footnotes; both are excluded by requiring an institution
 # header on the column and a resolved period on the row.
@@ -2206,6 +2375,17 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
     )
   }
 
+  if (source_id == "cda_curve") for (sheet in dimensions$sheet_name) {
+    results[[sheet]] <- documented_parse_cda_curve_sheet(read_source_sheet(sheet), sheet)
+  }
+
+  if (source_id == "tcn_referential_daily") {
+    documented_validate_daily_calendar_grid_workbook(dimensions)
+    for (sheet in dimensions$sheet_name) {
+      results[[sheet]] <- documented_parse_daily_calendar_grid(read_source_sheet(sheet), sheet)
+    }
+  }
+
   generic_sources <- c("direct_investment", "bcp_fx_daily",
                        "banking_indicators", "financial_indicators")
   if (source_id %in% generic_sources) for (sheet in dimensions$sheet_name) {
@@ -2232,7 +2412,7 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
   # The credit parser supplies an explicit semantic contract, including
   # intentional NA currency/index-base fields. All record-oriented parsers use
   # deferred inference; do not overwrite explicit NA semantics by guessing.
-  if (!source_id %in% c("credit_survey", "exchange_houses")) {
+  if (!source_id %in% c("credit_survey", "exchange_houses", "cda_curve", "tcn_referential_daily")) {
     metadata_labels <- dplyr::if_else(
       stringr::str_detect(observations$parser_mode, "^row_event_"),
       observations$measure, observations$series_label
@@ -2240,7 +2420,7 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
     observations <- documented_enrich_metadata(observations, metadata_labels)
   }
   if (source_id == "payments") observations <- documented_attach_payment_participants(observations, payment_participants)
-  if (is.na(publication_date) && nrow(observations)) {
+  if (is.na(publication_date) && nrow(observations) && source_id != "tcn_referential_daily") {
     set_source_publication_date(con, item$vintage_id, max(observations$period))
     publication_date <- settled_publication_date(con, item$vintage_id, max(observations$period))
     update_archive_manifest_date(root, item$source_id, item$sha256, publication_date)

@@ -174,6 +174,136 @@ documented_parse_row_events <- function(raw, source_sheet, date_header,
   )
 }
 
+# The referential daily quotation workbook publishes one calendar grid per
+# year and quote side: months across B:M, day numbers down A3:A33 and either a
+# numeric quotation or the exact token ND in each data cell.  It is not one of
+# the generic orientations because a period moves across both worksheet axes.
+documented_validate_daily_calendar_grid_workbook <- function(dimensions) {
+  expected_sheets <- as.vector(rbind(
+    paste0(2012:2026, "_Compra"), paste0(2012:2026, "_Venta")
+  ))
+  if (!identical(dimensions$sheet_name, expected_sheets)) stop(
+    "Daily calendar-grid workbook guard: expected the 30 ordered worksheets ",
+    "2012_Compra, 2012_Venta, ..., 2026_Compra, 2026_Venta.", call. = FALSE
+  )
+  exact_range <- dimensions$used_rows == 33L & dimensions$used_cols == 13L &
+    dimensions$content_first_row == 1L & dimensions$content_first_col == 1L &
+    dimensions$content_last_row == 33L & dimensions$content_last_col == 13L
+  if (any(!exact_range)) stop(
+    "Daily calendar-grid workbook guard: every worksheet must occupy exactly A1:M33.",
+    call. = FALSE
+  )
+  if (any(dimensions$merge_ranges != "A1:E1" | is.na(dimensions$merge_ranges))) stop(
+    "Daily calendar-grid workbook guard: every worksheet must retain merge A1:E1.",
+    call. = FALSE
+  )
+  if (any(dimensions$formula_cells != 0L | is.na(dimensions$formula_cells)) ||
+      any(!is.na(dimensions$hidden_rows)) || any(!is.na(dimensions$hidden_columns))) stop(
+    "Daily calendar-grid workbook guard: formulas or hidden rows/columns were introduced.",
+    call. = FALSE
+  )
+  invisible(TRUE)
+}
+
+documented_parse_daily_calendar_grid <- function(raw, source_sheet) {
+  text <- documented_text_matrix(raw)
+  numbers <- documented_number_matrix(raw)
+  if (nrow(text) != 33L || ncol(text) != 13L) stop(
+    "Daily calendar-grid sheet guard: expected A1:M33 in ", source_sheet, ".",
+    call. = FALSE
+  )
+
+  sheet_parts <- stringr::str_match(source_sheet, "^(20[0-9]{2})_(Compra|Venta)$")
+  if (is.na(sheet_parts[1, 1])) stop(
+    "Daily calendar-grid sheet guard: unsupported worksheet name ", source_sheet, ".",
+    call. = FALSE
+  )
+  year <- as.integer(sheet_parts[1, 2])
+  side <- sheet_parts[1, 3]
+  if (!year %in% 2012:2026) stop(
+    "Daily calendar-grid sheet guard: year outside the contracted workbook range in ",
+    source_sheet, ".", call. = FALSE
+  )
+
+  title <- unname(text[1, 1])
+  expected_title <- paste0(
+    "PLANILLA DE COTIZACIONES DEL AÑO ", year,
+    " - MERCADO LIBRE FLUCTUANTE - ", toupper(side)
+  )
+  if (source_sheet == "2021_Compra") {
+    if (!identical(title, "}")) stop(
+      "Daily calendar-grid title guard: 2021_Compra!A1 no longer contains the retained damaged title '}'.",
+      call. = FALSE
+    )
+  } else if (!identical(title, expected_title)) stop(
+    "Daily calendar-grid title guard: unexpected A1 in ", source_sheet, ".",
+    call. = FALSE
+  )
+
+  expected_months <- c("ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
+                       "JUL", "AGO", "SEP", "OCT", "NOV", "DIC")
+  if (!identical(unname(text[2, 1]), "#") || !identical(unname(text[2, 2:13]), expected_months)) stop(
+    "Daily calendar-grid axis guard: A2 or B2:M2 changed in ", source_sheet, ".",
+    call. = FALSE
+  )
+  if (!identical(as.integer(numbers[3:33, 1]), 1:31)) stop(
+    "Daily calendar-grid axis guard: A3:A33 must contain numeric days 1 through 31 in ",
+    source_sheet, ".", call. = FALSE
+  )
+
+  data_text <- text[3:33, 2:13, drop = FALSE]
+  data_numbers <- numbers[3:33, 2:13, drop = FALSE]
+  unsupported <- is.na(data_numbers) & data_text != "ND"
+  unsupported[is.na(unsupported)] <- TRUE
+  if (any(unsupported)) {
+    position <- which(unsupported, arr.ind = TRUE)[1, ]
+    source_row <- position[[1]] + 2L
+    source_column <- position[[2]] + 1L
+    stop(
+      "Daily calendar-grid cell guard: expected a numeric value or exact ND at ",
+      openxlsx::int2col(source_column), source_row, " in ", source_sheet, ".",
+      call. = FALSE
+    )
+  }
+
+  records <- list(); k <- 0L
+  for (r in 3:33) for (j in 2:13) {
+    day <- as.integer(numbers[r, 1])
+    month <- j - 1L
+    period <- as.Date(sprintf("%04d-%02d-%02d", year, month, day), format = "%Y-%m-%d")
+    value <- numbers[r, j]
+    if (is.na(period)) {
+      if (!is.na(value)) stop(
+        "Daily calendar-grid date guard: numeric value occupies invalid calendar cell ",
+        openxlsx::int2col(j), r, " in ", source_sheet, ".", call. = FALSE
+      )
+      next
+    }
+    # ND is preserved in the raw cell layer. Its meaning is not governed, so it
+    # produces neither an observation nor a missingness classification here.
+    if (is.na(value)) next
+    period_label <- paste(text[r, 1], text[2, j], year)
+    k <- k + 1L
+    records[[k]] <- documented_record(
+      source_sheet, title, "daily_calendar_grid", period, period_label, "daily",
+      side, source_sheet, side, value, r, j
+    )
+    records[[k]]$unit <- "source_units"
+    records[[k]]$scale <- "units"
+    records[[k]]$currency <- NA_character_
+    records[[k]]$is_total <- FALSE
+  }
+  observations <- documented_bind_records(records)
+  if (!nrow(observations)) stop(
+    "Daily calendar-grid structure guard: no numeric observations in ", source_sheet, ".",
+    call. = FALSE
+  )
+  list(
+    observations = observations, mode = "daily_calendar_grid", hierarchy_status = "flat",
+    raw_nonempty_cells = sum(!documented_blank(text)), title = title
+  )
+}
+
 documented_parse_daily_exchange_rates <- function(raw, source_sheet, item) {
   text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
   normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
