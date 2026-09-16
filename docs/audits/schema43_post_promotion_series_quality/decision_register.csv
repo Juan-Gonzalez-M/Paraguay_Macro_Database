@@ -1,0 +1,8 @@
+priority,population,decision_required,current_action
+P0,economic_annex / fx_operations same-label varying overlaps,"Confirm conceptual equivalence, vintage relationship, precedence, and canonical membership.",decision_register_only_no_data_change
+P0,lrm_auctions annual-sheet and offered/assigned measure identities,Confirm event-versus-series grain and add the omitted offered/assigned measure distinction before any merge.,decision_register_only_no_data_change
+P1,"insurance_annex exact populations, predominantly constant zero",Determine whether equal zero histories are legitimate distinct sub-concepts; do not deduplicate by value.,decision_register_only_no_data_change
+P1,corporate_bond_curves coordinate lineage,Establish durable row/node source locators or approve the explicit lineage limitation.,decision_register_only_no_data_change
+P1,unresolved source units across active series,Verify economic units source by source; do not infer from values alone.,decision_register_only_no_data_change
+P2,CDA deferred exploratory onboarding,Separately approve provisional explore admission with incomplete acquisition metadata; no research exposure.,deferred_separate_stage
+P2,TCN annual-sheet identity correction and onboarding,Review source chain and repair likely annual-sheet fragmentation before separate provisional onboarding.,deferred_separate_stage

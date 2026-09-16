@@ -1,0 +1,91 @@
+dimension,dimension_value,series,observations
+catalog_admission,discoverable,13985,1226739
+dataset,Subastas de LRM,3083,10351
+dataset,Anexo Estadístico del Informe Económico,2764,655866
+dataset,Anexo Estadístico de Seguros,2050,34846
+dataset,Mercado Interbancario,1346,81474
+dataset,Curvas de Bonos Corporativos,1287,116766
+dataset,Indicadores Financieros,1050,158038
+dataset,Boletín Casas de Cambio,770,5048
+dataset,Boletín Estadístico de Sistemas de Pago,587,51830
+dataset,Inversión Directa 1995-2024,516,33109
+dataset,Situación General del Crédito,312,15806
+dataset,Administración de Liquidez de Corto Plazo,56,3652
+dataset,Cotizaciones de Monedas,52,4340
+dataset,Indicadores de Bancarización,39,4914
+dataset,Histórico Operaciones Cambiarias,30,5450
+dataset,Encuesta de Variables Económicas,16,2760
+dataset,Compra y Venta de Divisas del BCP,12,40836
+dataset,Índice de Confianza del Consumidor,12,1236
+dataset,Ventas Compensatorias y Complementarias,3,417
+explore_admission,eligible_scalar,6881,957627
+explore_admission,eligible_native_grain,6757,229370
+explore_admission,withheld,347,39742
+frequency,irregular_daily,5689,132806
+frequency,monthly,3986,841975
+frequency,annual,3276,58265
+frequency,quarterly,882,69348
+frequency,daily,123,120917
+frequency,monthly_survey,16,2760
+frequency,semiannual,12,585
+frequency,irregular_interval,1,83
+primary_review_category,apparently_valid_preliminary,13546,1168599
+primary_review_category,probable_identity_fragmentation,324,39717
+primary_review_category,probable_duplicate_or_overlap,60,10900
+primary_review_category,research_validated,32,7498
+primary_review_category,insufficient_evidence,23,25
+research_admission,not_admitted,13953,1219241
+research_admission,admitted,32,7498
+source,lrm_auctions,3083,10351
+source,economic_annex,2764,655866
+source,insurance_annex,2050,34846
+source,interbank_market,1346,81474
+source,corporate_bond_curves,1287,116766
+source,financial_indicators,1050,158038
+source,exchange_houses,770,5048
+source,payments,587,51830
+source,direct_investment,516,33109
+source,credit_survey,312,15806
+source,liquidity_facility,56,3652
+source,exchange_rates,52,4340
+source,banking_indicators,39,4914
+source,fx_operations,30,5450
+source,eve,16,2760
+source,bcp_fx_daily,12,40836
+source,icc,12,1236
+source,compensatory_fx_sales,3,417
+unit,UNRESOLVED_SOURCE_UNITS,4057,55504
+unit,PYG,3090,137540
+unit,USD,2014,370387
+unit,PERCENT,1775,230463
+unit,PROPORTION,1369,94353
+unit,RATIO,453,38946
+unit,TONNES,421,136963
+unit,COUNT,325,34752
+unit,INDEX,180,49547
+unit,MIXED_PHYSICAL_UNITS,148,57868
+unit,INDEX_POINTS,39,2472
+unit,EUR,33,4115
+unit,PYG_PER_EUR,19,1581
+unit,PYG_PER_USD,15,3511
+unit,USD_PER_TONNE,12,4697
+unit,PYG_PER_ARS,5,1183
+unit,PYG_PER_BRL,5,1183
+unit,PERCENT_CHANGE,2,356
+unit,PYG_PER_AUD,2,46
+unit,PYG_PER_BOB,2,46
+unit,PYG_PER_CAD,2,46
+unit,PYG_PER_CHF,2,46
+unit,PYG_PER_CLP,2,46
+unit,PYG_PER_DKK,2,46
+unit,PYG_PER_GBP,2,46
+unit,PYG_PER_JPY,2,46
+unit,PYG_PER_SEK,2,46
+unit,PYG_PER_UYU,2,46
+unit,DAYS,1,76
+unit,KWH,1,391
+unit,USD_PER_BARREL,1,391
+validation_tier,exploratory_structurally_valid,6849,950129
+validation_tier,non_scalar_or_special_structure,6757,229370
+validation_tier,candidate_needs_review,347,39742
+validation_tier,research_ready,32,7498

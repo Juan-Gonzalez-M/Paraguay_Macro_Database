@@ -1,0 +1,10 @@
+command,status,result
+"git commit -m 'Finalize Schema 43 scoped production promotion'",0,"Created d98a36a with the separated completed scope/promotion implementation and durable records"
+"Rscript focused testthat files: exploratory layer; public interface; research platform",0,"All focused expectations passed"
+"Rscript prepare_series_quality_package.R <development copy> <temporary output>",0,"Generated and reconciled all nine machine-readable outputs"
+"Rscript /private/tmp/build_post_quality_candidate.R",0,"Governed scoped build accepted with zero errors and retained with publish=FALSE"
+"Candidate versus production bidirectional EXCEPT ALL",0,"Zero canonical-series differences and zero canonical-fact differences"
+"Fresh read-only binding of catalog explore and research views",0,"17 views bound; zero failures"
+"Canonical natural-key duplicate query",0,"Zero duplicate groups"
+"Rscript --vanilla run_tests.R",0,"Complete regression suite passed; one intentional corrupt-ZIP fixture warning"
+"shasum -a 256 production and candidate",0,"Production remained 6079c80ce0edd26f899b9f54fe98f73eee08c90c5f006759b051960edbd7a9fa; candidate f0f9ddb6482b6921c8bbf0b1cf6cd442aefed8c24082b81c57c7799e806ec85b"

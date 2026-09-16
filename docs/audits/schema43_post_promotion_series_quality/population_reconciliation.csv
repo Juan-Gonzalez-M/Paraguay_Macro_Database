@@ -1,0 +1,8 @@
+population,production,candidate,delta,comparison
+canonical_series,13985,13985,0,EXCEPT ALL both directions returned zero
+canonical_facts,1227082,1227082,0,EXCEPT ALL both directions returned zero
+catalog_series,13985,13985,0,one profile per canonical series
+explore_series,13638,13638,0,eligible scalar and native-grain candidates
+research_series,32,32,0,existing assurance admission unchanged
+cda_canonical_observations,0,0,0,deferred boundary preserved
+tcn_canonical_observations,0,0,0,deferred boundary preserved
