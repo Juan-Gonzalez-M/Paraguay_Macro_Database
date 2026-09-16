@@ -248,7 +248,11 @@ it should stop the release rather than be discovered by a reader.
 Schema 43 adds discovery without changing formal admission. `catalog.series` has exactly one row per
 `canonical.dim_series.series_id` and combines the source label/path, available dimensions and economic
 metadata, current coverage, declared-frequency gap diagnostics, normalized-key checks, lineage,
-machine-readable validation tier, and explicit warnings. `catalog.series_warnings` normalizes those
+machine-readable validation tier, and explicit warnings. The post-promotion contract additionally
+assigns exactly one conservative `primary_review_category`, records its deterministic rule and
+separate issue codes, and exposes catalog, explore, and research admission or exclusion status.
+These fields classify usability; they do not create research assurance, merge identities, or claim
+human economic verification. `catalog.series_warnings` normalizes those
 limitations and `catalog.datasets` covers direct panels and long-format source datasets that are not
 fully described by scalar candidate rows. `catalog.profile(candidate_id)` is the one-candidate lookup.
 

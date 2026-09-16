@@ -783,17 +783,33 @@ validate_platform_contracts <- function(con, release_id, root) {
       "  ON c.candidate_id=o.series_id WHERE c.candidate_id IS NULL) AS orphan_observations,",
       " (SELECT count(*) FROM catalog.series WHERE candidate_id IS NULL OR source_id IS NULL",
       "  OR validation_tier IS NULL OR status_code IS NULL OR concise_warning IS NULL",
-      "  OR warning_codes IS NULL OR profile_interface IS NULL) AS incomplete_profiles"
+      "  OR warning_codes IS NULL OR profile_interface IS NULL OR primary_review_category IS NULL",
+      "  OR classification_basis IS NULL OR classification_rule_id IS NULL",
+      "  OR catalog_admission_status IS NULL OR explore_admission_status IS NULL",
+      "  OR research_admission_status IS NULL OR semantic_review_status IS NULL",
+      "  OR provenance_review_status IS NULL OR parser_reconciliation_status IS NULL",
+      "  OR current_observation_availability IS NULL) AS incomplete_profiles,",
+      " (SELECT count(*) FROM catalog.series WHERE primary_review_category NOT IN (",
+      "  'apparently_valid_preliminary','research_validated','discovery_only',",
+      "  'clear_mechanical_defect','probable_identity_fragmentation',",
+      "  'probable_duplicate_or_overlap','semantic_review_required',",
+      "  'provenance_review_required','insufficient_evidence')) AS invalid_categories,",
+      " (SELECT count(*) FROM catalog.series WHERE",
+      "  (validation_tier='research_ready') IS DISTINCT FROM",
+      "  (research_admission_status='admitted')) AS inconsistent_research_admission"
     ))
     if (coverage$dimension_rows != coverage$catalogue_rows ||
         coverage$catalogue_rows != coverage$catalogue_ids ||
-        coverage$orphan_observations > 0 || coverage$incomplete_profiles > 0) {
+        coverage$orphan_observations > 0 || coverage$incomplete_profiles > 0 ||
+        coverage$invalid_categories > 0 || coverage$inconsistent_research_admission > 0) {
       insert_quality_flag(
         con, release_id, "error", "candidate_catalogue_not_reconciled", NA_character_,
         paste0(
           "dim_series=", coverage$dimension_rows, ", catalog_rows=", coverage$catalogue_rows,
           ", catalog_ids=", coverage$catalogue_ids, ", orphan_current_observations=",
-          coverage$orphan_observations, ", incomplete_profiles=", coverage$incomplete_profiles, "."
+          coverage$orphan_observations, ", incomplete_profiles=", coverage$incomplete_profiles,
+          ", invalid_categories=", coverage$invalid_categories,
+          ", inconsistent_research_admission=", coverage$inconsistent_research_admission, "."
         )
       )
     }

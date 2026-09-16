@@ -8,7 +8,7 @@
 4. **Separate source observations from meaning.** Raw tables reproduce publications; semantic dimensions document how to interpret source codes and labels.
 5. **Keep mappings visible.** Documented views add semantics without removing the source columns used for the join.
 6. **Never hide discarded or unmapped content.** Parser omissions and mapping coverage are written to quality outputs, and every numeric source cell inside a parsed region must resolve to an observation or to a reviewed classification saying what else it is. A cell nobody has accounted for blocks the release.
-7. **Say which layer an object belongs to.** Tables live in `raw`, `staging`, `canonical` or `audit`; reusable validation marts live in `marts`; the compact stable interface lives in `research`. See `docs/DATA_MODEL.md`.
+7. **Say which layer an object belongs to.** Tables live in `raw`, `staging`, `canonical` or `audit`; reusable validation marts live in `marts`; stable public interfaces are layer-specific: `catalog` for discovery, `explore` for controlled preliminary use, and `research` for formal admission. See `docs/DATA_MODEL.md`.
 8. **Derive only what the source states, and record the wording.** A measurement field is filled in only where the publisher says the answer in words, and the sentence travels with the value. `not_reviewed` is a real answer and is reported as one.
 9. **A build cannot touch the database it has not been accepted to replace.** The run writes a candidate file; publication is the rename of that file. See below.
 
