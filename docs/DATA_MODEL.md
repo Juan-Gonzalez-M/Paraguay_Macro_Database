@@ -110,11 +110,19 @@ Since schema 30 there are three identities, because one identifier was being ask
 
 | Identity | What it hashes | What it means |
 | --- | --- | --- |
-| `release_id` (source bundle) | every source file's SHA-256 | "these input files" |
+| `release_id` (source bundle) | every admitted source file's SHA-256 and, for an explicitly scoped product, the governed scope identity/digest | "these authorized input files" |
 | `build_id` | the release, the Git commit and dirty flag, the schema version, digests of `config/` and `scripts/`, a digest of `renv.lock`, **and the package versions that actually ran** | "this code, in this environment, on those files" |
 | `data_release_id` | the two above, as a decided product | "this database" |
 
-`release_id` hashes the sources and nothing else, which makes it deterministic and makes it the wrong thing to publish from: the same bundle had **fourteen attempts spanning schemas 26 to 29**, with materially different observations, and `audit.releases` kept only the latest status for the one row they shared. One of those attempts ended blocked. Because every published view joined `releases.status = 'accepted'`, **a failed rebuild withdrew the entire published database** — not the data it produced, the data it failed to replace.
+An unscoped `release_id` hashes the sources and nothing else. A release governed by
+`config/release_input_scope.csv` additionally hashes the canonical scope identity and digest, so
+the same bytes admitted under a distinct product-scope decision receive a distinct source-bundle
+identity. Both forms are deterministic. Neither includes parser code, which is why a source bundle
+is the wrong thing to publish from by itself: the same historical bundle had **fourteen attempts
+spanning schemas 26 to 29**, with materially different observations, and `audit.releases` kept only
+the latest status for the one row they shared. One of those attempts ended blocked. Because every
+published view joined `releases.status = 'accepted'`, **a failed rebuild withdrew the entire
+published database** — not the data it produced, the data it failed to replace.
 
 So publication is now two things that used to be one mutable `UPDATE`:
 
@@ -495,12 +503,13 @@ reached this disk.
 
 ## Which release, and which build
 
-`release_id` hashes the source files and nothing else. That is what makes it deterministic, and it is
-also what makes it insufficient on its own: change a parser and the same `release_id` names a
-different set of observations. Since schema 26 `audit.build_identity` answers the other question. It
+`release_id` hashes the admitted source files and, when present, the canonical governed
+release-scope identity/digest. That is what makes it deterministic, and it is also what makes it
+insufficient on its own: change a parser and the same `release_id` names a different set of
+observations. Since schema 26 `audit.build_identity` answers the other question. It
 records the release, the Git commit and whether the working tree was dirty, the schema version, a
 digest of `config/`, a digest of `scripts/` and `run_update.R`, a digest of `renv.lock`, and the R
-version; `build_id` hashes all of them. `release_id` still means "these input files"; `build_id`
+version; `build_id` hashes all of them. `release_id` means "these authorized input files"; `build_id`
 means "this database".
 
 `git_dirty` answers one question — **was the code that built this database committed** — and

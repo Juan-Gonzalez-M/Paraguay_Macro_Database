@@ -1,0 +1,3 @@
+"source_id","check_name","severity","detail"
+"cda_curve","release_input_deferred","warning","Release-input scope schema43_lineage_only_20260914 explicitly defers cda_curve:8796a589fc2bd31317efdce7 (full SHA-256 8796a589fc2bd31317efdce7865d4598473fdacd048cf04b676dc8f78e2b144c): Deferred from Schema 43 for separate source-onboarding review; source evidence remains preserved."
+"tcn_referential_daily","release_input_deferred","warning","Release-input scope schema43_lineage_only_20260914 explicitly defers tcn_referential_daily:74df666397a33b9c8cdfac10 (full SHA-256 74df666397a33b9c8cdfac10d7ffedd23acf7cbd5907ea21332e100fb939c0a4): Deferred from Schema 43 for separate source-onboarding review; source evidence remains preserved."

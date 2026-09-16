@@ -1,0 +1,3 @@
+"source_id","candidate_series","current_series_observations","current_vintage_id","source_sha256","access_interface"
+"cda_curve",0,0,,,"catalog.datasets"
+"tcn_referential_daily",0,0,,,"catalog.datasets"

@@ -1,0 +1,56 @@
+{
+  "manifest_version": 1,
+  "purpose": "Schema 43 lineage-only candidate for independent acceptance; not promoted",
+  "proposed_engineering_verdict": "READY FOR INDEPENDENT ACCEPTANCE",
+  "schema_version": 43,
+  "release_scope_id": "schema43_lineage_only_20260914",
+  "release_scope_digest": "7761380c0b4c73dc29759d00f30132574e15558e1ba689bfa50e267d88406dd8",
+  "source_bundle_id": "release:dcbccb827b93ee2362ab3c56",
+  "build_id": "build:a3e94ab54dacd47000223d28",
+  "data_release_id": "build:a3e94ab54dacd47000223d28",
+  "attempt_id": "attempt:2305af6de17f489900d0afb8",
+  "candidate": {
+    "path": "database/candidates/accepted_for_review_20260914_202049.duckdb",
+    "bytes": 423374848,
+    "sha256": "6079c80ce0edd26f899b9f54fe98f73eee08c90c5f006759b051960edbd7a9fa",
+    "pipeline_decision": "accepted",
+    "published": false,
+    "release_blocking_errors": 0,
+    "warnings": 41,
+    "canonical_fact_rows": 1227082,
+    "canonical_series": 13985
+  },
+  "scope_population": {
+    "registered_sources": 24,
+    "admitted_sources": 22,
+    "deferred_sources": 2
+  },
+  "deferred_vintages": [
+    {
+      "source_id": "cda_curve",
+      "vintage_id": "cda_curve:8796a589fc2bd31317efdce7",
+      "sha256": "8796a589fc2bd31317efdce7865d4598473fdacd048cf04b676dc8f78e2b144c"
+    },
+    {
+      "source_id": "tcn_referential_daily",
+      "vintage_id": "tcn_referential_daily:74df666397a33b9c8cdfac10",
+      "sha256": "74df666397a33b9c8cdfac10d7ffedd23acf7cbd5907ea21332e100fb939c0a4"
+    }
+  ],
+  "immutable_comparators": {
+    "production_before_sha256": "17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180",
+    "production_after_sha256": "17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180",
+    "frozen_incumbent_sha256": "17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180",
+    "accepted_lineage_candidate_sha256": "586f2e7af80d54316d45233f1532d03d6f6846d279316d194fa5dbc1d1c26dd8",
+    "rejected_candidate_before_sha256": "e31e444a4ca79cb18f9bc322391562d553a28b179c6cf10e3037b881cb61169b",
+    "rejected_candidate_after_sha256": "e31e444a4ca79cb18f9bc322391562d553a28b179c6cf10e3037b881cb61169b"
+  },
+  "build_identity": {
+    "git_commit": "98370c2c26f8162401cf6e0e3eb3019ef7f687c1",
+    "git_dirty": true,
+    "config_digest": "85bcc3424f67419908c14006",
+    "code_digest": "8ea69398fee25228e796d88c",
+    "environment_digest": "16bed9afaddb5f23c6f27fd7",
+    "package_versions_digest": "e85120defdcfd58c70c4f54e"
+  }
+}

@@ -45,7 +45,13 @@ if (identical(Sys.getenv("PARAGUAY_MACRO_ALLOW_ENV_DRIFT"), "1")) {
 
 ensure_dirs(root)
 registry <- readr::read_csv(file.path(root, "config", "source_registry.csv"), show_col_types = FALSE)
-resolved <- build_current_manifest(registry, root)
+# Schema 43 is the explicitly authorized lineage-only product. The governed
+# scope names every registered source and exact full hash, including exact
+# deferrals, so a changed or newly registered input blocks instead of silently
+# changing the product population.
+resolved <- build_scoped_current_manifest(
+  registry, root, "schema43_lineage_only_20260914", expected_schema_version = 43L
+)
 
 # The audit's F-01. The pipeline builds into a candidate file beside the
 # published database and the candidate is renamed into place only if it is

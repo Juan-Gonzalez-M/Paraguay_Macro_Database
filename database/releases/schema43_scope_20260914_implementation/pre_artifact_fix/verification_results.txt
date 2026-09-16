@@ -1,0 +1,91 @@
+Warning: package ‘DBI’ was built under R version 4.5.2
+Warning: package ‘duckdb’ was built under R version 4.5.2
+production_path=/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/database/paraguay_macro_pilot.duckdb
+production_bytes=418918400
+production_sha256=17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180
+frozen_path=/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/database/releases/schema43_20260914_180157/schema41_base.duckdb
+frozen_bytes=418918400
+frozen_sha256=17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180
+accepted_lineage_path=/private/tmp/schema43-lineage-final.JPitWw/paraguay_macro_schema43_candidate.duckdb
+accepted_lineage_bytes=418918400
+accepted_lineage_sha256=586f2e7af80d54316d45233f1532d03d6f6846d279316d194fa5dbc1d1c26dd8
+rejected_path=/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/database/candidates/blocked_20260914_180218.duckdb
+rejected_bytes=454307840
+rejected_sha256=e31e444a4ca79cb18f9bc322391562d553a28b179c6cf10e3037b881cb61169b
+candidate_path=/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/database/candidates/accepted_for_review_20260914_195427.duckdb
+candidate_bytes=423636992
+candidate_sha256=ef28b3e048c73a596731763fe2609247e096a02def1b2b5f4872f36c100aaae4
+duckdb keeps downloaded extensions and secrets in a temporary directory:
+ℹ /var/folders/1m/87jrxgqx6_74zdls2ycy221c0000gn/T//Rtmp0R3wyN/duckdb
+This is removed when the R session ends.
+• Extensions are re-downloaded each session.
+• Secrets are lost.
+ℹ Run duckdb(shared_home = TRUE) (or create ~/.duckdb) to keep them (suitable for most users).
+ℹ Run duckdb(shared_home = FALSE) to accept the temporary directory (and silence this message).
+ℹ See ?duckdb_storage for details and alternatives.
+         artifact canonical_facts canonical_series
+           frozen         1227082            13985
+       production         1227082            13985
+ accepted_lineage         1227082            13985
+         rejected         1255940            14486
+        candidate         1227082            13985
+                data_release_id                 source_bundle_id
+ build:128e6bda14e9bd07c638a661 release:dcbccb827b93ee2362ab3c56
+                       build_id                       attempt_id schema_version
+ build:128e6bda14e9bd07c638a661 attempt:049eb8a54ce38961b51be4e9             43
+   status error_count warning_count         active_data_release_id
+ accepted           0            41 build:128e6bda14e9bd07c638a661
+          active_source_bundle_id
+ release:dcbccb827b93ee2362ab3c56
+candidate_build_id=build:128e6bda14e9bd07c638a661
+candidate_source_bundle_id=release:dcbccb827b93ee2362ab3c56
+candidate_attempt_id=attempt:049eb8a54ce38961b51be4e9
+candidate_decision=accepted
+candidate_release_errors=0
+candidate_release_warnings=41
+candidate_admitted_source_count=22
+deferred_diagnostic_count=2
+             source_id raw_source_files staging_rows canonical_facts
+             cda_curve                0            0               0
+ tcn_referential_daily                0            0               0
+ canonical_series catalog_series explore_observations
+                0              0                    0
+                0              0                    0
+             source_id candidate_series current_series_observations
+             cda_curve                0                           0
+ tcn_referential_daily                0                           0
+ current_vintage_id source_sha256 access_interface
+               <NA>          <NA> catalog.datasets
+               <NA>          <NA> catalog.datasets
+candidate_research_deferred_observations=0
+candidate_release_blocking_errors=0
+candidate_new_vintage_provenance_incomplete=0
+ worksheets balance_delta unclassified_cells parser_defect_cells
+        244             0                  0                   0
+candidate_fact_duplicate_natural_keys=0
+candidate_source_cell_duplicate_natural_keys=0
+candidate_only_canonical_facts_vs_accepted_lineage=0
+accepted_lineage_only_canonical_facts_vs_candidate=0
+candidate_only_canonical_series_vs_accepted_lineage=0
+accepted_lineage_only_canonical_series_vs_candidate=0
+rejected_minus_candidate_canonical_facts=28858
+rejected_minus_candidate_canonical_series=501
+production_active_build=build:57fe1ff64fb654508b2a8f0a
+production_active_source_bundle=release:748d41036c3a73638a1c2086
+rejected_build_decision=blocked
+duckdb keeps downloaded extensions and secrets in a temporary directory:
+ℹ /var/folders/1m/87jrxgqx6_74zdls2ycy221c0000gn/T//Rtmp0R3wyN/duckdb
+This is removed when the R session ends.
+• Extensions are re-downloaded each session.
+• Secrets are lost.
+ℹ Run duckdb(shared_home = TRUE) (or create ~/.duckdb) to keep them (suitable for most users).
+ℹ Run duckdb(shared_home = FALSE) to accept the temporary directory (and silence this message).
+ℹ See ?duckdb_storage for details and alternatives.
+fresh_default_search_path=
+fresh_views_bound=155
+fresh_view_binding_errors=0
+fresh_public_macros_bound=7
+fresh_public_macro_binding_errors=0
+deferred_current_files_preserved=2
+deferred_archive_files_preserved=2
+verification_status=PASS

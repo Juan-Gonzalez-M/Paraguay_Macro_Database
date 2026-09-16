@@ -719,7 +719,18 @@ replace_table_if_changed <- function(con, table_name, rows) {
 # has no repository-relative form and returns NA rather than a fabricated one.
 repository_uri <- function(path, root) {
   if (is.null(root) || is.na(path)) return(NA_character_)
-  absolute <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  # normalizePath() does not resolve a symlinked ancestor (notably macOS's
+  # /var -> /private/var) when the leaf does not exist yet. Artifact destinations
+  # are intentionally recorded before the final rename, so canonicalize the
+  # existing parent and then restore the prospective basename.
+  absolute <- if (file.exists(path)) {
+    normalizePath(path, winslash = "/", mustWork = FALSE)
+  } else {
+    file.path(
+      normalizePath(dirname(path), winslash = "/", mustWork = FALSE),
+      basename(path)
+    )
+  }
   base <- paste0(normalizePath(root, winslash = "/", mustWork = FALSE), "/")
   if (!startsWith(absolute, base)) return(NA_character_)
   substr(absolute, nchar(base) + 1L, nchar(absolute))
@@ -731,6 +742,19 @@ make_vintage_id <- function(source_id, sha256) {
 
 make_release_id <- function(manifest) {
   keys <- paste(manifest$source_id, manifest$sha256, sep = ":")
+  scope_columns <- c("release_scope_id", "release_scope_digest")
+  present_scope_columns <- intersect(scope_columns, names(manifest))
+  if (length(present_scope_columns) == 1L) stop(
+    "A scoped source manifest must carry both release_scope_id and release_scope_digest.",
+    call. = FALSE
+  )
+  if (length(present_scope_columns) == 2L) {
+    scope_keys <- unique(paste(manifest$release_scope_id, manifest$release_scope_digest, sep = ":"))
+    if (length(scope_keys) != 1L || any(is.na(scope_keys)) || any(!nzchar(scope_keys))) stop(
+      "A scoped source manifest must name exactly one nonblank scope identity.", call. = FALSE
+    )
+    keys <- c(keys, paste0("release_scope:", scope_keys))
+  }
   paste0("release:", substr(digest::digest(
     paste(sort(keys), collapse = "|"), algo = "sha256", serialize = FALSE
   ), 1, 24))
@@ -826,6 +850,159 @@ build_current_manifest <- function(registry, root) {
     }
   }
   list(manifest = bind_rows(records), issues = bind_rows(issues))
+}
+
+# A product release may deliberately admit a narrower population than the
+# global source registry. The registry still answers whether a source is part of
+# the project and whether its current file is required; this governed table
+# answers the separate question "which exact bytes define this product?".
+#
+# The scope is positive and exhaustive. Every registered source has one exact
+# hash decision, including deferrals, so a new source or changed vintage cannot
+# disappear merely because it was not on an allowlist. Such drift becomes a
+# release-blocking resolution issue before any source is linked or ingested.
+RELEASE_INPUT_SCOPE_COLUMNS <- c(
+  "scope_id", "schema_version", "source_id", "sha256", "disposition", "reason",
+  "decided_by", "decided_at", "evidence"
+)
+
+release_input_scope_digest <- function(scope) {
+  ordered <- scope[order(scope$source_id, method = "radix"), RELEASE_INPUT_SCOPE_COLUMNS,
+                   drop = FALSE]
+  rows <- apply(ordered, 1, function(row) paste(row, collapse = "|"))
+  digest::digest(paste(rows, collapse = "\n"), algo = "sha256", serialize = FALSE)
+}
+
+read_release_input_scope <- function(root, scope_id) {
+  path <- file.path(root, "config", "release_input_scope.csv")
+  if (!file.exists(path)) stop(
+    "Release-input scope not found: ", path, ". A scoped release must fail closed.",
+    call. = FALSE
+  )
+  scopes <- project_cached_config(path, function(config_path) readr::read_csv(
+    config_path, show_col_types = FALSE,
+    col_types = readr::cols(.default = readr::col_character())
+  ))
+  if (!identical(names(scopes), RELEASE_INPUT_SCOPE_COLUMNS)) stop(
+    "config/release_input_scope.csv must have exactly these columns in order: ",
+    paste(RELEASE_INPUT_SCOPE_COLUMNS, collapse = ", "), call. = FALSE
+  )
+  scope <- scopes[!is.na(scopes$scope_id) & scopes$scope_id == scope_id, , drop = FALSE]
+  if (!nrow(scope)) stop("Unknown release-input scope: ", scope_id, call. = FALSE)
+  incomplete <- apply(scope, 1, function(row) any(is.na(row) | !nzchar(trimws(row))))
+  if (any(incomplete)) stop(
+    "Release-input scope ", scope_id, " has ", sum(incomplete),
+    " row(s) with blank governed fields.", call. = FALSE
+  )
+  if (anyDuplicated(scope$source_id)) stop(
+    "Release-input scope ", scope_id, " must decide each source_id exactly once.",
+    call. = FALSE
+  )
+  if (any(!grepl("^[0-9a-f]{64}$", scope$sha256))) stop(
+    "Release-input scope ", scope_id, " contains a non-full or invalid SHA-256.",
+    call. = FALSE
+  )
+  if (any(!scope$disposition %in% c("admit", "defer"))) stop(
+    "Release-input scope ", scope_id, " uses an unsupported disposition.", call. = FALSE
+  )
+  if (length(unique(scope$schema_version)) != 1L ||
+      !grepl("^[0-9]+$", unique(scope$schema_version))) stop(
+    "Release-input scope ", scope_id, " must name exactly one integer schema_version.",
+    call. = FALSE
+  )
+  scope
+}
+
+apply_release_input_scope <- function(registry, resolved, root, scope_id,
+                                      expected_schema_version = NULL) {
+  scope <- read_release_input_scope(root, scope_id)
+  issues <- resolved$issues
+  add_scope_issue <- function(source_id, severity, check_name, detail) {
+    issues <<- dplyr::bind_rows(issues, tibble::tibble(
+      source_id = source_id, severity = severity, check_name = check_name, detail = detail
+    ))
+  }
+
+  schema_version <- as.integer(unique(scope$schema_version))
+  if (!is.null(expected_schema_version) &&
+      !identical(schema_version, as.integer(expected_schema_version))) stop(
+    "Release-input scope ", scope_id, " is for schema ", schema_version,
+    ", not schema ", expected_schema_version, ".", call. = FALSE
+  )
+
+  registered <- as.character(registry$source_id)
+  if (anyDuplicated(registered)) stop("config/source_registry.csv contains duplicate source_id values.",
+                                      call. = FALSE)
+  missing_decisions <- setdiff(registered, scope$source_id)
+  stale_decisions <- setdiff(scope$source_id, registered)
+  for (source_id in missing_decisions) add_scope_issue(
+    source_id, "error", "release_input_scope_unresolved",
+    paste0("Release-input scope ", scope_id, " has no decision for registered source ",
+           source_id, ". The source is not admitted.")
+  )
+  for (source_id in stale_decisions) add_scope_issue(
+    source_id, "error", "release_input_scope_unresolved",
+    paste0("Release-input scope ", scope_id, " decides source ", source_id,
+           " but that source is absent from config/source_registry.csv.")
+  )
+
+  manifest <- resolved$manifest
+  admitted <- vector("list", nrow(scope))
+  admitted_n <- 0L
+  for (i in seq_len(nrow(scope))) {
+    decision <- scope[i, , drop = FALSE]
+    current <- manifest[manifest$source_id == decision$source_id[[1]], , drop = FALSE]
+    exact <- current[current$sha256 == decision$sha256[[1]], , drop = FALSE]
+    if (nrow(current) != 1L || nrow(exact) != 1L) {
+      observed <- if (!nrow(current)) "none" else paste(current$sha256, collapse = ";")
+      add_scope_issue(
+        decision$source_id[[1]], "error", "release_input_scope_unresolved",
+        paste0(
+          "Release-input scope ", scope_id, " expects exactly ", decision$disposition[[1]],
+          " ", decision$source_id[[1]], ":", decision$sha256[[1]],
+          " but the current resolver found ", nrow(current), " candidate(s) with SHA-256 ",
+          observed, ". No current bytes for this source are admitted."
+        )
+      )
+      next
+    }
+    if (identical(decision$disposition[[1]], "defer")) {
+      add_scope_issue(
+        decision$source_id[[1]], "warning", "release_input_deferred",
+        paste0(
+          "Release-input scope ", scope_id, " explicitly defers ", exact$vintage_id[[1]],
+          " (full SHA-256 ", exact$sha256[[1]], "): ", decision$reason[[1]]
+        )
+      )
+      next
+    }
+    admitted_n <- admitted_n + 1L
+    admitted[[admitted_n]] <- exact
+  }
+
+  unexpected <- setdiff(unique(manifest$source_id), scope$source_id)
+  for (source_id in unexpected) add_scope_issue(
+    source_id, "error", "release_input_scope_unresolved",
+    paste0("Current resolver found source ", source_id, " outside release-input scope ",
+           scope_id, ". The source is not admitted.")
+  )
+
+  admitted <- if (admitted_n) dplyr::bind_rows(admitted[seq_len(admitted_n)]) else manifest[0, ]
+  scope_digest <- release_input_scope_digest(scope)
+  admitted$release_scope_id <- scope_id
+  admitted$release_scope_digest <- scope_digest
+  list(
+    manifest = admitted, issues = issues, scope = scope,
+    scope_id = scope_id, scope_digest = scope_digest, schema_version = schema_version
+  )
+}
+
+build_scoped_current_manifest <- function(registry, root, scope_id,
+                                          expected_schema_version = NULL) {
+  apply_release_input_scope(
+    registry, build_current_manifest(registry, root), root, scope_id,
+    expected_schema_version = expected_schema_version
+  )
 }
 
 build_archive_manifest <- function(registry, root) {

@@ -175,8 +175,14 @@ The arithmetic that follows from that:
 | Peak, mid-run | the candidate can reach its own high-water mark under the growth described above, so budget roughly **three times** the database size in free space |
 | After an accepted run | two: the new database, plus its predecessor at `database/backups/paraguay_macro_pilot_pre_swap_<stamp>.duckdb` |
 | After a blocked run | two: the unchanged database, plus the blocked build at `database/candidates/blocked_<stamp>.duckdb` |
+| After an accepted review build | two: the unchanged database, plus `database/candidates/accepted_for_review_<stamp>.duckdb`; it is retained for independent acceptance and is not a published artifact |
+| During retained-candidate promotion | three: production, the immutable retained candidate, and a byte-identical short-lived promotion stage |
+| After retained-candidate promotion | three: production, the unchanged retained candidate, and the governed pre-swap backup |
 
-Both leftovers are deliberate. The pre-swap copy is the documented rollback path, and the blocked candidate is the only place a failed build's data can still be inspected. Both accumulate, and neither is deleted by the pipeline.
+These leftovers are deliberate. The pre-swap copy is the documented rollback path, blocked and
+failed-promotion candidates preserve failure evidence, and an accepted review candidate remains the
+exact object that was authorized even after its byte-identical staged copy becomes production.
+They accumulate, and the pipeline does not delete them.
 
 ## 11. Backup retention
 

@@ -86,9 +86,20 @@ mutating_pipeline <- function(decision, new_value = 999) {
       con, "release:bundle-x", build_id, "attempt:test", 33L, decision,
       if (identical(decision, "blocked")) 1L else 0L, 0L, "fixture"
     )
+    DBI::dbExecute(con, "DELETE FROM audit.ingestion_run_attempts WHERE attempt_id='attempt:test'")
+    DBI::dbWriteTable(con, "ingestion_run_attempts", tibble::tibble(
+      attempt_id = "attempt:test", release_id = "release:bundle-x",
+      started_at = Sys.time(), finished_at = Sys.time(), status = "completed",
+      source_count = 1L,
+      error_count = if (identical(decision, "blocked")) 1L else 0L,
+      warning_count = 0L, build_id = build_id
+    ), append = TRUE)
     if (identical(decision, "accepted")) {
       promote_data_release(con, build_id, "release:bundle-x", "fixture")
     }
+    record_distribution_artifact(
+      con, db_path, build_id, build_id, 33L, artifact_path = artifact_path
+    )
     list(
       release_id = "release:bundle-x", database = db_path, build_id = build_id,
       data_release_id = build_id, decision = decision,
@@ -163,6 +174,149 @@ testthat::test_that("an accepted rebuild is swapped in and the build it replaced
   testthat::expect_equal(
     length(list.files(file.path(root, "database", "candidates"), pattern = "^candidate_")), 0L
   )
+})
+
+testthat::test_that("an accepted review candidate is retained without publishing", {
+  root <- isolation_root()
+  production <- file.path(root, "database", "paraguay_macro_pilot.duckdb")
+  published_fixture_database(production, value = 1)
+  before <- digest::digest(file = production, algo = "sha256")
+
+  result <- run_isolated_update(
+    root, tibble::tibble(), tibble::tibble(),
+    pipeline = mutating_pipeline("accepted", 999), publish = FALSE
+  )
+
+  testthat::expect_false(result$published)
+  testthat::expect_true(file.exists(result$candidate))
+  testthat::expect_match(basename(result$candidate), "^accepted_for_review_")
+  testthat::expect_identical(digest::digest(file = production, algo = "sha256"), before)
+  testthat::expect_equal(published_value(production), 1)
+  testthat::expect_equal(published_value(result$candidate), 999)
+  con <- connect_project_database(result$candidate, read_only = TRUE)
+  withr::defer(DBI::dbDisconnect(con, shutdown = TRUE))
+  testthat::expect_equal(
+    DBI::dbGetQuery(con, "SELECT data_release_id FROM audit.active_data_release")$data_release_id,
+    result$build_id
+  )
+  artifact <- DBI::dbGetQuery(con, paste0(
+    "SELECT artifact_path FROM audit.distribution_artifacts WHERE build_id = ",
+    sql_string(result$build_id)
+  ))
+  testthat::expect_equal(nrow(artifact), 1L)
+  testthat::expect_match(
+    artifact$artifact_path,
+    paste0("^candidates/", basename(result$candidate), "$"),
+    perl = TRUE
+  )
+  testthat::expect_false(any(grepl("paraguay_macro_pilot", artifact$artifact_path)))
+})
+
+retained_fixture <- function(root) {
+  production <- file.path(root, "database", "paraguay_macro_pilot.duckdb")
+  published_fixture_database(production, value = 1)
+  incumbent_sha256 <- file_sha256(production)
+  retained <- run_isolated_update(
+    root, tibble::tibble(), tibble::tibble(),
+    pipeline = mutating_pipeline("accepted", 999), publish = FALSE
+  )
+  list(
+    production = production, candidate = retained$candidate,
+    candidate_sha256 = file_sha256(retained$candidate),
+    candidate_bytes = unname(file.info(retained$candidate)$size),
+    incumbent_sha256 = incumbent_sha256, build_id = retained$build_id
+  )
+}
+
+promote_retained_fixture <- function(root, fixture, ...) {
+  promote_retained_candidate(
+    root = root, candidate = fixture$candidate,
+    expected_sha256 = fixture$candidate_sha256,
+    expected_bytes = fixture$candidate_bytes,
+    expected_production_sha256 = fixture$incumbent_sha256,
+    expected_build_id = fixture$build_id,
+    expected_source_bundle_id = "release:bundle-x",
+    expected_attempt_id = "attempt:test", expected_schema_version = 33L,
+    expected_canonical_facts = 1L, expected_canonical_series = 1L, ...
+  )
+}
+
+testthat::test_that("a retained accepted candidate uses the governed atomic publisher", {
+  root <- isolation_root()
+  fixture <- retained_fixture(root)
+  source_before <- file_sha256(fixture$candidate)
+
+  result <- promote_retained_fixture(root, fixture)
+
+  testthat::expect_true(result$published)
+  testthat::expect_equal(published_value(fixture$production), 999)
+  testthat::expect_identical(file_sha256(fixture$production), fixture$candidate_sha256)
+  testthat::expect_true(file.exists(fixture$candidate))
+  testthat::expect_identical(file_sha256(fixture$candidate), source_before)
+  testthat::expect_true(file.exists(result$swapped_from))
+  testthat::expect_identical(file_sha256(result$swapped_from), fixture$incumbent_sha256)
+  testthat::expect_true(file.exists(result$promotion_record))
+})
+
+testthat::test_that("retained promotion rejects wrong candidate and incumbent hashes before swap", {
+  root <- isolation_root()
+  fixture <- retained_fixture(root)
+  before <- file_sha256(fixture$production)
+
+  wrong_candidate <- fixture
+  wrong_candidate$candidate_sha256 <- paste0(strrep("0", 63), "1")
+  testthat::expect_error(
+    promote_retained_fixture(root, wrong_candidate), "candidate SHA-256 mismatch"
+  )
+  testthat::expect_identical(file_sha256(fixture$production), before)
+
+  wrong_incumbent <- fixture
+  wrong_incumbent$incumbent_sha256 <- paste0(strrep("f", 63), "e")
+  testthat::expect_error(
+    promote_retained_fixture(root, wrong_incumbent), "published database SHA-256 changed"
+  )
+  testthat::expect_identical(file_sha256(fixture$production), before)
+})
+
+testthat::test_that("retained promotion rejects an incomplete DuckDB candidate", {
+  root <- isolation_root()
+  production <- file.path(root, "database", "paraguay_macro_pilot.duckdb")
+  published_fixture_database(production, value = 1)
+  invalid <- file.path(root, "database", "candidates", "accepted_for_review_invalid.duckdb")
+  con <- DBI::dbConnect(duckdb::duckdb(), invalid)
+  DBI::dbExecute(con, "CREATE TABLE incomplete(x INTEGER)")
+  DBI::dbDisconnect(con, shutdown = TRUE)
+  before <- file_sha256(production)
+
+  testthat::expect_error(promote_retained_candidate(
+    root, invalid, file_sha256(invalid), unname(file.info(invalid)$size), before,
+    "build:x", "release:x", "attempt:x", 43L
+  ), "required audit table")
+  testthat::expect_identical(file_sha256(production), before)
+})
+
+testthat::test_that("a failed post-promotion smoke test restores the incumbent", {
+  root <- isolation_root()
+  fixture <- retained_fixture(root)
+  source_before <- file_sha256(fixture$candidate)
+
+  testthat::expect_error(promote_retained_fixture(
+    root, fixture, smoke_test = function(...) stop("simulated smoke failure")
+  ), "incumbent was restored")
+  testthat::expect_identical(file_sha256(fixture$production), fixture$incumbent_sha256)
+  testthat::expect_true(file.exists(fixture$candidate))
+  testthat::expect_identical(file_sha256(fixture$candidate), source_before)
+  testthat::expect_false(file.exists(file.path(root, "database", ".swap_in_progress")))
+})
+
+testthat::test_that("repeating retained promotion refuses an already active candidate", {
+  root <- isolation_root()
+  fixture <- retained_fixture(root)
+  promote_retained_fixture(root, fixture)
+  active_sha256 <- file_sha256(fixture$production)
+
+  testthat::expect_error(promote_retained_fixture(root, fixture), "already active")
+  testthat::expect_identical(file_sha256(fixture$production), active_sha256)
 })
 
 testthat::test_that("an accepted candidate that publishes a different build is refused", {
@@ -243,4 +397,11 @@ testthat::test_that("the update entry point publishes through the isolation wrap
   ), collapse = "\n")
   testthat::expect_match(source_text, "run_isolated_update(", fixed = TRUE)
   testthat::expect_false(grepl("run_manifest_pipeline(", source_text, fixed = TRUE))
+  pipeline_text <- paste(readLines(
+    file.path(project_test_root, "scripts", "06_pipeline.R"), warn = FALSE
+  ), collapse = "\n")
+  testthat::expect_match(
+    pipeline_text,
+    "published <- publish_candidate_atomically(", fixed = TRUE
+  )
 })

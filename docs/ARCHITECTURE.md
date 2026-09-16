@@ -28,7 +28,10 @@ flowchart TD
     J --> K{Any error-severity flag?}
     K -- Yes --> L[Retain the candidate for inspection; publish nothing]
     K -- No --> M[Record the decision and promote inside the candidate]
-    M --> N[Rename the candidate over the published database]
+    M --> N[Shared governed publisher: verify incumbent, backup, atomic swap, smoke test]
+    N --> O{Smoke test passes?}
+    O -- Yes --> P[Record publication and retain rollback backup]
+    O -- No --> Q[Restore the incumbent automatically]
 ```
 
 Each source is processed inside its own transaction. A failed workbook cannot partially replace the corresponding source, and it does not prevent independent sources from loading.
@@ -45,6 +48,16 @@ What they cannot stop is a failed build *changing* the published product, becaus
 
 So the run and the published database stop being the same bytes. `run_isolated_update()` in `scripts/06_pipeline.R` copies, builds in the copy, and renames it into place only on acceptance — the pattern `compact_database.R` has used for its own swap since schema 22.
 
+An accepted candidate deliberately retained by `run_isolated_update(..., publish = FALSE)` may
+later cross that same boundary through `promote_retained_candidate()`. The retained entry point is
+not a second publisher: both callers use `publish_candidate_atomically()` for the incumbent hash
+check, pre-swap backup, marker-protected renames, fresh read-only smoke test, rollback, sidecar,
+build manifest, run log, and durable promotion record. Retained promotion additionally requires a
+hash-pinned `accepted_for_review_*.duckdb` inside the governed candidate directory and verifies its
+accepted decision, active pointer, attempt, source bundle, schema, artifact record, release errors,
+and any supplied release-scope and population identity. It stages identical bytes for the rename,
+so the reviewed candidate remains unchanged and available as evidence.
+
 **The limit, stated rather than implied.** Facts are still not versioned per build. The guarantee is that a build you did not accept cannot have altered the one you did, provable by hashing the file. It is not that an arbitrary past product can be reconstructed from inside one database; that would need a per-build fact namespace and is not attempted.
 
 For `semantic_table` workbooks, raw preservation and semantic extraction share one in-memory list-cell matrix per worksheet. The raw content hash is computed from the same cropped active range used previously, while semantic parsers retain A1-based row and column coordinates. Sheets are processed sequentially, so the 94-sheet Annex is neither read twice nor retained in memory as a whole.
@@ -54,6 +67,11 @@ The reference workbook is processed first because bank and finance-company views
 ## Input contracts
 
 - `config/source_registry.csv` declares publisher, format, folder, filename pattern, ingestion mode and semantic status.
+- `config/release_input_scope.csv` declares an exhaustive, content-addressed product scope when a
+  release must hold its source population fixed. Every registered source receives one exact-hash
+  `admit` or `defer` decision; an absent source, changed hash, or new registration fails closed.
+  The scope digest is part of that product's source-bundle identity, while the global registry and
+  source-vintage provenance retain their separate meanings.
 - `config/direct_schema.csv` guards the complete worksheet and header sets for bank and finance-company workbooks.
 - `config/reference_schema.csv` guards all fifteen semantic-reference tables by worksheet and column signature; display names are hints only.
 - `config/specs/*.yml` guards the ICC, EVE and FX layouts using anchors and expected tokens.

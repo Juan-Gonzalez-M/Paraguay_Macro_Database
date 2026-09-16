@@ -157,9 +157,43 @@ database/candidates/candidate_<stamp>.duckdb  ← every write the run makes
 
 This is the seventh audit's F-01. The pointer already prevented a failed build from *withdrawing* the published database; it could not prevent it from *changing* it. Published views resolve vintages through the source bundle rather than the build, sources commit one at a time long before the decision exists, and the schema migrations' `invalidate_v*()` steps delete published facts before the run even begins. None of that is reachable now, because the run and the published file are no longer the same bytes.
 
+For a candidate that must go to independent review before publication, call the same wrapper with
+`publish = FALSE`. The wrapper still copies the incumbent, runs the complete pipeline, records the
+immutable decision, and verifies that the candidate's active pointer names the new accepted build.
+It then retains the file as
+`database/candidates/accepted_for_review_<stamp>.duckdb` and returns before the production rename,
+backup, or published-artifact sidecar step. This is a handoff state, not production acceptance.
+
+After independent acceptance, `promote_retained_candidate()` is the supported continuation of that
+handoff. Call it through `scripts/load_project.R` and supply the explicit candidate path, candidate
+SHA-256 and bytes, incumbent production SHA-256, build, source-bundle, attempt, and schema identity;
+for a scoped release also supply its scope ID and digest. The function accepts only a governed
+`accepted_for_review_*.duckdb`, opens it read-only to verify the complete accepted release state,
+takes the ordinary update lock, stages a byte-identical copy, and calls the same atomic publisher as
+`run_isolated_update()`. A failed rename or post-swap smoke test restores the incumbent. Success
+leaves the retained candidate unchanged, the incumbent under `database/backups/`, and a compact JSON
+record under `database/releases/promotions/`.
+
 What it costs: a full copy of the database at the start of every run, and roughly twice the database size in free space while a run is in progress. What it does **not** give: facts are still not versioned per build, so an arbitrary past product cannot be reconstructed from inside one file. The guarantee is that a build you did not accept cannot have altered the one you did.
 
 **A blocked run leaves `outputs/` describing the blocked build, not the database you have.** That is deliberate — diagnosing a block needs the blocked build's reports — and `outputs/update_report.md` says so in its first line. Query the retained candidate directly to inspect what the failed build produced.
+
+### Release-scoped source admission
+
+The source registry declares the project's global inputs and keeps `required=TRUE` meaningful.
+When a product decision freezes a narrower population, `config/release_input_scope.csv` separately
+names one exact full SHA-256 `admit` or `defer` decision for every registered source. The resolver
+first discovers all current files under the ordinary registry rules and then compares that complete
+population with the selected scope. It does not make a deferred source optional: missing files,
+changed hashes, duplicate candidates, newly registered sources without a decision, and stale scope
+rows are unresolved-scope errors. Exact deferrals are retained as release diagnostics and never
+enter the admitted manifest, `audit.release_sources`, or ingestion layers.
+
+Schema 43 uses `schema43_lineage_only_20260914`. Its two deferred inputs remain in
+`input/current/` and the immutable archive for later onboarding; changing either hash requires a new
+scope decision rather than silently extending the existing one. The canonical scope digest joins
+the admitted content hashes in `release_id`, giving the scoped product an identity distinct from an
+older unscoped bundle containing the same admitted bytes.
 
 ### One writer at a time
 
@@ -192,7 +226,7 @@ Move whichever you want published to `publication`, then delete the marker. The 
 Every accepted swap writes `database/paraguay_macro_pilot.duckdb.sha256` after the file is closed, checkpointed and renamed — the one moment its bytes are final. It is in the format the standard tool reads:
 
 ```
-shasum -a 256 -c database/paraguay_macro_pilot.duckdb.sha256
+(cd database && shasum -a 256 -c paraguay_macro_pilot.duckdb.sha256)
 ```
 
 The hash lives beside the file rather than inside it because **a file cannot contain its own hash**: writing the row changes the bytes the row describes. That is why the artifact rows recorded before schema 38 are 37% short of the file they name — the size was read from a connection that was still open with rows still to write. A database therefore records the hashes of artifacts *other* than itself: `audit.distribution_artifacts` carries the real hash of the database each build replaced, and `compact_database.R` records the same link between what it consumed and what it produced.
@@ -204,13 +238,20 @@ Nothing here is meant to be edited by hand, and **editing `audit.releases.status
 There are two supported interventions:
 
 - **To withdraw the current build**, restore the database it replaced. Every accepted swap leaves it at `database/backups/paraguay_macro_pilot_pre_swap_<stamp>.duckdb`, and `audit.distribution_artifacts` records each artifact's size and build beside the build that produced it. Stop anything reading the database, move the current file aside, move the backup into its place, and confirm `audit.active_data_release` names the build you intended.
-- **To publish a corrected build**, fix the cause and re-run. That is the whole procedure: a run that is accepted publishes itself and one that is not cannot.
+- **To publish a corrected build**, fix the cause and re-run. A run that is accepted publishes
+  itself and one that is not cannot.
+- **To publish an already retained accepted candidate**, use `promote_retained_candidate()` with
+  its independently authorized identity and the exact incumbent hash. This path refuses blocked,
+  incomplete, modified, moved, already-active, or stale-base candidates and uses the same publisher
+  and rollback path as a build-and-publish run.
 
 The 2026-09-03 repository cleanup removed all superseded local backups. Until the next accepted run
 creates a new pre-swap copy, the current database has no local predecessor to restore; use Git LFS
 history if recovery of an earlier committed database is required.
 
-There is no supported way to promote a build the gates blocked. That is not an oversight — `promote_data_release()` refuses a product not decided `accepted`, and the refusal is tested.
+There is no supported way to promote a build the gates blocked. That is not an oversight — both
+`promote_data_release()` and retained-candidate validation refuse a product not decided `accepted`,
+and the refusals are tested.
 
 ### Building from an uncommitted tree
 
@@ -367,6 +408,7 @@ The retention rule reads the filename:
 | `paraguay_macro_pilot_pre_swap_` | an accepted build, before the swap | rolling |
 | `paraguay_macro_pilot_pre_compaction_` | `compact_database.R` | rolling |
 | `blocked_` (in `database/candidates/`) | a build that did not pass its gates | rolling |
+| `accepted_for_review_` (in `database/candidates/`) | an accepted candidate deliberately retained with `publish = FALSE` | **reported, never touched** |
 | `paraguay_macro_pilot_pre_migration_schema<N>_` | a schema step that re-ingests sources | **kept** |
 | `paraguay_macro_pilot_milestone_<label>` | you, deliberately | **kept** |
 | anything else | — | **reported, never touched** |

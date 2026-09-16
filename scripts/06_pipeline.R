@@ -28,18 +28,8 @@
 # What it does not give: facts are still not versioned per build, so an arbitrary
 # past product cannot be reconstructed. That limit is unchanged and is stated in
 # docs/ARCHITECTURE.md rather than implied away.
-run_isolated_update <- function(root, registry, manifest, resolution_issues = tibble(),
-                                production = file.path(
-                                  root, "database", "paraguay_macro_pilot.duckdb"
-                                ),
-                                pipeline = run_manifest_pipeline) {
-  ensure_dirs(root)
-  # An interrupted swap, found before anything else is attempted.
-  #
-  # Between the two renames below there is a moment when the production pathname
-  # does not exist. A soft failure is rolled back in R; a hard kill in that
-  # window is not, and leaves no published database and nothing saying why. The
-  # marker is what turns that from a mystery into an instruction. RA2-08.
+
+assert_swap_ready <- function(root, production) {
   swap_marker <- file.path(root, "database", ".swap_in_progress")
   if (file.exists(swap_marker)) stop(
     "A previous update was interrupted while swapping the database into place, so ",
@@ -47,6 +37,377 @@ run_isolated_update <- function(root, registry, manifest, resolution_issues = ti
     "moved aside and the candidate that was going in. Restore whichever you want published, ",
     "then delete the marker.", call. = FALSE
   )
+  if (file.exists(paste0(production, ".wal"))) stop(
+    "A write-ahead log is present beside ", basename(production), ", so the database has ",
+    "uncommitted state and must not be replaced. Open it once with DuckDB to checkpoint it, ",
+    "then re-run.", call. = FALSE
+  )
+  swap_marker
+}
+
+candidate_release_identity <- function(candidate) {
+  con <- tryCatch(
+    DBI::dbConnect(duckdb::duckdb(), candidate, read_only = TRUE),
+    error = function(e) stop("Candidate is not a readable DuckDB database: ", conditionMessage(e),
+                             call. = FALSE)
+  )
+  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+  required <- c("data_releases", "active_data_release", "ingestion_run_attempts",
+                "distribution_artifacts", "quality_flags")
+  tables <- DBI::dbGetQuery(con, paste(
+    "SELECT table_name FROM information_schema.tables",
+    "WHERE table_schema='audit'"
+  ))$table_name
+  missing <- setdiff(required, tables)
+  if (length(missing)) stop(
+    "Candidate is incomplete; required audit table(s) are missing: ",
+    paste(missing, collapse = ", "), call. = FALSE
+  )
+  release <- DBI::dbGetQuery(con, paste(
+    "SELECT d.data_release_id,d.source_bundle_id,d.build_id,d.attempt_id,d.schema_version,",
+    "d.status,d.error_count,d.warning_count,a.source_bundle_id active_source_bundle_id,",
+    "r.status attempt_status",
+    "FROM audit.active_data_release a",
+    "JOIN audit.data_releases d ON d.data_release_id=a.data_release_id",
+    "LEFT JOIN audit.ingestion_run_attempts r ON r.attempt_id=d.attempt_id"
+  ))
+  if (nrow(release) != 1L) stop(
+    "Candidate must have exactly one active accepted release; found ", nrow(release), ".",
+    call. = FALSE
+  )
+  release[1, , drop = FALSE]
+}
+
+validate_retained_candidate <- function(root, candidate, expected_sha256, expected_bytes,
+                                        expected_build_id, expected_source_bundle_id,
+                                        expected_attempt_id, expected_schema_version,
+                                        expected_scope_id = NULL,
+                                        expected_scope_digest = NULL,
+                                        expected_canonical_facts = NULL,
+                                        expected_canonical_series = NULL) {
+  governed <- normalizePath(file.path(root, "database", "candidates"), winslash = "/",
+                            mustWork = TRUE)
+  candidate <- normalizePath(candidate, winslash = "/", mustWork = TRUE)
+  if (!startsWith(candidate, paste0(governed, "/")) ||
+      !grepl("^accepted_for_review_.*\\.duckdb$", basename(candidate))) stop(
+    "Retained candidate must be an accepted_for_review_*.duckdb file directly inside ",
+    governed, ".", call. = FALSE
+  )
+  if (file.exists(paste0(candidate, ".wal"))) stop(
+    "The retained candidate has a write-ahead log and did not close cleanly.", call. = FALSE
+  )
+  observed_sha256 <- file_sha256(candidate)
+  if (!identical(observed_sha256, expected_sha256)) stop(
+    "Retained candidate SHA-256 mismatch: expected ", expected_sha256, ", observed ",
+    observed_sha256, ". Production is untouched.", call. = FALSE
+  )
+  observed_bytes <- unname(file.info(candidate)$size)
+  if (!identical(as.numeric(observed_bytes), as.numeric(expected_bytes))) stop(
+    "Retained candidate byte count mismatch: expected ", expected_bytes, ", observed ",
+    observed_bytes, ". Production is untouched.", call. = FALSE
+  )
+  identity <- candidate_release_identity(candidate)
+  expected <- list(
+    build_id = expected_build_id, data_release_id = expected_build_id,
+    source_bundle_id = expected_source_bundle_id,
+    active_source_bundle_id = expected_source_bundle_id,
+    attempt_id = expected_attempt_id, schema_version = as.integer(expected_schema_version),
+    status = "accepted", error_count = 0L
+  )
+  mismatches <- names(expected)[!vapply(names(expected), function(field) {
+    identical(as.character(identity[[field]][[1]]), as.character(expected[[field]]))
+  }, logical(1))]
+  if (length(mismatches)) stop(
+    "Retained candidate release identity is incomplete or unexpected in: ",
+    paste(mismatches, collapse = ", "), ". Production is untouched.", call. = FALSE
+  )
+  if (!identity$attempt_status[[1]] %in% c("completed", "completed_with_warnings")) stop(
+    "Retained candidate ingestion attempt is not complete: ", identity$attempt_status[[1]],
+    ". Production is untouched.", call. = FALSE
+  )
+
+  con <- DBI::dbConnect(duckdb::duckdb(), candidate, read_only = TRUE)
+  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+  artifact <- DBI::dbGetQuery(con, paste0(
+    "SELECT artifact_path,size_bytes,artifact_role FROM audit.distribution_artifacts WHERE build_id=",
+    sql_string(expected_build_id)
+  ))
+  expected_artifact_path <- paste0("candidates/", basename(candidate))
+  if (nrow(artifact) != 1L || !identical(artifact$artifact_path[[1]], expected_artifact_path) ||
+      !identical(artifact$artifact_role[[1]], "database")) stop(
+    "Retained candidate is not recognized by its governed distribution-artifact record.",
+    call. = FALSE
+  )
+  release_errors <- DBI::dbGetQuery(con, paste0(
+    "SELECT count(*) n FROM audit.quality_flags WHERE attempt_id=",
+    sql_string(expected_attempt_id), " AND severity='error'"
+  ))$n[[1]]
+  if (!identical(as.numeric(release_errors), 0)) stop(
+    "Retained candidate still has release-blocking error flags and cannot be promoted.",
+    call. = FALSE
+  )
+  count <- function(table) DBI::dbGetQuery(
+    con, paste0("SELECT count(*) n FROM ", table)
+  )$n[[1]]
+  if (!is.null(expected_canonical_facts) &&
+      !identical(as.numeric(count("canonical.fact_series_events")),
+                 as.numeric(expected_canonical_facts))) stop(
+    "Retained candidate canonical fact count does not match the authorized identity.",
+    call. = FALSE
+  )
+  if (!is.null(expected_canonical_series) &&
+      !identical(as.numeric(count("canonical.dim_series")),
+                 as.numeric(expected_canonical_series))) stop(
+    "Retained candidate canonical series count does not match the authorized identity.",
+    call. = FALSE
+  )
+  if (!is.null(expected_scope_id) || !is.null(expected_scope_digest)) {
+    if (is.null(expected_scope_id) || is.null(expected_scope_digest)) stop(
+      "Both expected_scope_id and expected_scope_digest are required together.", call. = FALSE
+    )
+    scope <- read_release_input_scope(root, expected_scope_id)
+    if (!identical(release_input_scope_digest(scope), expected_scope_digest)) stop(
+      "The governed release-input scope no longer matches the authorized digest.", call. = FALSE
+    )
+    sources <- DBI::dbGetQuery(con, paste0(
+      "SELECT rs.source_id,f.sha256 FROM audit.release_sources rs ",
+      "JOIN raw.source_files f USING(vintage_id) WHERE rs.release_id=",
+      sql_string(expected_source_bundle_id)
+    ))
+    admitted <- scope[scope$disposition == "admit", c("source_id", "sha256"), drop = FALSE]
+    sources <- sources[order(sources$source_id), , drop = FALSE]
+    admitted <- admitted[order(admitted$source_id), , drop = FALSE]
+    rownames(sources) <- NULL; rownames(admitted) <- NULL
+    if (!identical(as.character(sources$source_id), as.character(admitted$source_id)) ||
+        !identical(as.character(sources$sha256), as.character(admitted$sha256))) stop(
+      "Candidate release sources do not match the governed admitted scope.", call. = FALSE
+    )
+  }
+  c(as.list(identity), list(
+    candidate = candidate, sha256 = observed_sha256, bytes = observed_bytes
+  ))
+}
+
+post_promotion_smoke_test <- function(production, expected_build_id,
+                                      expected_source_bundle_id) {
+  con <- DBI::dbConnect(duckdb::duckdb(), production, read_only = TRUE)
+  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+  active <- DBI::dbGetQuery(con, paste(
+    "SELECT a.data_release_id,a.source_bundle_id,d.status,d.error_count",
+    "FROM audit.active_data_release a JOIN audit.data_releases d USING(data_release_id)"
+  ))
+  if (nrow(active) != 1L || active$data_release_id[[1]] != expected_build_id ||
+      active$source_bundle_id[[1]] != expected_source_bundle_id ||
+      active$status[[1]] != "accepted" || active$error_count[[1]] != 0L) stop(
+    "Post-promotion active-release smoke test failed.", call. = FALSE
+  )
+  principal <- c(
+    "catalog.series", "catalog.datasets", "explore.observations",
+    "research.observations_latest_actual"
+  )
+  schemas <- DBI::dbGetQuery(con, paste(
+    "SELECT DISTINCT table_schema FROM information_schema.tables",
+    "WHERE table_schema IN ('catalog','explore','research')"
+  ))$table_schema
+  if (length(schemas)) for (object in principal) DBI::dbGetQuery(
+    con, paste0("SELECT * FROM ", object, " LIMIT 0")
+  )
+  invisible(TRUE)
+}
+
+write_promotion_record <- function(root, result, candidate, production, backup,
+                                   old_sha256, new_sha256) {
+  directory <- file.path(root, "database", "releases", "promotions")
+  dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+  path <- file.path(directory, paste0(
+    gsub("[^A-Za-z0-9_.-]", "_", result$build_id), "_",
+    format(Sys.time(), "%Y%m%d_%H%M%S"), ".json"
+  ))
+  record <- list(
+    promotion_record_version = 1L,
+    promoted_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"),
+    build_id = result$build_id, source_bundle_id = result$release_id,
+    attempt_id = result$attempt_id, schema_version = result$schema_version,
+    retained_candidate = repository_uri(candidate, root), candidate_preserved = file.exists(candidate),
+    production = repository_uri(production, root), previous_sha256 = old_sha256,
+    published_sha256 = new_sha256, backup = repository_uri(backup, root),
+    post_promotion_smoke_test = "passed"
+  )
+  writeLines(jsonlite::toJSON(record, auto_unbox = TRUE, null = "null", digits = NA), path)
+  path
+}
+
+publish_candidate_atomically <- function(root, candidate, production, expected_base_sha256,
+                                         result, preserve_candidate = FALSE,
+                                         smoke_test = post_promotion_smoke_test,
+                                         rename_file = file.rename) {
+  swap_marker <- assert_swap_ready(root, production)
+  production_exists <- file.exists(production)
+  if (!production_exists && !is.na(expected_base_sha256)) stop(
+    "The expected incumbent production database is missing. Production is untouched.", call. = FALSE
+  )
+  observed_base_sha256 <- if (production_exists) file_sha256(production) else NA_character_
+  candidate_sha256 <- file_sha256(candidate)
+  if (production_exists && identical(candidate_sha256, observed_base_sha256)) stop(
+    "The requested candidate is already active; no second promotion was performed.",
+    call. = FALSE
+  )
+  if (!identical(observed_base_sha256, expected_base_sha256)) stop(
+    "The published database SHA-256 changed: expected ", expected_base_sha256,
+    ", observed ", observed_base_sha256, ". Production is untouched.", call. = FALSE
+  )
+  stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+  swap_candidate <- candidate
+  if (isTRUE(preserve_candidate)) {
+    swap_candidate <- file.path(root, "database", "candidates",
+                                paste0("promotion_stage_", stamp, ".duckdb"))
+    if (file.exists(swap_candidate) || !file.copy(candidate, swap_candidate, copy.mode = TRUE)) stop(
+      "Could not stage the retained candidate for atomic promotion. Production is untouched.",
+      call. = FALSE
+    )
+    on.exit(if (file.exists(swap_candidate)) unlink(swap_candidate), add = TRUE)
+    if (!identical(file_sha256(swap_candidate), file_sha256(candidate))) stop(
+      "The staged promotion copy does not match the retained candidate. Production is untouched.",
+      call. = FALSE
+    )
+  }
+  if (nzchar(Sys.which("sync"))) system2("sync")
+  current_base_sha256 <- if (file.exists(production)) file_sha256(production) else NA_character_
+  if (!identical(current_base_sha256, expected_base_sha256)) stop(
+    "The published database changed while the candidate was staged. Production is untouched.",
+    call. = FALSE
+  )
+  if (!identical(file_sha256(swap_candidate), result$expected_sha256)) stop(
+    "The candidate changed while promotion was being prepared. Production is untouched.",
+    call. = FALSE
+  )
+  backup <- if (production_exists) file.path(
+    root, "database", "backups", paste0("paraguay_macro_pilot_pre_swap_", stamp, ".duckdb")
+  ) else NA_character_
+  writeLines(c(
+    "A database swap was interrupted. The published database may be missing or unverified.",
+    paste0("moved_aside=", backup), paste0("candidate=", swap_candidate),
+    paste0("retained_candidate=", candidate), paste0("publication=", production),
+    paste0("build=", result$build_id),
+    paste0("started_at=", format(Sys.time(), "%Y-%m-%dT%H:%M:%S")), "",
+    "To keep the previous database: move moved_aside back to publication.",
+    "Then delete this file."
+  ), swap_marker)
+  if (production_exists && !rename_file(production, backup)) {
+    unlink(swap_marker)
+    stop("Could not move the published database aside; it is untouched and nothing was published.",
+         call. = FALSE)
+  }
+  rollback <- function(reason) {
+    failed <- file.path(root, "database", "candidates",
+                        paste0("failed_promotion_", stamp, ".duckdb"))
+    if (file.exists(production)) rename_file(production, failed)
+    restored <- if (is.na(backup)) {
+      !file.exists(production)
+    } else {
+      !file.exists(production) && file.exists(backup) && rename_file(backup, production)
+    }
+    unlink(swap_marker)
+    write_run_log(
+      root, "promotion_failed_rolled_back", build = result$build_id,
+      release = result$release_id, reason = reason, restored = restored,
+      failed_candidate = if (file.exists(failed)) failed else NA_character_, production = production
+    )
+    restored_hash <- if (file.exists(production)) file_sha256(production) else NA_character_
+    if (!restored || !identical(restored_hash, expected_base_sha256)) stop(
+      "Promotion failed and automatic rollback could not restore the expected incumbent. Inspect ",
+      backup, " and the candidates directory.", call. = FALSE
+    )
+    stop("Promotion failed and the incumbent was restored: ", reason, call. = FALSE)
+  }
+  if (!rename_file(swap_candidate, production)) rollback("candidate rename failed")
+  if (nzchar(Sys.which("sync"))) system2("sync")
+  smoke_error <- tryCatch({
+    smoke_test(production, result$build_id, result$release_id)
+    NULL
+  }, error = function(e) conditionMessage(e))
+  if (!is.null(smoke_error)) rollback(paste0("post-promotion smoke test failed: ", smoke_error))
+
+  published_sha256 <- file_sha256(production)
+  if (!identical(published_sha256, result$expected_sha256)) rollback(
+    paste0("published SHA-256 ", published_sha256, " did not match ", result$expected_sha256)
+  )
+  record_published_artifact(
+    production, result$build_id, result$schema_version, published_sha256,
+    supersedes = expected_base_sha256
+  )
+  write_build_manifest(root, production, published_sha256, result)
+  promotion_record <- write_promotion_record(
+    root, result, candidate, production, backup, expected_base_sha256, published_sha256
+  )
+  write_run_log(
+    root, "published", build = result$build_id, release = result$release_id,
+    sha256 = published_sha256, superseded_sha256 = expected_base_sha256,
+    warnings = result$warning_count, production = production, backup = backup,
+    promotion_record = promotion_record
+  )
+  unlink(swap_marker)
+  invisible(c(result, list(
+    published = TRUE, candidate = if (preserve_candidate) candidate else NA_character_,
+    publication = production, swapped_from = backup, sha256 = published_sha256,
+    promotion_record = promotion_record
+  )))
+}
+
+promote_retained_candidate <- function(root, candidate, expected_sha256, expected_bytes,
+                                       expected_production_sha256, expected_build_id,
+                                       expected_source_bundle_id, expected_attempt_id,
+                                       expected_schema_version, expected_scope_id = NULL,
+                                       expected_scope_digest = NULL,
+                                       expected_canonical_facts = NULL,
+                                       expected_canonical_series = NULL,
+                                       production = file.path(
+                                         root, "database", "paraguay_macro_pilot.duckdb"
+                                       ), smoke_test = post_promotion_smoke_test,
+                                       rename_file = file.rename) {
+  ensure_dirs(root)
+  assert_swap_ready(root, production)
+  update_lock <- acquire_update_lock(root)
+  on.exit(release_update_lock(update_lock), add = TRUE)
+  identity <- validate_retained_candidate(
+    root, candidate, expected_sha256, expected_bytes, expected_build_id,
+    expected_source_bundle_id, expected_attempt_id, expected_schema_version,
+    expected_scope_id, expected_scope_digest, expected_canonical_facts,
+    expected_canonical_series
+  )
+  result <- list(
+    build_id = expected_build_id, data_release_id = expected_build_id,
+    release_id = expected_source_bundle_id, attempt_id = expected_attempt_id,
+    schema_version = as.integer(expected_schema_version), decision = "accepted",
+    status = "completed", error_count = 0L,
+    warning_count = as.integer(identity$warning_count), expected_sha256 = expected_sha256
+  )
+  write_run_log(
+    root, "retained_candidate_promotion_started", build = expected_build_id,
+    release = expected_source_bundle_id, candidate = identity$candidate,
+    sha256 = expected_sha256, production = production,
+    expected_production_sha256 = expected_production_sha256
+  )
+  publish_candidate_atomically(
+    root, identity$candidate, production, expected_production_sha256, result,
+    preserve_candidate = TRUE, smoke_test = smoke_test, rename_file = rename_file
+  )
+}
+
+run_isolated_update <- function(root, registry, manifest, resolution_issues = tibble(),
+                                production = file.path(
+                                  root, "database", "paraguay_macro_pilot.duckdb"
+                                ),
+                                pipeline = run_manifest_pipeline,
+                                publish = TRUE) {
+  ensure_dirs(root)
+  # An interrupted swap, found before anything else is attempted.
+  #
+  # Between the two renames below there is a moment when the production pathname
+  # does not exist. A soft failure is rolled back in R; a hard kill in that
+  # window is not, and leaves no published database and nothing saying why. The
+  # marker is what turns that from a mystery into an instruction. RA2-08.
+  swap_marker <- assert_swap_ready(root, production)
   # One writer. Released on the way out, whatever happens.
   update_lock <- acquire_update_lock(root)
   on.exit(release_update_lock(update_lock), add = TRUE)
@@ -55,14 +416,15 @@ run_isolated_update <- function(root, registry, manifest, resolution_issues = ti
   # production file means the last writer did not shut down cleanly, so the file
   # on disk is not the database -- and copying it would silently build on a
   # truncated state.
-  if (file.exists(paste0(production, ".wal"))) stop(
-    "A write-ahead log is present beside ", basename(production), ", so the database has ",
-    "uncommitted state and must not be copied. Open it once with DuckDB to checkpoint it, ",
-    "then re-run.", call. = FALSE
-  )
   stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
   candidate <- file.path(root, "database", "candidates", paste0("candidate_", stamp, ".duckdb"))
+  review_candidate <- file.path(
+    root, "database", "candidates", paste0("accepted_for_review_", stamp, ".duckdb")
+  )
   if (file.exists(candidate)) stop("Candidate path already exists: ", candidate, call. = FALSE)
+  if (!isTRUE(publish) && file.exists(review_candidate)) stop(
+    "Review-candidate path already exists: ", review_candidate, call. = FALSE
+  )
   # A failure anywhere below must not leave a half-built candidate for the next
   # run to trip over. Cleared once the candidate has been either published or
   # deliberately retained.
@@ -105,7 +467,8 @@ run_isolated_update <- function(root, registry, manifest, resolution_issues = ti
 
   result <- pipeline(
     root, registry, manifest, resolution_issues,
-    db_path = candidate, artifact_path = production
+    db_path = candidate,
+    artifact_path = if (isTRUE(publish)) production else review_candidate
   )
 
   # A stub or an older caller may not report a decision; the run status still
@@ -191,6 +554,37 @@ run_isolated_update <- function(root, registry, manifest, resolution_issues = ti
     )
   }
 
+  # An independent-acceptance handoff needs the complete normal candidate,
+  # transaction, decision and in-candidate pointer workflow without replacing
+  # the incumbent under review. Publication is therefore an explicit wrapper
+  # action. The pipeline has already recorded and promoted the accepted product
+  # *inside the candidate*; publish = FALSE retains those bytes for review and
+  # returns before any production rename or artifact-sidecar write. The final
+  # review pathname is chosen before the pipeline runs so its in-database
+  # distribution-artifact record describes the retained file, not production.
+  if (!isTRUE(publish)) {
+    if (!file.rename(candidate, review_candidate)) stop(
+      "The accepted candidate could not be retained for review at ", review_candidate,
+      ". The published database is untouched.", call. = FALSE
+    )
+    candidate <- review_candidate
+    settled <- TRUE
+    candidate_sha256 <- file_sha256(candidate)
+    write_run_log(
+      root, "accepted_candidate_retained", build = result$build_id,
+      release = result$release_id, candidate = candidate, production = production,
+      sha256 = candidate_sha256, base_sha256 = base_sha256
+    )
+    message(
+      "Accepted candidate retained for independent review; production was not replaced.\n",
+      "  Candidate: ", candidate, "\n  SHA-256: ", candidate_sha256
+    )
+    return(invisible(c(result, list(
+      published = FALSE, candidate = candidate, publication = production,
+      swapped_from = NA_character_, sha256 = candidate_sha256
+    ))))
+  }
+
   # The database this build was copied from is finished and immutable, so its
   # hash can be recorded -- and this build is the only party in a position to
   # record it, because a file cannot contain its own hash. Written into the
@@ -210,81 +604,21 @@ run_isolated_update <- function(root, registry, manifest, resolution_issues = ti
     )
   }
 
-  # Get the candidate's bytes onto the disk before the rename makes them the
-  # published database -- the same reasoning as compact_database.R: rename within
-  # a filesystem is atomic, but that only guarantees the directory entry, not
-  # that what it points at has been flushed.
-  if (nzchar(Sys.which("sync"))) system2("sync")
-
-  backup <- NA_character_
-  if (file.exists(production)) {
-    backup <- file.path(
-      root, "database", "backups", paste0("paraguay_macro_pilot_pre_swap_", stamp, ".duckdb")
-    )
-    # The window this marker covers opens here and closes after the second
-    # rename. Written before the first rename so that it exists for the whole of
-    # it, and it names both paths, because the recovery is a file move and the
-    # operator needs to know which file goes where.
-    writeLines(c(
-      "A database swap was interrupted. The published database may be missing.",
-      paste0("moved_aside=", backup),
-      paste0("candidate=", candidate),
-      paste0("publication=", production),
-      paste0("build=", if (is.null(result$build_id)) NA_character_ else result$build_id),
-      paste0("started_at=", format(Sys.time(), "%Y-%m-%dT%H:%M:%S")),
-      "",
-      "To keep the previous database:  move moved_aside back to publication.",
-      "To publish the new build:       move candidate to publication.",
-      "Then delete this file."
-    ), swap_marker)
-    # Moved rather than copied: it is the same bytes either way, and a rename
-    # costs nothing where a second 500 MiB copy costs a minute. Two renames also
-    # work on Windows, where renaming onto an existing file does not.
-    if (!file.rename(production, backup)) {
-      unlink(swap_marker)
-      stop(
-        "Could not move the published database aside; it is untouched and nothing was published.",
-        call. = FALSE
-      )
-    }
-  }
-  if (!file.rename(candidate, production)) {
-    if (!is.na(backup) && file.exists(backup) && !file.exists(production)) {
-      file.rename(backup, production)
-    }
-    unlink(swap_marker)
-    stop(
-      "Could not swap the accepted build into place; the previously published database has ",
-      "been restored and nothing was published.", call. = FALSE
-    )
-  }
+  # Both freshly built and retained candidates cross the same publication
+  # boundary. A fresh build may have gained the inherited-artifact row above;
+  # its final closed hash is therefore fixed here, immediately before the common
+  # incumbent-check, backup, atomic-swap, smoke-test and rollback implementation.
+  result$expected_sha256 <- file_sha256(candidate)
+  published <- publish_candidate_atomically(
+    root, candidate, production, base_sha256, result, preserve_candidate = FALSE
+  )
   settled <- TRUE
-  if (nzchar(Sys.which("sync"))) system2("sync")
-  unlink(swap_marker)
-  # The published bytes, hashed now that they are final: the connection is
-  # closed, the checkpoint has run and the rename has happened. This is the only
-  # moment in the run when the file will not change again, and it is what makes
-  # the artifact identity derivable from the artifact. RA2-10.
-  published_sha256 <- file_sha256(production)
-  record_published_artifact(
-    production, result$build_id, result$schema_version, published_sha256,
-    supersedes = if (is.na(base_sha256)) NA_character_ else base_sha256
-  )
-  write_run_log(
-    root, "published", build = result$build_id, release = result$release_id,
-    sha256 = published_sha256, superseded_sha256 = base_sha256,
-    warnings = result$warning_count, production = production, backup = backup
-  )
-  write_build_manifest(root, production, published_sha256, result)
   message(
     "Published ", result$build_id, " by atomic swap.",
-    "\n  SHA-256: ", published_sha256,
-    if (is.na(backup)) "" else paste0("\n  Previous database retained at: ", backup)
+    "\n  SHA-256: ", published$sha256,
+    "\n  Previous database retained at: ", published$swapped_from
   )
-  invisible(c(result, list(
-    published = TRUE, candidate = NA_character_, publication = production,
-    swapped_from = backup, sha256 = published_sha256
-  )))
+  invisible(published)
 }
 
 pipeline_elapsed_seconds <- function(started_at) {
