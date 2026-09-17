@@ -1,4 +1,4 @@
-# Paraguay macroeconomic database — governed pilot v44
+# Paraguay macroeconomic database — governed pilot v45
 
 ## About this project
 
