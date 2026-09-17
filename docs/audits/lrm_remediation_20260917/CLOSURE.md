@@ -1,4 +1,4 @@
-# LRM closure — Schema 45
+# LRM closure — Schema 46
 
 ## Decision evidence
 
@@ -42,15 +42,16 @@ absence is never converted to zero.
 
 The 10,351 source observations remain in `staging.lrm_component_observations`. The current
 analytical representation has 10,334 facts and 940 identities. The 22 consolidated facts have
-46 links in `staging.lrm_derived_observation_lineage`; no derived fact claims a single source
+52 links in `staging.lrm_derived_observation_lineage`, including six structurally blank row-22
+assigned-field coordinates; no derived fact claims a single source
 coordinate. Schema 44's 957 identifiers have complete Schema 45 migration coverage: 964 mapping
 rows, 957 distinct old identifiers and 940 distinct new identifiers.
 
 ## Acceptance
 
-Retained candidate `accepted_for_review_20260917_194958.duckdb` has SHA-256
-`11defec710fb9aa2846aeab467484b25d702363b6446ae469cd54aafb2a517b9`, build
-`build:1b8b1450668c1a5400eb5c1b`, attempt `attempt:a607c3c54d45140e11b5c951`, zero
+Retained candidate `accepted_for_review_20260917_201100.duckdb` has SHA-256
+`eaba62ab6efbc3c81a59dd77493282d5a3f28290319ec487f0876eb3b318c553`, build
+`build:da67d6517df1dd3dae219ebc`, attempt `attempt:7eba4ebf8c1f4d731bb8bc87`, zero
 release errors and 38 reconciled warnings. The 38 are pre-existing/environmental categories
 (including explicit dirty-tree/environment overrides, acquisition/provenance queues, deferred
 CDA/TCN inputs, and known source diagnostics); none is an LRM unit, collision, lineage,

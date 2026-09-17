@@ -16,10 +16,10 @@ exploratory_layer_database <- function() {
   connection
 }
 
-testthat::test_that("schema 45 catalogues every candidate and separates access by grain", {
+testthat::test_that("schema 46 catalogues every candidate and separates access by grain", {
   con <- exploratory_layer_database()
   testthat::expect_equal(
-    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 45L
+    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 46L
   )
   catalog_views <- DBI::dbGetQuery(con, paste(
     "SELECT view_name FROM duckdb_views() WHERE schema_name='catalog' AND NOT internal ORDER BY 1"
@@ -286,8 +286,9 @@ testthat::test_that("worksheet lineage resolves every documented exploratory obs
     " WHERE d.parser_mode='lrm_auction_event_governed_consolidation'"
   ))
   testthat::expect_equal(derived_lineage$derived_observations, 22)
-  testthat::expect_equal(derived_lineage$lineage_cells, 46)
-  testthat::expect_equal(derived_lineage$missing_cells, 0)
+  testthat::expect_equal(derived_lineage$lineage_cells, 52)
+  # Six lineage coordinates are intentionally blank assigned fields on row 22.
+  testthat::expect_equal(derived_lineage$missing_cells, 6)
 
   unchanged <- DBI::dbGetQuery(con, paste(
     "SELECT count(*) AS differences FROM explore.observations e",

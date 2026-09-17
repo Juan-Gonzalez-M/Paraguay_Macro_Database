@@ -448,6 +448,8 @@ SCHEMA_MIGRATIONS <- list(
        change = "LRM auction sheets are reingested under a source-specific two-level-header contract: offered and assigned rate statistics are distinct, annual sheets are lineage rather than identity, amount/count units are explicit, unresolved rate units remain withheld, and published-field event-key collisions remain catalog-only.")
   ,list(version = 45L, reingests = "lrm_auctions", registry_driven = TRUE,
        change = "Human-confirmed annual-percentage LRM rate units and governed consolidation of the two same-day 2013 operation pairs, with immutable component observations and multi-cell derived lineage retained separately from the current analytical facts.")
+  ,list(version = 46L, reingests = "lrm_auctions", registry_driven = TRUE,
+       change = "LRM consolidation lineage explicitly retains structurally blank component coordinates used to establish absence of assignment, and every consolidated observation reports governed derived multi-cell lineage.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -964,6 +966,13 @@ invalidate_v45_lrm_closure <- function(con) {
   versions <- DBI::dbGetQuery(con, "SELECT version FROM schema_version")$version
   if (!44L %in% versions || 45L %in% versions) return(invisible(FALSE))
   invalidate_documented_sources(con, schema_migration_sources(45L), "needs_v45_reingestion")
+}
+
+invalidate_v46_lrm_structural_absence_lineage <- function(con) {
+  if (!DBI::dbExistsTable(con, "schema_version") || !DBI::dbExistsTable(con, "source_files")) return(invisible(FALSE))
+  versions <- DBI::dbGetQuery(con, "SELECT version FROM schema_version")$version
+  if (!45L %in% versions || 46L %in% versions) return(invisible(FALSE))
+  invalidate_documented_sources(con, schema_migration_sources(46L), "needs_v46_reingestion")
 }
 
 # v13 repairs the credit-survey question-header test, which mis-attributes every
@@ -2053,6 +2062,10 @@ initialize_database <- function(con, root = NULL) {
   if (!fresh_bootstrap) invalidate_v45_lrm_closure(con)
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 45")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (45, current_timestamp, 'Human-confirmed annual-percentage LRM rates and governed same-day operation consolidation with complete component lineage')")
+  }
+  if (!fresh_bootstrap) invalidate_v46_lrm_structural_absence_lineage(con)
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 46")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (46, current_timestamp, 'LRM derived lineage includes structurally blank component coordinates that establish absence of assignment')")
   }
 }
 

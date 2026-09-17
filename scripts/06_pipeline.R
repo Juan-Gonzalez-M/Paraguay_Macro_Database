@@ -926,8 +926,8 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
   # candidate before the release gate evaluates superseded identifiers.  The
   # comparison database is the untouched production file from which this
   # isolated candidate was copied; no migration row is ever written to it.
-  if (as.integer(schema_version) %in% c(44L, 45L)) {
-    from_schema <- if (as.integer(schema_version) == 44L) "schema_43" else "schema_44"
+  if (as.integer(schema_version) %in% c(44L, 45L, 46L)) {
+    from_schema <- paste0("schema_", as.integer(schema_version) - 1L)
     to_schema <- paste0("schema_", as.integer(schema_version))
     existing_lrm_hop <- DBI::dbGetQuery(con, paste(
       "SELECT count(*) AS n FROM", project_qualified_name("series_id_migration"),

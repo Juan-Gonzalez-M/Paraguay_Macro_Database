@@ -514,7 +514,7 @@ create_catalog_explore_views <- function(con) {
     " d.parser_mode AS parser_method,d.source_row,d.source_column,d.source_period_label,",
     " s.database_schema_version,s.build_schema_version,s.build_code_digest,s.coordinate_lineage_status,",
     " CASE WHEN d.parser_mode='lrm_auction_event_governed_consolidation'",
-    "  AND d.lineage_match_count>1 THEN 'governed_derived_multi_cell'",
+    "  AND d.lineage_match_count>0 THEN 'governed_derived_multi_cell'",
     "  WHEN d.lineage_match_count>1 THEN 'ambiguous_source_observation'",
     "  WHEN d.lineage_match_count=1 AND (d.source_sheet IS NULL OR d.source_row IS NULL",
     "   OR d.source_column IS NULL) THEN 'invalid_source_observation_locator'",

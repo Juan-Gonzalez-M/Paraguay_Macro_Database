@@ -324,6 +324,7 @@ documented_parse_lrm_auction_sheet <- function(raw, source_sheet, root = NULL) {
       made <- list()
       for (measure_row in seq_len(nrow(measure_contract))) {
         measure <- measure_contract$measure[[measure_row]]
+        j <- measure_contract$source_column[[measure_row]]
         values <- components[components$measure == measure, , drop = FALSE]
         if (!nrow(values)) next
         value <- if (measure %in% c("announced_amount", "offered_amount", "assigned_amount",
@@ -345,11 +346,15 @@ documented_parse_lrm_auction_sheet <- function(raw, source_sheet, root = NULL) {
         record$source_row <- NA_integer_
         record$source_column <- NA_integer_
         made[[length(made) + 1L]] <- record
-        lineage_cells <- values[c("source_row", "source_column")]
+        # Lineage names every component coordinate, including a structurally
+        # blank assigned cell. The blank is evidence that the operation had no
+        # assignment; omitting it would lose the component row from the governed
+        # derivation even though it correctly contributes no numeric value.
+        lineage_cells <- tibble::tibble(source_row = rows, source_column = j)
         if (measure == "offered_average_rate") lineage_cells <- dplyr::bind_rows(
-          lineage_cells, components[components$measure == "offered_amount", c("source_row", "source_column")])
+          lineage_cells, tibble::tibble(source_row = rows, source_column = 7L))
         if (measure == "assigned_average_rate") lineage_cells <- dplyr::bind_rows(
-          lineage_cells, components[components$measure == "assigned_amount", c("source_row", "source_column")])
+          lineage_cells, tibble::tibble(source_row = rows, source_column = 8L))
         derivation_rule <- if (grepl("amount$|bid_count$", measure)) "sum" else if (
           grepl("average_rate$", measure)) "amount_weighted_average" else if (
           grepl("minimum_rate$", measure)) "minimum_available" else "maximum_available"

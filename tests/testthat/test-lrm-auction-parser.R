@@ -105,7 +105,7 @@ testthat::test_that("LRM human-confirmed units and 2013 consolidations preserve 
   assigned_average_lineage <- result$consolidation_lineage[
     result$consolidation_lineage$category == second$category[[1]] &
       result$consolidation_lineage$measure == "assigned_average_rate", ]
-  testthat::expect_setequal(assigned_average_lineage$source_row, 17L)
+  testthat::expect_setequal(assigned_average_lineage$source_row, c(17L, 22L))
   testthat::expect_setequal(assigned_average_lineage$source_column, c(8L, 14L))
   testthat::expect_equal(nrow(source[source$source_row %in% c(15L,17L,21L,22L), ]), 39L)
   testthat::expect_equal(nrow(derived), 22L)
