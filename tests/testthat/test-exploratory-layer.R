@@ -55,8 +55,8 @@ testthat::test_that("schema 43 catalogues every candidate and separates access b
   complete_profiles <- DBI::dbGetQuery(con, paste(
     "SELECT count(*) n FROM catalog.series WHERE candidate_id IS NULL OR source_id IS NULL",
     "OR validation_tier IS NULL OR status_code IS NULL OR concise_warning IS NULL",
-    "OR warning_codes IS NULL OR warning_count<1 OR observation_interface IS NULL",
-    "AND validation_tier NOT IN ('candidate_needs_review','quarantined_or_invalid')"
+    "OR warning_codes IS NULL OR warning_count<1 OR (observation_interface IS NULL",
+    "AND explore_admission_status NOT IN ('withheld','quarantined'))"
   ))$n
   testthat::expect_equal(complete_profiles, 0)
   categories <- DBI::dbGetQuery(con, paste(
@@ -64,24 +64,26 @@ testthat::test_that("schema 43 catalogues every candidate and separates access b
   ))
   testthat::expect_equal(sum(categories$n), coverage$dimension_rows)
   testthat::expect_true(all(categories$primary_review_category %in% c(
-    "apparently_valid_preliminary", "research_validated", "discovery_only",
+    "apparently_valid_preliminary", "research_admitted_rule_certified",
+    "research_admitted_human_verified", "discovery_only",
     "clear_mechanical_defect", "probable_identity_fragmentation",
     "probable_duplicate_or_overlap", "semantic_review_required",
     "provenance_review_required", "insufficient_evidence"
   )))
   admission <- DBI::dbGetQuery(con, paste(
     "SELECT count(*) FILTER(WHERE validation_tier='research_ready') AS research_tier,",
-    "count(*) FILTER(WHERE primary_review_category='research_validated') AS research_category,",
+    "count(*) FILTER(WHERE primary_review_category LIKE 'research_admitted_%') AS research_category,",
     "count(*) FILTER(WHERE research_admission_status='admitted') AS research_admitted,",
     "count(*) FILTER(WHERE validation_tier='candidate_needs_review'",
     " AND identity_stability IN ('positional','positional_lane')",
-    " AND supported_overlap_series_count=0) AS positional_review,",
+    " AND supported_overlap_series_count=0 AND source_id<>'lrm_auctions') AS positional_review,",
+    "count(*) FILTER(WHERE source_id='lrm_auctions') AS lrm_review,",
     "count(*) FILTER(WHERE primary_review_category='probable_identity_fragmentation')",
     " AS fragmented FROM catalog.series"
   ))
   testthat::expect_equal(admission$research_category, admission$research_tier)
   testthat::expect_equal(admission$research_admitted, admission$research_tier)
-  testthat::expect_equal(admission$fragmented, admission$positional_review)
+  testthat::expect_equal(admission$fragmented, admission$positional_review + admission$lrm_review)
   supported_overlap <- DBI::dbGetQuery(con, paste(
     "SELECT source_id,count(*) n,min(supported_overlap_series_count) min_matches,",
     "max(supported_overlap_series_count) max_matches FROM catalog.series",
@@ -91,6 +93,41 @@ testthat::test_that("schema 43 catalogues every candidate and separates access b
   testthat::expect_equal(supported_overlap$n, c(30, 30))
   testthat::expect_equal(supported_overlap$min_matches, c(1, 1))
   testthat::expect_equal(supported_overlap$max_matches, c(1, 1))
+  overlap_visibility <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS catalog_members,",
+    " count(*) FILTER(WHERE contains(warning_codes,'verified_cross_source_value_overlap')) AS warned_members,",
+    " count(*) FILTER(WHERE supported_overlap_series_ids IS NOT NULL) AS grouped_members",
+    " FROM catalog.series WHERE supported_overlap_series_count>0"
+  ))
+  testthat::expect_equal(overlap_visibility$catalog_members, 60)
+  testthat::expect_equal(overlap_visibility$warned_members, 60)
+  testthat::expect_equal(overlap_visibility$grouped_members, 60)
+  overlap_rows <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS observations,",
+    " count(*) FILTER(WHERE supported_overlap_series_count=1",
+    "  AND supported_overlap_series_ids IS NOT NULL",
+    "  AND contains(warning_codes,'verified_cross_source_value_overlap')) AS visible",
+    " FROM explore.observations WHERE source_id IN ('economic_annex','fx_operations')",
+    " AND primary_review_category='probable_duplicate_or_overlap'"
+  ))
+  testthat::expect_equal(overlap_rows$observations, 10900)
+  testthat::expect_equal(overlap_rows$visible, overlap_rows$observations)
+  lrm <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS candidates,",
+    " count(*) FILTER(WHERE primary_review_category='probable_identity_fragmentation') AS categorized,",
+    " count(*) FILTER(WHERE explore_admission_status='withheld'",
+    "  AND explore_exclusion_reason='source_specific_identity_and_measure_labels_unresolved') AS withheld,",
+    " count(*) FILTER(WHERE contains(warning_codes,",
+    "  'lrm_annual_identity_and_measure_lane_ambiguity')) AS warned",
+    " FROM catalog.series WHERE source_id='lrm_auctions'"
+  ))
+  testthat::expect_equal(lrm$candidates, 3083)
+  testthat::expect_equal(lrm$categorized, lrm$candidates)
+  testthat::expect_equal(lrm$withheld, lrm$candidates)
+  testthat::expect_equal(lrm$warned, lrm$candidates)
+  testthat::expect_equal(DBI::dbGetQuery(
+    con, "SELECT count(*) n FROM explore.events WHERE source_id='lrm_auctions'"
+  )$n, 0)
   testthat::expect_equal(
     DBI::dbGetQuery(con, "SELECT coalesce(sum(warning_count),0) n FROM catalog.series")$n,
     DBI::dbGetQuery(con, "SELECT count(*) n FROM catalog.series_warnings")$n
@@ -130,7 +167,8 @@ testthat::test_that("schema 43 catalogues every candidate and separates access b
   special <- DBI::dbGetQuery(con, paste(
     "SELECT",
     "(SELECT sum(observation_count) FROM catalog.series",
-    " WHERE data_structure='event' OR frequency='irregular_interval') expected_events,",
+    " WHERE (data_structure='event' OR frequency='irregular_interval')",
+    " AND explore_admission_status='eligible_native_grain') expected_events,",
     "(SELECT count(*) FROM explore.events) exposed_events,",
     "(SELECT sum(observation_count) FROM catalog.series WHERE data_structure='entity_panel') expected_panels,",
     "(SELECT count(*) FROM explore.panel_observations) exposed_panels,",

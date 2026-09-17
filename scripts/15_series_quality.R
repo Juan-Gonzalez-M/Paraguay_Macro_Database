@@ -1,7 +1,8 @@
 # --- Post-promotion series census and review package -----------------------
 
 SERIES_REVIEW_CATEGORIES <- c(
-  "apparently_valid_preliminary", "research_validated", "discovery_only",
+  "apparently_valid_preliminary", "research_admitted_rule_certified",
+  "research_admitted_human_verified", "discovery_only",
   "clear_mechanical_defect", "probable_identity_fragmentation",
   "probable_duplicate_or_overlap", "semantic_review_required",
   "provenance_review_required", "insufficient_evidence"

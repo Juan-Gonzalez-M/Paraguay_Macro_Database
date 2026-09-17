@@ -252,7 +252,10 @@ machine-readable validation tier, and explicit warnings. The post-promotion cont
 assigns exactly one conservative `primary_review_category`, records its deterministic rule and
 separate issue codes, and exposes catalog, explore, and research admission or exclusion status.
 These fields classify usability; they do not create research assurance, merge identities, or claim
-human economic verification. `catalog.series_warnings` normalizes those
+human economic verification. A research-admission category names its actual assurance basis
+(`rule_certified` or `human_verified`). Exact supported overlap groups are carried into exploratory
+rows, while source-specific identity or label ambiguity may withhold an otherwise mechanically valid
+native-grain candidate without removing it from the catalogue. `catalog.series_warnings` normalizes those
 limitations and `catalog.datasets` covers direct panels and long-format source datasets that are not
 fully described by scalar candidate rows. `catalog.profile(candidate_id)` is the one-candidate lookup.
 

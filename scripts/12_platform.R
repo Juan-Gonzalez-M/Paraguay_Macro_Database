@@ -790,7 +790,8 @@ validate_platform_contracts <- function(con, release_id, root) {
       "  OR provenance_review_status IS NULL OR parser_reconciliation_status IS NULL",
       "  OR current_observation_availability IS NULL) AS incomplete_profiles,",
       " (SELECT count(*) FROM catalog.series WHERE primary_review_category NOT IN (",
-      "  'apparently_valid_preliminary','research_validated','discovery_only',",
+      "  'apparently_valid_preliminary','research_admitted_rule_certified',",
+      "  'research_admitted_human_verified','discovery_only',",
       "  'clear_mechanical_defect','probable_identity_fragmentation',",
       "  'probable_duplicate_or_overlap','semantic_review_required',",
       "  'provenance_review_required','insufficient_evidence')) AS invalid_categories,",
@@ -844,7 +845,8 @@ validate_platform_contracts <- function(con, release_id, root) {
       invalid_links = DBI::dbGetQuery(con, paste(
         "SELECT count(*) AS n FROM explore.observations o",
         "LEFT JOIN catalog.series c USING(candidate_id) WHERE c.candidate_id IS NULL",
-        "OR c.validation_tier NOT IN ('research_ready','exploratory_structurally_valid')"
+        "OR c.validation_tier NOT IN ('research_ready','exploratory_structurally_valid')",
+        "OR c.explore_admission_status<>'eligible_scalar'"
       ))$n,
       malformed_rows = DBI::dbGetQuery(con, paste(
         "SELECT count(*) AS n FROM explore.observations WHERE value IS NULL OR NOT isfinite(value)",
@@ -936,13 +938,16 @@ validate_platform_contracts <- function(con, release_id, root) {
       "SELECT",
       " (SELECT coalesce(sum(observation_count),0) FROM catalog.series",
       "  WHERE (data_structure='event' OR frequency='irregular_interval')",
-      "  AND validation_tier='non_scalar_or_special_structure') AS expected_events,",
+      "  AND validation_tier='non_scalar_or_special_structure'",
+      "  AND explore_admission_status='eligible_native_grain') AS expected_events,",
       " (SELECT count(*) FROM explore.events) AS exposed_events,",
       " (SELECT coalesce(sum(observation_count),0) FROM catalog.series WHERE data_structure='entity_panel'",
-      "  AND validation_tier='non_scalar_or_special_structure') AS expected_panels,",
+      "  AND validation_tier='non_scalar_or_special_structure'",
+      "  AND explore_admission_status='eligible_native_grain') AS expected_panels,",
       " (SELECT count(*) FROM explore.panel_observations) AS exposed_panels,",
       " (SELECT coalesce(sum(observation_count),0) FROM catalog.series WHERE data_structure='curve_panel'",
-      "  AND validation_tier='non_scalar_or_special_structure') AS expected_curves,",
+      "  AND validation_tier='non_scalar_or_special_structure'",
+      "  AND explore_admission_status='eligible_native_grain') AS expected_curves,",
       " (SELECT count(*) FROM explore.curve_observations) AS exposed_curves"
     ))
     if (special$expected_events != special$exposed_events ||

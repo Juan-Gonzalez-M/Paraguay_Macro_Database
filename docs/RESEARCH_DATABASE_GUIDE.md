@@ -35,7 +35,14 @@ Validation tier is computed for access and never replaces `assurance_level`.
 review queue while `classification_issue_codes` preserves additional concerns. The
 `catalog_admission_status`, `explore_admission_status`, `research_admission_status`, and exclusion
 reason fields say what each layer currently permits; only the existing assurance ledger and formal
-review contracts can admit a series to `research.*`.
+review contracts can admit a series to `research.*`. Research admissions are labelled
+`research_admitted_rule_certified` or `research_admitted_human_verified` according to the formal
+assurance record; mechanical certification is never described as human validation.
+
+Supported exact cross-source overlaps carry both `supported_overlap_series_count` and
+`supported_overlap_series_ids` in the catalogue and exploratory observation interfaces. LRM auction
+events remain discoverable in `catalog.series` but are withheld from `explore.*` while annual-sheet
+identity and offered-versus-assigned rate labels remain unresolved.
 
 ## Supported interfaces
 
