@@ -180,7 +180,7 @@ documented_parse_row_events <- function(raw, source_sheet, date_header,
 # Promedio/Minima/Maxima under both groups.  Reading row 14 alone loses the side
 # and forces positional column tokens into identity.  Keep this source-specific
 # contract here rather than weakening the generic parser.
-documented_parse_lrm_auction_sheet <- function(raw, source_sheet) {
+documented_parse_lrm_auction_sheet <- function(raw, source_sheet, root = NULL) {
   text <- documented_text_matrix(raw)
   numbers <- documented_number_matrix(raw)
   dates <- documented_date_matrix(raw, text)
@@ -223,12 +223,12 @@ documented_parse_lrm_auction_sheet <- function(raw, source_sheet) {
     8L,  "assigned_amount",        "Monto asignado",                          "PYG",          "millions", "PYG",
     9L,  "offered_bid_count",      "Cantidad de posturas ofertadas",          "count",        "units",    NA_character_,
     10L, "assigned_bid_count",     "Cantidad de posturas asignadas",          "count",        "units",    NA_character_,
-    11L, "offered_average_rate",   "Tasa de interes ofertada - Promedio",     "source_units", "units",    NA_character_,
-    12L, "offered_minimum_rate",   "Tasa de interes ofertada - Minima",       "source_units", "units",    NA_character_,
-    13L, "offered_maximum_rate",   "Tasa de interes ofertada - Maxima",       "source_units", "units",    NA_character_,
-    14L, "assigned_average_rate",  "Tasa de interes asignada - Promedio",     "source_units", "units",    NA_character_,
-    15L, "assigned_minimum_rate",  "Tasa de interes asignada - Minima",       "source_units", "units",    NA_character_,
-    16L, "assigned_maximum_rate",  "Tasa de interes asignada - Maxima",       "source_units", "units",    NA_character_
+    11L, "offered_average_rate",   "Tasa de interes ofertada - Promedio",     "percent_per_annum", "units", NA_character_,
+    12L, "offered_minimum_rate",   "Tasa de interes ofertada - Minima",       "percent_per_annum", "units", NA_character_,
+    13L, "offered_maximum_rate",   "Tasa de interes ofertada - Maxima",       "percent_per_annum", "units", NA_character_,
+    14L, "assigned_average_rate",  "Tasa de interes asignada - Promedio",     "percent_per_annum", "units", NA_character_,
+    15L, "assigned_minimum_rate",  "Tasa de interes asignada - Minima",       "percent_per_annum", "units", NA_character_,
+    16L, "assigned_maximum_rate",  "Tasa de interes asignada - Maxima",       "percent_per_annum", "units", NA_character_
   )
   auction_dates <- as.Date(as.numeric(dates[, 1L]), origin = "1970-01-01")
   settlement_dates <- as.Date(as.numeric(dates[, 2L]), origin = "1970-01-01")
@@ -304,8 +304,72 @@ documented_parse_lrm_auction_sheet <- function(raw, source_sheet) {
     "LRM source-cell reconciliation guard: a data cell emitted more than once in ",
     source_sheet, ".", call. = FALSE
   )
+  component_observations <- observations
+  consolidation_lineage <- tibble::tibble()
+  if (!is.null(root)) {
+    decision_path <- file.path(root, "config", "lrm_event_consolidations.csv")
+    decisions <- readr::read_csv(decision_path, show_col_types = FALSE,
+      col_types = readr::cols(.default = readr::col_character()))
+    decisions <- decisions[decisions$source_sheet == source_sheet, , drop = FALSE]
+    for (decision_row in seq_len(nrow(decisions))) {
+      rows <- as.integer(strsplit(decisions$component_rows[[decision_row]], ";", fixed = TRUE)[[1]])
+      components <- component_observations[component_observations$source_row %in% rows, , drop = FALSE]
+      if (!length(rows) || !all(rows %in% components$source_row)) stop(
+        "LRM consolidation guard: configured component rows are absent in ", source_sheet, ".", call. = FALSE)
+      base_categories <- sub(" — unresolved_event_instance: [0-9]+$", "", components$category)
+      keys <- unique(components[c("period", "question", "response")])
+      if (nrow(keys) != 1L || length(unique(base_categories)) != 1L) stop(
+        "LRM consolidation guard: component event dimensions differ.", call. = FALSE)
+      base_category <- unique(base_categories)[[1]]
+      made <- list()
+      for (measure_row in seq_len(nrow(measure_contract))) {
+        measure <- measure_contract$measure[[measure_row]]
+        values <- components[components$measure == measure, , drop = FALSE]
+        if (!nrow(values)) next
+        value <- if (measure %in% c("announced_amount", "offered_amount", "assigned_amount",
+                                   "offered_bid_count", "assigned_bid_count")) {
+          sum(values$value)
+        } else if (measure == "offered_average_rate") {
+          amounts <- components[components$measure == "offered_amount", c("source_row", "value")]
+          sum(values$value * amounts$value[match(values$source_row, amounts$source_row)]) / sum(amounts$value)
+        } else if (measure == "assigned_average_rate") {
+          amounts <- components[components$measure == "assigned_amount", c("source_row", "value")]
+          weights <- amounts$value[match(values$source_row, amounts$source_row)]
+          sum(values$value * weights) / sum(weights)
+        } else if (grepl("minimum_rate$", measure)) min(values$value) else max(values$value)
+        record <- values[1, , drop = FALSE]
+        record$value <- value
+        record$category <- base_category
+        record$series_path <- documented_compact_path(c(base_category, record$series_label))
+        record$parser_mode <- "lrm_auction_event_governed_consolidation"
+        record$source_row <- NA_integer_
+        record$source_column <- NA_integer_
+        made[[length(made) + 1L]] <- record
+        lineage_cells <- values[c("source_row", "source_column")]
+        if (measure == "offered_average_rate") lineage_cells <- dplyr::bind_rows(
+          lineage_cells, components[components$measure == "offered_amount", c("source_row", "source_column")])
+        if (measure == "assigned_average_rate") lineage_cells <- dplyr::bind_rows(
+          lineage_cells, components[components$measure == "assigned_amount", c("source_row", "source_column")])
+        derivation_rule <- if (grepl("amount$|bid_count$", measure)) "sum" else if (
+          grepl("average_rate$", measure)) "amount_weighted_average" else if (
+          grepl("minimum_rate$", measure)) "minimum_available" else "maximum_available"
+        consolidation_lineage <- dplyr::bind_rows(consolidation_lineage, tibble::tibble(
+          source_sheet = source_sheet, period = keys$period[[1]], category = base_category,
+          measure = .env$measure, source_row = lineage_cells$source_row,
+          source_column = lineage_cells$source_column, component_rows = decisions$component_rows[[decision_row]],
+          derivation_rule = .env$derivation_rule,
+          evidence_basis = decisions$evidence_basis[[decision_row]], reviewed_by = decisions$reviewed_by[[decision_row]],
+          reviewed_at = as.Date(decisions$reviewed_at[[decision_row]])
+        ))
+      }
+      observations <- observations[!observations$source_row %in% rows, , drop = FALSE]
+      observations <- dplyr::bind_rows(observations, dplyr::bind_rows(made))
+    }
+  }
   list(
-    observations = observations, mode = "lrm_auction_event", hierarchy_status = "flat",
+    observations = observations, component_observations = component_observations,
+    consolidation_lineage = consolidation_lineage,
+    mode = "lrm_auction_event", hierarchy_status = "flat",
     raw_nonempty_cells = sum(!documented_blank(text)), title = title
   )
 }

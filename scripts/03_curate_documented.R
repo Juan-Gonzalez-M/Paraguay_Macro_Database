@@ -1521,7 +1521,7 @@ documented_finalize_observations <- function(observations, item, release_id, pub
       identity_stability = dplyr::case_when(
         .data$lane_required ~ "positional_lane",
         stringr::str_detect(.data$parser_mode, "positional_lane") ~ "positional_lane",
-        stringr::str_detect(.data$parser_mode, "row_event_semantic|^lrm_auction_event$") ~ "semantic_event",
+        stringr::str_detect(.data$parser_mode, "row_event_semantic|^lrm_auction_event(?:_governed_consolidation)?$") ~ "semantic_event",
         .data$axis_required ~ "positional",
         TRUE ~ "semantic"
       ),
@@ -2368,7 +2368,7 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
   }
 
   if (source_id == "lrm_auctions") for (sheet in dimensions$sheet_name) {
-    results[[sheet]] <- documented_parse_lrm_auction_sheet(read_source_sheet(sheet), sheet)
+    results[[sheet]] <- documented_parse_lrm_auction_sheet(read_source_sheet(sheet), sheet, root)
   }
 
   if (source_id == "cda_curve") for (sheet in dimensions$sheet_name) {
@@ -2403,6 +2403,13 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
         hierarchy_status = results[[sheet]]$hierarchy_status,
         identity_sheet = identity_sheet
       )
+    if (!is.null(results[[sheet]]$component_observations)) {
+      results[[sheet]]$component_observations <- results[[sheet]]$component_observations %>%
+        dplyr::mutate(
+          hierarchy_status = results[[sheet]]$hierarchy_status,
+          identity_sheet = identity_sheet
+        )
+    }
   }
   observations <- dplyr::bind_rows(lapply(results, `[[`, "observations"))
   # The credit parser supplies an explicit semantic contract, including
@@ -2421,18 +2428,53 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
     publication_date <- settled_publication_date(con, item$vintage_id, max(observations$period))
     update_archive_manifest_date(root, item$source_id, item$sha256, publication_date)
   }
+  component_observations <- if (source_id == "lrm_auctions") {
+    dplyr::bind_rows(lapply(results, function(x) x$component_observations))
+  } else tibble::tibble()
+  consolidation_lineage <- if (source_id == "lrm_auctions") {
+    dplyr::bind_rows(lapply(results, function(x) x$consolidation_lineage))
+  } else tibble::tibble()
   observations <- documented_finalize_observations(observations, item, release_id, publication_date)
+  if (nrow(component_observations)) {
+    component_observations <- documented_finalize_observations(
+      component_observations, item, release_id, publication_date
+    )
+  }
   for (sheet in names(results)) results[[sheet]]$observations <- observations %>% dplyr::filter(.data$source_sheet == .env$sheet)
   catalog <- dplyr::bind_rows(lapply(names(results), function(sheet) documented_catalog_row(
     item, sheet, results[[sheet]], result_status[[sheet]], result_note[[sheet]]
   )))
   documented_validate_contract(root, source_id, dimensions, catalog, observations)
 
-  for (table_name in c("documented_series_snapshot", "documented_table_catalog", "semantic_coverage")) {
+  for (table_name in c("documented_series_snapshot", "documented_table_catalog", "semantic_coverage",
+                       "lrm_component_observations", "lrm_derived_observation_lineage")) {
     DBI::dbExecute(con, paste0("DELETE FROM ", DBI::dbQuoteIdentifier(con, table_name),
                                " WHERE vintage_id = ", sql_string(item$vintage_id)))
   }
   if (nrow(observations)) DBI::dbWriteTable(con, "documented_series_snapshot", observations, append = TRUE)
+  if (nrow(component_observations)) {
+    DBI::dbWriteTable(con, "lrm_component_observations", component_observations, append = TRUE)
+  }
+  if (nrow(consolidation_lineage)) {
+    derived_keys <- observations %>% dplyr::filter(
+      .data$parser_mode == "lrm_auction_event_governed_consolidation"
+    ) %>% dplyr::select("series_id", "period", "source_sheet", "category", "measure")
+    component_keys <- component_observations %>% dplyr::select(
+      component_series_id = "series_id", "period", "source_sheet", "source_row", "source_column"
+    )
+    lineage <- consolidation_lineage %>%
+      dplyr::inner_join(derived_keys,
+        by = c("source_sheet", "period", "category", "measure"), relationship = "many-to-one") %>%
+      dplyr::left_join(component_keys,
+        by = c("source_sheet", "period", "source_row", "source_column"), relationship = "many-to-one") %>%
+      dplyr::transmute(
+        vintage_id = item$vintage_id, derived_series_id = .data$series_id, .data$period,
+        .data$source_sheet, .data$source_row, .data$source_column, .data$component_series_id,
+        .data$component_rows, .data$derivation_rule, .data$evidence_basis,
+        .data$reviewed_by, .data$reviewed_at
+      ) %>% dplyr::distinct()
+    DBI::dbWriteTable(con, "lrm_derived_observation_lineage", lineage, append = TRUE)
+  }
   DBI::dbWriteTable(con, "documented_table_catalog", catalog, append = TRUE)
   coverage <- catalog %>% dplyr::transmute(
     vintage_id, source_id, source_sheet, semantic_status = parse_status,

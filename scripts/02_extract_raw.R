@@ -446,6 +446,8 @@ SCHEMA_MIGRATIONS <- list(
        change = "A comprehensive catalog schema profiles every parser-identified candidate with coverage, lineage, mechanical diagnostics, validation tier and warnings; a separate explore schema exposes mechanically eligible scalar observations and grain-specific event, entity-panel and curve-panel observations without changing research admission. Changes no source observation.")
   ,list(version = 44L, reingests = "lrm_auctions", registry_driven = TRUE,
        change = "LRM auction sheets are reingested under a source-specific two-level-header contract: offered and assigned rate statistics are distinct, annual sheets are lineage rather than identity, amount/count units are explicit, unresolved rate units remain withheld, and published-field event-key collisions remain catalog-only.")
+  ,list(version = 45L, reingests = "lrm_auctions", registry_driven = TRUE,
+       change = "Human-confirmed annual-percentage LRM rate units and governed consolidation of the two same-day 2013 operation pairs, with immutable component observations and multi-cell derived lineage retained separately from the current analytical facts.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -957,6 +959,13 @@ invalidate_v44_lrm_identity_remediation <- function(con) {
   invalidate_documented_sources(con, schema_migration_sources(44L), "needs_v44_reingestion")
 }
 
+invalidate_v45_lrm_closure <- function(con) {
+  if (!DBI::dbExistsTable(con, "schema_version") || !DBI::dbExistsTable(con, "source_files")) return(invisible(FALSE))
+  versions <- DBI::dbGetQuery(con, "SELECT version FROM schema_version")$version
+  if (!44L %in% versions || 45L %in% versions) return(invisible(FALSE))
+  invalidate_documented_sources(con, schema_migration_sources(45L), "needs_v45_reingestion")
+}
+
 # v13 repairs the credit-survey question-header test, which mis-attributes every
 # second sub-question block. Only that source's identities move, so only that
 # source is re-ingested.
@@ -1304,6 +1313,8 @@ DATABASE_TABLE_STATEMENTS <- c(
   "CREATE TABLE IF NOT EXISTS documented_sheet_drift (vintage_id VARCHAR, previous_vintage_id VARCHAR, source_id VARCHAR, source_sheet VARCHAR, previous_observations BIGINT, current_observations BIGINT, observation_change BIGINT, previous_series BIGINT, current_series BIGINT, series_change BIGINT, drift_status VARCHAR, PRIMARY KEY (vintage_id, source_sheet))",
   "CREATE TABLE IF NOT EXISTS documented_series_continuity (vintage_id VARCHAR, previous_vintage_id VARCHAR, source_id VARCHAR, series_id VARCHAR, source_sheet VARCHAR, change_type VARCHAR, previous_label VARCHAR, current_label VARCHAR, previous_unit VARCHAR, current_unit VARCHAR, previous_scale VARCHAR, current_scale VARCHAR, previous_currency VARCHAR, current_currency VARCHAR, identity_stability VARCHAR, PRIMARY KEY (vintage_id, series_id, change_type))",
   "CREATE TABLE IF NOT EXISTS documented_series_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_id VARCHAR, source_file VARCHAR, source_sheet VARCHAR, table_title VARCHAR, parser_mode VARCHAR, series_id VARCHAR, identity_basis VARCHAR, identity_stability VARCHAR, hierarchy_status VARCHAR, period DATE, source_period_label VARCHAR, frequency VARCHAR, series_label VARCHAR, series_path VARCHAR, category VARCHAR, measure VARCHAR, question VARCHAR, response VARCHAR, entity_id VARCHAR, exchange_item_id VARCHAR, participant_id VARCHAR, unit VARCHAR, scale VARCHAR, currency VARCHAR, index_base VARCHAR, value DOUBLE, is_total BOOLEAN, source_row BIGINT, source_column BIGINT, footnote_marker VARCHAR, price_base_year VARCHAR)",
+  "CREATE TABLE IF NOT EXISTS lrm_component_observations (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_id VARCHAR, source_file VARCHAR, source_sheet VARCHAR, table_title VARCHAR, parser_mode VARCHAR, series_id VARCHAR, identity_basis VARCHAR, identity_stability VARCHAR, hierarchy_status VARCHAR, period DATE, source_period_label VARCHAR, frequency VARCHAR, series_label VARCHAR, series_path VARCHAR, category VARCHAR, measure VARCHAR, question VARCHAR, response VARCHAR, entity_id VARCHAR, exchange_item_id VARCHAR, participant_id VARCHAR, unit VARCHAR, scale VARCHAR, currency VARCHAR, index_base VARCHAR, value DOUBLE, is_total BOOLEAN, source_row BIGINT, source_column BIGINT, footnote_marker VARCHAR, price_base_year VARCHAR)",
+  "CREATE TABLE IF NOT EXISTS lrm_derived_observation_lineage (vintage_id VARCHAR, derived_series_id VARCHAR, period DATE, source_sheet VARCHAR, source_row BIGINT, source_column BIGINT, component_series_id VARCHAR, component_rows VARCHAR, derivation_rule VARCHAR, evidence_basis VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, PRIMARY KEY (vintage_id, derived_series_id, period, source_sheet, source_row, source_column))",
   "CREATE TABLE IF NOT EXISTS semantic_coverage (vintage_id VARCHAR, source_id VARCHAR, source_sheet VARCHAR, semantic_status VARCHAR, raw_nonempty_cells BIGINT, curated_observations BIGINT, coverage_note VARCHAR)",
   "CREATE TABLE IF NOT EXISTS dim_entity (entity_id VARCHAR PRIMARY KEY, entity_code VARCHAR, entity_type VARCHAR, entity_name VARCHAR, legal_name VARCHAR, short_name VARCHAR, ownership_type VARCHAR, mapping_status VARCHAR, first_vintage_id VARCHAR)",
   "CREATE TABLE IF NOT EXISTS dim_currency (currency_code VARCHAR PRIMARY KEY, currency_label VARCHAR, currency_of_origin VARCHAR, unit_currency VARCHAR, economic_currency VARCHAR, description VARCHAR, mapping_status VARCHAR, first_vintage_id VARCHAR)",
@@ -2038,6 +2049,10 @@ initialize_database <- function(con, root = NULL) {
   if (!fresh_bootstrap) invalidate_v44_lrm_identity_remediation(con)
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 44")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (44, current_timestamp, 'Source-specific LRM two-level-header parsing, stable cross-year tenor identities, explicit partial explore admission, and complete identifier migration')")
+  }
+  if (!fresh_bootstrap) invalidate_v45_lrm_closure(con)
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 45")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (45, current_timestamp, 'Human-confirmed annual-percentage LRM rates and governed same-day operation consolidation with complete component lineage')")
   }
 }
 

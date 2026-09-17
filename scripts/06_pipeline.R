@@ -721,7 +721,7 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
     paste(release_id, format(run_started_at, "%Y-%m-%dT%H:%M:%OS6"), Sys.getpid(), sep = "|"),
     algo = "sha256", serialize = FALSE
   ), 1, 24))
-  con <- DBI::dbConnect(duckdb::duckdb(), db_path)
+  con <- connect_project_database(db_path)
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
   initialize_database(con, root)
   # Staged, not published -- unless this release was already accepted, in which
@@ -926,10 +926,12 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
   # candidate before the release gate evaluates superseded identifiers.  The
   # comparison database is the untouched production file from which this
   # isolated candidate was copied; no migration row is ever written to it.
-  if (identical(as.integer(schema_version), 44L)) {
+  if (as.integer(schema_version) %in% c(44L, 45L)) {
+    from_schema <- if (as.integer(schema_version) == 44L) "schema_43" else "schema_44"
+    to_schema <- paste0("schema_", as.integer(schema_version))
     existing_lrm_hop <- DBI::dbGetQuery(con, paste(
       "SELECT count(*) AS n FROM", project_qualified_name("series_id_migration"),
-      "WHERE from_release='schema_43' AND to_release='schema_44'",
+      "WHERE from_release=", sql_string(from_schema), "AND to_release=", sql_string(to_schema),
       "AND source_id='lrm_auctions'"
     ))$n[[1]]
     previous_product <- file.path(root, "database", "paraguay_macro_pilot.duckdb")
@@ -939,7 +941,7 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
       build_series_id_migration(
         con,
         previous_product,
-        "schema_43", "schema_44", root,
+        from_schema, to_schema, root,
         current = DBI::dbGetQuery(con, "SELECT current_database() AS name")$name[[1]]
       )
     }

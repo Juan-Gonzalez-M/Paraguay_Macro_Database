@@ -62,15 +62,30 @@ attached_table <- function(con, catalog, table_name) {
 }
 
 migration_documented_pairs <- function(con, current) {
+  current_snapshot <- attached_table(con, current, "documented_series_snapshot")
+  previous_snapshot <- attached_table(con, "prev", "documented_series_snapshot")
+  derived_union <- ""
+  lineage_exists <- nrow(DBI::dbGetQuery(con, paste0(
+    "SELECT 1 FROM duckdb_tables() WHERE database_name=", sql_string(current),
+    " AND table_name='lrm_derived_observation_lineage' LIMIT 1"
+  ))) > 0L
+  if (lineage_exists) derived_union <- paste(
+    "UNION ALL SELECT o.series_id AS old_series_id,l.derived_series_id AS new_series_id,",
+    "o.source_id,count(*) AS shared_observations FROM", previous_snapshot, "o JOIN",
+    attached_table(con, current, "lrm_derived_observation_lineage"), "l",
+    "ON o.vintage_id=l.vintage_id AND o.source_sheet=l.source_sheet",
+    "AND o.source_row=l.source_row AND o.source_column=l.source_column AND o.period=l.period",
+    "GROUP BY 1,2,3"
+  )
   by_cell_period <- DBI::dbGetQuery(con, paste(
     "SELECT o.series_id AS old_series_id, n.series_id AS new_series_id,",
     "n.source_id, count(*) AS shared_observations",
-    "FROM", attached_table(con, "prev", "documented_series_snapshot"), "o",
-    "JOIN", attached_table(con, current, "documented_series_snapshot"), "n",
+    "FROM", previous_snapshot, "o",
+    "JOIN", current_snapshot, "n",
     "  ON o.source_id = n.source_id AND o.source_file = n.source_file",
     " AND o.source_sheet = n.source_sheet AND o.source_row = n.source_row",
     " AND o.source_column = n.source_column AND o.period = n.period",
-    "GROUP BY 1, 2, 3"
+    "GROUP BY 1, 2, 3", derived_union
   ))
   by_cell_period$match_method <- "source_cell_period"
 

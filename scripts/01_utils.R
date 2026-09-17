@@ -122,6 +122,7 @@ PROJECT_TABLE_SCHEMA <- c(
   reference_table_loads = "raw",
   # staging: parser output and parser diagnostics
   documented_table_catalog = "staging", documented_series_snapshot = "staging",
+  lrm_component_observations = "staging", lrm_derived_observation_lineage = "staging",
   documented_sheet_drift = "staging", documented_series_continuity = "staging",
   discarded_rows = "staging", semantic_coverage = "staging",
   bond_curve_snapshot = "staging", securities_transactions_snapshot = "staging",
@@ -644,6 +645,16 @@ set_project_search_path <- function(con) {
 
 connect_project_database <- function(path, read_only = FALSE) {
   con <- DBI::dbConnect(duckdb::duckdb(), path, read_only = read_only)
+  # duckdb()'s default spill directory lives below an R-session directory that
+  # a short-lived fresh-connection smoke test can remove on shutdown while the
+  # build connection is still alive. Large validation queries then fail for an
+  # operational filesystem reason. Give each database path a stable, isolated
+  # spill directory outside the connection lifecycle.
+  spill_id <- substr(digest::digest(normalizePath(path, winslash = "/", mustWork = FALSE),
+                                    algo = "sha256", serialize = FALSE), 1L, 16L)
+  spill_dir <- file.path("/private/tmp", paste0("paraguay_macro_duckdb_", spill_id))
+  dir.create(spill_dir, recursive = TRUE, showWarnings = FALSE)
+  DBI::dbExecute(con, paste("SET temp_directory =", sql_string(spill_dir)))
   try(set_project_search_path(con), silent = TRUE)
   con
 }

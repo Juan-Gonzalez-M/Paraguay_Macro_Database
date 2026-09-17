@@ -2,7 +2,7 @@
 
 Generated from the migration registry (`SCHEMA_MIGRATIONS` in `scripts/02_extract_raw.R`) and the `schema_version` table on 2026-09-17. Do not edit by hand -- `write_migration_runbook()` rewrites this file on every release.
 
-The database is at **schema 44**.
+The database is at **schema 45**.
 
 `initialize_database()` applies every version step a database still needs, in order, on each run. A step that changes how `series_id` is built also invalidates the affected sources so they re-parse from the immutable raw layer instead of merging into stale identities; those sources reappear as `needs_v<N>_reingestion` and are re-ingested by the same run. Back up `database/paraguay_macro_pilot.duckdb` into `database/backups/` before a migrating run: the migration deletes curated content by design, and the backup is what lets you diff observation totals source by source afterwards, and what `build_migration_map.R` compares against.
 
@@ -50,6 +50,7 @@ The database is at **schema 44**.
 | 42 | 2026-09-14 | nothing | The research EEFF panel preserves the publisher's source currency code, currency of origin and reporting unit; its key no longer collapses foreign-origin balances converted to PYG with PYG-origin balances, and release-blocking accounting prevents collided rows from disappearing. Changes no source observation. |
 | 43 | 2026-09-14 | nothing | A comprehensive catalog schema profiles every parser-identified candidate with coverage, lineage, mechanical diagnostics, validation tier and warnings; a separate explore schema exposes mechanically eligible scalar observations and grain-specific event, entity-panel and curve-panel observations without changing research admission. Changes no source observation. |
 | 44 | 2026-09-17 | `lrm_auctions` | LRM auction sheets are reingested under a source-specific two-level-header contract: offered and assigned rate statistics are distinct, annual sheets are lineage rather than identity, amount/count units are explicit, unresolved rate units remain withheld, and published-field event-key collisions remain catalog-only. |
+| 45 | 2026-09-17 | `lrm_auctions` | Human-confirmed annual-percentage LRM rate units and governed consolidation of the two same-day 2013 operation pairs, with immutable component observations and multi-cell derived lineage retained separately from the current analytical facts. |
 
 ## From a version-1 database
 

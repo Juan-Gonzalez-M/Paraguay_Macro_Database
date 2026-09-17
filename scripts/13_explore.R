@@ -16,7 +16,16 @@ create_catalog_explore_views <- function(con) {
     "SELECT vintage_id,series_id,period,1::BIGINT AS lineage_match_count,",
     " source_sheet,table_title,parser_mode,source_row,source_column,source_period_label,",
     " category,measure,question,response,entity_id,exchange_item_id,participant_id",
-    " FROM staging.documented_series_snapshot"
+    " FROM staging.documented_series_snapshot",
+    " WHERE parser_mode <> 'lrm_auction_event_governed_consolidation'",
+    " UNION ALL SELECT d.vintage_id,d.series_id,d.period,l.lineage_match_count,",
+    " d.source_sheet,d.table_title,d.parser_mode,NULL::BIGINT,NULL::BIGINT,d.source_period_label,",
+    " d.category,d.measure,d.question,d.response,d.entity_id,d.exchange_item_id,d.participant_id",
+    " FROM staging.documented_series_snapshot d",
+    " JOIN (SELECT vintage_id,derived_series_id,period,count(*)::BIGINT AS lineage_match_count",
+    "  FROM staging.lrm_derived_observation_lineage GROUP BY 1,2,3) l ON l.vintage_id=d.vintage_id",
+    " AND l.derived_series_id=d.series_id AND l.period=d.period",
+    " WHERE d.parser_mode='lrm_auction_event_governed_consolidation'"
   )
 
   profile_sql <- paste(
@@ -100,10 +109,11 @@ create_catalog_explore_views <- function(con) {
     " SELECT o.series_id,",
     " count(s.series_id) AS source_observation_lineage_rows,",
     " count(s.series_id) FILTER(WHERE s.source_sheet IS NOT NULL",
-    "  AND s.source_row IS NOT NULL AND s.source_column IS NOT NULL) AS coordinate_lineage_rows,",
+    "  AND ((s.source_row IS NOT NULL AND s.source_column IS NOT NULL)",
+    "   OR s.parser_mode='lrm_auction_event_governed_consolidation')) AS coordinate_lineage_rows,",
     " count(s.series_id) FILTER(WHERE s.series_id IS NOT NULL",
-    "  AND (s.source_sheet IS NULL OR s.source_row IS NULL",
-    "  OR s.source_column IS NULL)) AS invalid_lineage_rows,",
+    "  AND (s.source_sheet IS NULL OR ((s.source_row IS NULL OR s.source_column IS NULL)",
+    "  AND s.parser_mode<>'lrm_auction_event_governed_consolidation'))) AS invalid_lineage_rows,",
     " count(s.series_id) FILTER(WHERE s.series_id IS NOT NULL AND (",
     "  t.title_record_source_sheet IS DISTINCT FROM s.source_sheet OR",
     "  t.title_record_table_title IS DISTINCT FROM s.table_title)) AS worksheet_lineage_correction_rows,",
@@ -503,7 +513,9 @@ create_catalog_explore_views <- function(con) {
     " s.title_record_source_sheet,s.title_record_table_title,",
     " d.parser_mode AS parser_method,d.source_row,d.source_column,d.source_period_label,",
     " s.database_schema_version,s.build_schema_version,s.build_code_digest,s.coordinate_lineage_status,",
-    " CASE WHEN d.lineage_match_count>1 THEN 'ambiguous_source_observation'",
+    " CASE WHEN d.parser_mode='lrm_auction_event_governed_consolidation'",
+    "  AND d.lineage_match_count>1 THEN 'governed_derived_multi_cell'",
+    "  WHEN d.lineage_match_count>1 THEN 'ambiguous_source_observation'",
     "  WHEN d.lineage_match_count=1 AND (d.source_sheet IS NULL OR d.source_row IS NULL",
     "   OR d.source_column IS NULL) THEN 'invalid_source_observation_locator'",
     "  WHEN d.lineage_match_count=1 THEN 'source_observation_exact'",

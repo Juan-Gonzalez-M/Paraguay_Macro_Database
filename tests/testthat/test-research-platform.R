@@ -16,11 +16,11 @@ research_platform_database <- function() {
   connection
 }
 
-testthat::test_that("schema 44 preserves exactly the governed grain-aware research API", {
+testthat::test_that("schema 45 preserves exactly the governed grain-aware research API", {
   con <- research_platform_database()
   testthat::expect_equal(
     DBI::dbGetQuery(con, "SELECT max(version) AS version FROM audit.schema_version")$version,
-    44L
+    45L
   )
   views <- DBI::dbGetQuery(con, paste(
     "SELECT view_name FROM duckdb_views()",

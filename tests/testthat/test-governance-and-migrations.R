@@ -4,7 +4,7 @@
 # governance registers.
 
 p1_production <- function() {
-  path <- file.path(project_test_root, "database", "paraguay_macro_pilot.duckdb")
+  path <- project_test_database()
   testthat::skip_if_not(file.exists(path), "production database not present")
   con <- connect_project_database(path, read_only = TRUE)
   withr::defer(DBI::dbDisconnect(con, shutdown = TRUE), envir = parent.frame())
@@ -62,7 +62,13 @@ testthat::test_that("every parsed source matches its golden parser contract", {
     row <- expected[expected$source_id == source_id, ]
     testthat::expect_equal(nrow(observations), as.integer(row$observation_count), info = source_id)
     # One source cell, one observation, for every documented layout.
-    testthat::expect_equal(
+    if (source_id == "lrm_auctions") {
+      components <- DBI::dbGetQuery(con, paste(
+        "SELECT source_sheet,source_row,source_column FROM staging.lrm_component_observations"
+      ))
+      testthat::expect_equal(nrow(components), 10351L)
+      testthat::expect_equal(nrow(unique(components)), nrow(components))
+    } else testthat::expect_equal(
       nrow(unique(observations[c("source_sheet", "source_row", "source_column")])),
       nrow(observations), info = source_id
     )

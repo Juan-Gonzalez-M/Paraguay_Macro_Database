@@ -16,10 +16,10 @@ exploratory_layer_database <- function() {
   connection
 }
 
-testthat::test_that("schema 44 catalogues every candidate and separates access by grain", {
+testthat::test_that("schema 45 catalogues every candidate and separates access by grain", {
   con <- exploratory_layer_database()
   testthat::expect_equal(
-    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 44L
+    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 45L
   )
   catalog_views <- DBI::dbGetQuery(con, paste(
     "SELECT view_name FROM duckdb_views() WHERE schema_name='catalog' AND NOT internal ORDER BY 1"
@@ -123,13 +123,13 @@ testthat::test_that("schema 44 catalogues every candidate and separates access b
     "  'lrm_published_event_key_collision')) AS warned",
     " FROM catalog.series WHERE source_id='lrm_auctions'"
   ))
-  testthat::expect_equal(lrm$candidates, 957)
-  testthat::expect_equal(lrm$categorized, 39)
-  testthat::expect_equal(lrm$withheld, 540)
-  testthat::expect_equal(lrm$warned, 39)
+  testthat::expect_equal(lrm$candidates, 940)
+  testthat::expect_equal(lrm$categorized, 0)
+  testthat::expect_equal(lrm$withheld, 0)
+  testthat::expect_equal(lrm$warned, 0)
   testthat::expect_equal(DBI::dbGetQuery(
     con, "SELECT count(*) n FROM explore.events WHERE source_id='lrm_auctions'"
-  )$n, 4597)
+  )$n, 10334)
   testthat::expect_equal(
     DBI::dbGetQuery(con, "SELECT coalesce(sum(warning_count),0) n FROM catalog.series")$n,
     DBI::dbGetQuery(con, "SELECT count(*) n FROM catalog.series_warnings")$n
@@ -254,6 +254,7 @@ testthat::test_that("worksheet lineage resolves every documented exploratory obs
     " FROM exposed e JOIN staging.documented_series_snapshot d",
     " ON d.series_id=e.candidate_id AND d.period=e.source_period_date",
     " AND d.vintage_id=e.vintage_id",
+    " WHERE d.parser_mode<>'lrm_auction_event_governed_consolidation'",
     "), checked AS (",
     " SELECT d.*,c.raw_value_num,c.raw_value_text FROM documented d",
     " LEFT JOIN main.v_report_cells_a1 c ON c.vintage_id=d.vintage_id",
@@ -273,6 +274,20 @@ testthat::test_that("worksheet lineage resolves every documented exploratory obs
   testthat::expect_equal(locator$staging_disagreements, 0)
   testthat::expect_equal(locator$missing_raw_cells, 0)
   testthat::expect_equal(locator$numeric_differences, 0)
+  derived_lineage <- DBI::dbGetQuery(con, paste(
+    "SELECT count(DISTINCT d.series_id||'|'||d.period::VARCHAR) AS derived_observations,",
+    " count(l.source_row) AS lineage_cells,",
+    " count(*) FILTER(WHERE c.raw_value_text IS NULL AND c.raw_value_num IS NULL) AS missing_cells",
+    " FROM staging.documented_series_snapshot d",
+    " JOIN staging.lrm_derived_observation_lineage l ON l.vintage_id=d.vintage_id",
+    "  AND l.derived_series_id=d.series_id AND l.period=d.period",
+    " LEFT JOIN main.v_report_cells_a1 c ON c.vintage_id=l.vintage_id",
+    "  AND c.source_sheet=l.source_sheet AND c.row_id=l.source_row AND c.column_id=l.source_column",
+    " WHERE d.parser_mode='lrm_auction_event_governed_consolidation'"
+  ))
+  testthat::expect_equal(derived_lineage$derived_observations, 22)
+  testthat::expect_equal(derived_lineage$lineage_cells, 46)
+  testthat::expect_equal(derived_lineage$missing_cells, 0)
 
   unchanged <- DBI::dbGetQuery(con, paste(
     "SELECT count(*) AS differences FROM explore.observations e",

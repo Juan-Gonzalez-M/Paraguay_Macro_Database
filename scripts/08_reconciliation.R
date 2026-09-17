@@ -283,6 +283,14 @@ RECONCILIATION_CROP_ORIGIN <- paste(
   "FROM source_sheets"
 )
 
+# Reconciliation accounts for publisher cells, not analytical derivations. LRM
+# keeps the 39 component observations in a dedicated immutable staging ledger
+# while the ordinary snapshot exposes 22 governed consolidated observations.
+RECONCILIATION_DOCUMENTED_OBSERVATIONS <- paste(
+  "(SELECT * FROM documented_series_snapshot WHERE source_id <> 'lrm_auctions'",
+  " UNION ALL SELECT * FROM lrm_component_observations)"
+)
+
 # The parsed region and the two invariants: these are measurements, not
 # judgements, and nothing about them depends on the rule register.
 compute_table_reconciliation <- function(con) {
@@ -294,12 +302,12 @@ compute_table_reconciliation <- function(con) {
     "         count(DISTINCT (source_row::VARCHAR || ':' || source_column::VARCHAR)) AS accepted_cells,",
     "         min(source_row) AS r0, max(source_row) AS r1,",
     "         min(source_column) AS c0, max(source_column) AS c1",
-    "  FROM documented_series_snapshot",
+    "  FROM", RECONCILIATION_DOCUMENTED_OBSERVATIONS,
     "  WHERE source_row IS NOT NULL AND source_column IS NOT NULL",
     "  GROUP BY 1, 2, 3",
     "), consumed AS (",
     "  SELECT DISTINCT vintage_id, source_id, source_sheet, source_row, source_column",
-    "  FROM documented_series_snapshot",
+    "  FROM", RECONCILIATION_DOCUMENTED_OBSERVATIONS,
     "), cells AS (",
     "  SELECT v.vintage_id, v.source_id, v.source_sheet,",
     "         c.row_id + k.row_offset AS row_id, c.column_id + k.column_offset AS column_id",
@@ -446,12 +454,12 @@ classify_unmapped_cells <- function(con, rules) {
     "  SELECT vintage_id, source_id, source_sheet,",
     "         min(source_row) AS r0, max(source_row) AS r1,",
     "         min(source_column) AS c0, max(source_column) AS c1",
-    "  FROM documented_series_snapshot",
+    "  FROM", RECONCILIATION_DOCUMENTED_OBSERVATIONS,
     "  WHERE source_row IS NOT NULL AND source_column IS NOT NULL",
     "  GROUP BY 1, 2, 3",
     "), consumed AS (",
     "  SELECT DISTINCT vintage_id, source_id, source_sheet, source_row, source_column",
-    "  FROM documented_series_snapshot",
+    "  FROM", RECONCILIATION_DOCUMENTED_OBSERVATIONS,
     "), unmapped AS (",
     # Coordinates are translated into A1 before anything is compared, for the
     # reason set out above compute_table_reconciliation().
@@ -704,7 +712,7 @@ classify_out_of_region_cells <- function(con, rules) {
     "  SELECT vintage_id, source_sheet,",
     "         min(source_row) AS r0, max(source_row) AS r1,",
     "         min(source_column) AS c0, max(source_column) AS c1",
-    "  FROM documented_series_snapshot",
+    "  FROM", RECONCILIATION_DOCUMENTED_OBSERVATIONS,
     "  WHERE source_row IS NOT NULL AND source_column IS NOT NULL",
     "  GROUP BY 1, 2",
     "), outside AS (",
