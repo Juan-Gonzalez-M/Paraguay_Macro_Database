@@ -5,6 +5,12 @@ if (!file.exists(file.path(project_test_root, "config", "source_registry.csv")))
 source(file.path(project_test_root, "scripts", "load_project.R"))
 load_project_scripts(project_test_root, profile = "pipeline")
 
+project_test_database <- function() {
+  override <- Sys.getenv("PARAGUAY_MACRO_TEST_DATABASE", unset = "")
+  if (nzchar(override)) normalizePath(override, winslash = "/", mustWork = TRUE)
+  else file.path(project_test_root, "database", "paraguay_macro_pilot.duckdb")
+}
+
 # Publishing a release in a fixture, since schema 30 made that two steps.
 #
 # decide_release() records the source bundle's lifecycle and no longer publishes

@@ -444,6 +444,8 @@ SCHEMA_MIGRATIONS <- list(
        change = "The research EEFF panel preserves the publisher's source currency code, currency of origin and reporting unit; its key no longer collapses foreign-origin balances converted to PYG with PYG-origin balances, and release-blocking accounting prevents collided rows from disappearing. Changes no source observation.")
   ,list(version = 43L, reingests = character(), registry_driven = TRUE,
        change = "A comprehensive catalog schema profiles every parser-identified candidate with coverage, lineage, mechanical diagnostics, validation tier and warnings; a separate explore schema exposes mechanically eligible scalar observations and grain-specific event, entity-panel and curve-panel observations without changing research admission. Changes no source observation.")
+  ,list(version = 44L, reingests = "lrm_auctions", registry_driven = TRUE,
+       change = "LRM auction sheets are reingested under a source-specific two-level-header contract: offered and assigned rate statistics are distinct, annual sheets are lineage rather than identity, amount/count units are explicit, unresolved rate units remain withheld, and published-field event-key collisions remain catalog-only.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -944,6 +946,15 @@ invalidate_v12_p0_identity_repairs <- function(con) {
   invalidate_documented_sources(
     con, schema_migration_sources(12L), "needs_v12_reingestion"
   )
+}
+
+invalidate_v44_lrm_identity_remediation <- function(con) {
+  if (!DBI::dbExistsTable(con, "schema_version") || !DBI::dbExistsTable(con, "source_files")) {
+    return(invisible(FALSE))
+  }
+  versions <- DBI::dbGetQuery(con, "SELECT version FROM schema_version")$version
+  if (!43L %in% versions || 44L %in% versions) return(invisible(FALSE))
+  invalidate_documented_sources(con, schema_migration_sources(44L), "needs_v44_reingestion")
 }
 
 # v13 repairs the credit-survey question-header test, which mis-attributes every
@@ -2023,6 +2034,10 @@ initialize_database <- function(con, root = NULL) {
   }
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 43")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (43, current_timestamp, 'Comprehensive candidate discovery and mechanically gated exploratory access remain separate from unchanged research admission')")
+  }
+  if (!fresh_bootstrap) invalidate_v44_lrm_identity_remediation(con)
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 44")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (44, current_timestamp, 'Source-specific LRM two-level-header parsing, stable cross-year tenor identities, explicit partial explore admission, and complete identifier migration')")
   }
 }
 

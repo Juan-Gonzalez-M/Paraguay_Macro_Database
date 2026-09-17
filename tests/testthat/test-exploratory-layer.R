@@ -1,5 +1,5 @@
 exploratory_layer_database <- function() {
-  source <- file.path(project_test_root, "database", "paraguay_macro_pilot.duckdb")
+  source <- project_test_database()
   testthat::skip_if_not(file.exists(source), "production database not present")
   path <- tempfile(fileext = ".duckdb")
   file.copy(source, path, overwrite = TRUE)
@@ -16,10 +16,10 @@ exploratory_layer_database <- function() {
   connection
 }
 
-testthat::test_that("schema 43 catalogues every candidate and separates access by grain", {
+testthat::test_that("schema 44 catalogues every candidate and separates access by grain", {
   con <- exploratory_layer_database()
   testthat::expect_equal(
-    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 43L
+    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 44L
   )
   catalog_views <- DBI::dbGetQuery(con, paste(
     "SELECT view_name FROM duckdb_views() WHERE schema_name='catalog' AND NOT internal ORDER BY 1"
@@ -77,7 +77,8 @@ testthat::test_that("schema 43 catalogues every candidate and separates access b
     "count(*) FILTER(WHERE validation_tier='candidate_needs_review'",
     " AND identity_stability IN ('positional','positional_lane')",
     " AND supported_overlap_series_count=0 AND source_id<>'lrm_auctions') AS positional_review,",
-    "count(*) FILTER(WHERE source_id='lrm_auctions') AS lrm_review,",
+    "count(*) FILTER(WHERE source_id='lrm_auctions'",
+    " AND identity_stability IN ('positional','positional_lane')) AS lrm_review,",
     "count(*) FILTER(WHERE primary_review_category='probable_identity_fragmentation')",
     " AS fragmented FROM catalog.series"
   ))
@@ -116,18 +117,19 @@ testthat::test_that("schema 43 catalogues every candidate and separates access b
     "SELECT count(*) AS candidates,",
     " count(*) FILTER(WHERE primary_review_category='probable_identity_fragmentation') AS categorized,",
     " count(*) FILTER(WHERE explore_admission_status='withheld'",
-    "  AND explore_exclusion_reason='source_specific_identity_and_measure_labels_unresolved') AS withheld,",
+    "  AND explore_exclusion_reason IN ('source_rate_unit_unresolved',",
+    "  'published_event_key_not_unique')) AS withheld,",
     " count(*) FILTER(WHERE contains(warning_codes,",
-    "  'lrm_annual_identity_and_measure_lane_ambiguity')) AS warned",
+    "  'lrm_published_event_key_collision')) AS warned",
     " FROM catalog.series WHERE source_id='lrm_auctions'"
   ))
-  testthat::expect_equal(lrm$candidates, 3083)
-  testthat::expect_equal(lrm$categorized, lrm$candidates)
-  testthat::expect_equal(lrm$withheld, lrm$candidates)
-  testthat::expect_equal(lrm$warned, lrm$candidates)
+  testthat::expect_equal(lrm$candidates, 957)
+  testthat::expect_equal(lrm$categorized, 39)
+  testthat::expect_equal(lrm$withheld, 540)
+  testthat::expect_equal(lrm$warned, 39)
   testthat::expect_equal(DBI::dbGetQuery(
     con, "SELECT count(*) n FROM explore.events WHERE source_id='lrm_auctions'"
-  )$n, 0)
+  )$n, 4597)
   testthat::expect_equal(
     DBI::dbGetQuery(con, "SELECT coalesce(sum(warning_count),0) n FROM catalog.series")$n,
     DBI::dbGetQuery(con, "SELECT count(*) n FROM catalog.series_warnings")$n
@@ -228,13 +230,16 @@ testthat::test_that("worksheet lineage resolves every documented exploratory obs
     "string_agg(DISTINCT worksheet_lineage_status,';' ORDER BY worksheet_lineage_status) AS statuses",
     "FROM catalog.series WHERE worksheet_lineage_correction_rows>0 GROUP BY 1 ORDER BY 1"
   ))
-  testthat::expect_equal(profiles$candidates, c(12, 15))
-  testthat::expect_equal(profiles$observations, c(37800, 1743))
-  testthat::expect_equal(profiles$min_sheets, c(14, 1))
-  testthat::expect_equal(profiles$max_sheets, c(14, 1))
-  testthat::expect_equal(profiles$single_sheet_profiles, c(0, 15))
+  testthat::expect_equal(profiles$candidates, c(12, 15, 353))
+  testthat::expect_equal(profiles$observations, c(37800, 1743, 8404))
+  testthat::expect_equal(profiles$min_sheets, c(14, 1, 2))
+  testthat::expect_equal(profiles$max_sheets, c(14, 1, 14))
+  testthat::expect_equal(profiles$single_sheet_profiles, c(0, 15, 0))
   testthat::expect_equal(
-    profiles$statuses, c("complete_multiple_worksheets", "complete_single_worksheet")
+    profiles$statuses, c(
+      "complete_multiple_worksheets", "complete_single_worksheet",
+      "complete_multiple_worksheets"
+    )
   )
 
   locator <- DBI::dbGetQuery(con, paste(
@@ -379,7 +384,7 @@ testthat::test_that("a normalized-period collision is quarantined from scalar ex
 })
 
 testthat::test_that("catalog and explore views bind from a fresh attached connection", {
-  source <- file.path(project_test_root, "database", "paraguay_macro_pilot.duckdb")
+  source <- project_test_database()
   testthat::skip_if_not(file.exists(source), "production database not present")
   path <- tempfile(fileext = ".duckdb")
   file.copy(source, path, overwrite = TRUE)

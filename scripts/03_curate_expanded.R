@@ -174,6 +174,142 @@ documented_parse_row_events <- function(raw, source_sheet, date_header,
   )
 }
 
+# LRM auctions publish one auction-tenor event per row.  They look superficially
+# like the generic row-event tables, but their rate columns have a two-level
+# header: K:M are offered rates and N:P are assigned rates, while row 14 repeats
+# Promedio/Minima/Maxima under both groups.  Reading row 14 alone loses the side
+# and forces positional column tokens into identity.  Keep this source-specific
+# contract here rather than weakening the generic parser.
+documented_parse_lrm_auction_sheet <- function(raw, source_sheet) {
+  text <- documented_text_matrix(raw)
+  numbers <- documented_number_matrix(raw)
+  dates <- documented_date_matrix(raw, text)
+  normalized <- matrix(normalize_semantic_label(text), nrow = nrow(text), ncol = ncol(text))
+  anchors <- which(matrix_equal(normalized, "fecha subasta"), arr.ind = TRUE)
+  if (nrow(anchors) != 1L) stop(
+    "LRM parser guard: expected exactly one 'Fecha subasta' header in ", source_sheet,
+    "; found ", nrow(anchors), ".", call. = FALSE
+  )
+  header_row <- anchors[[1L, "row"]]
+  if (anchors[[1L, "col"]] != 1L || header_row < 2L || ncol(text) != 16L) stop(
+    "LRM parser guard: expected the two-level A:P header ending at 'Fecha subasta' in ",
+    source_sheet, ".", call. = FALSE
+  )
+  lower_expected <- c(
+    "fecha subasta", "fecha liquidacion", "fecha de vencimiento",
+    "plazos estandarizados", "plazos residuales", "montos anunciados",
+    "montos ofertados", "montos asignados", "ofertado #", "asignado #",
+    "promedio", "minima", "maxima", "promedio", "minima", "maxima"
+  )
+  if (!identical(normalize_semantic_label(text[header_row, 1:16]), lower_expected)) stop(
+    "LRM parser guard: lower header differs from the governed A:P contract in ",
+    source_sheet, ".", call. = FALSE
+  )
+  upper <- normalize_semantic_label(text[header_row - 1L, ])
+  upper_expected <- c(
+    `1` = "fecha", `4` = "plazos (dias)", `6` = "montos (millones de guaranies)",
+    `9` = "cantidad de posturas", `11` = "tasa de interes ofertada",
+    `14` = "tasa de interes asignada"
+  )
+  if (!all(upper[as.integer(names(upper_expected))] == unname(upper_expected))) stop(
+    "LRM parser guard: upper offered/assigned or unit header differs in ", source_sheet,
+    ".", call. = FALSE
+  )
+
+  measure_contract <- tibble::tribble(
+    ~source_column, ~measure, ~series_label, ~unit, ~scale, ~currency,
+    6L,  "announced_amount",       "Monto anunciado",                         "PYG",          "millions", "PYG",
+    7L,  "offered_amount",         "Monto ofertado",                          "PYG",          "millions", "PYG",
+    8L,  "assigned_amount",        "Monto asignado",                          "PYG",          "millions", "PYG",
+    9L,  "offered_bid_count",      "Cantidad de posturas ofertadas",          "count",        "units",    NA_character_,
+    10L, "assigned_bid_count",     "Cantidad de posturas asignadas",          "count",        "units",    NA_character_,
+    11L, "offered_average_rate",   "Tasa de interes ofertada - Promedio",     "source_units", "units",    NA_character_,
+    12L, "offered_minimum_rate",   "Tasa de interes ofertada - Minima",       "source_units", "units",    NA_character_,
+    13L, "offered_maximum_rate",   "Tasa de interes ofertada - Maxima",       "source_units", "units",    NA_character_,
+    14L, "assigned_average_rate",  "Tasa de interes asignada - Promedio",     "source_units", "units",    NA_character_,
+    15L, "assigned_minimum_rate",  "Tasa de interes asignada - Minima",       "source_units", "units",    NA_character_,
+    16L, "assigned_maximum_rate",  "Tasa de interes asignada - Maxima",       "source_units", "units",    NA_character_
+  )
+  auction_dates <- as.Date(as.numeric(dates[, 1L]), origin = "1970-01-01")
+  settlement_dates <- as.Date(as.numeric(dates[, 2L]), origin = "1970-01-01")
+  maturity_dates <- as.Date(as.numeric(dates[, 3L]), origin = "1970-01-01")
+  data_rows <- which(seq_len(nrow(text)) > header_row & !is.na(auction_dates) &
+                       rowSums(!is.na(numbers[, 6:16, drop = FALSE])) > 0L)
+  if (!length(data_rows)) stop("LRM parser guard: no auction rows in ", source_sheet, ".", call. = FALSE)
+  incomplete_dimensions <- data_rows[
+    is.na(settlement_dates[data_rows]) | is.na(maturity_dates[data_rows]) |
+      is.na(numbers[data_rows, 4L]) | is.na(numbers[data_rows, 5L])
+  ]
+  if (length(incomplete_dimensions)) stop(
+    "LRM event-key guard: incomplete date/tenor dimensions in ", source_sheet,
+    " row(s) ", paste(incomplete_dimensions, collapse = ", "), ".", call. = FALSE
+  )
+  event_key <- paste(
+    auction_dates[data_rows], settlement_dates[data_rows], maturity_dates[data_rows],
+    format(numbers[data_rows, 4L], scientific = FALSE, trim = TRUE),
+    format(numbers[data_rows, 5L], scientific = FALSE, trim = TRUE), sep = "|"
+  )
+  series_event_key <- paste(
+    auction_dates[data_rows],
+    format(numbers[data_rows, 4L], scientific = FALSE, trim = TRUE),
+    format(numbers[data_rows, 5L], scientific = FALSE, trim = TRUE), sep = "|"
+  )
+  unresolved_key <- duplicated(event_key) | duplicated(event_key, fromLast = TRUE) |
+    duplicated(series_event_key) | duplicated(series_event_key, fromLast = TRUE)
+  event_instance <- ave(seq_along(series_event_key), series_event_key, FUN = seq_along)
+  title <- documented_local_block_title(text, header_row - 1L)
+  records <- vector("list", length(data_rows) * nrow(measure_contract)); k <- 0L
+  for (ii in seq_along(data_rows)) {
+    r <- data_rows[[ii]]
+    event_path <- documented_compact_path(c(
+      paste0("standardized_tenor_days: ", format(numbers[r, 4L], scientific = FALSE, trim = TRUE)),
+      paste0("residual_tenor_days: ", format(numbers[r, 5L], scientific = FALSE, trim = TRUE))
+    ))
+    parser_mode <- "lrm_auction_event"
+    if (unresolved_key[[ii]]) {
+      # The workbook publishes no auction number capable of separating these
+      # same-date, same-maturity rows.  Preserve them with an explicit unstable
+      # storage lane so they remain catalogued and lineaged, but let the normal
+      # identity/admission machinery withhold them from explore.*.
+      event_path <- documented_compact_path(c(
+        event_path, paste0("unresolved_event_instance: ", event_instance[[ii]])
+      ))
+      parser_mode <- "lrm_auction_event_unresolved_positional_lane"
+    }
+    for (m in seq_len(nrow(measure_contract))) {
+      j <- measure_contract$source_column[[m]]
+      value <- numbers[r, j]
+      if (is.na(value)) next
+      k <- k + 1L
+      record <- documented_record(
+        source_sheet, title, parser_mode, auction_dates[[r]],
+        as.character(auction_dates[[r]]), "irregular_daily",
+        measure_contract$series_label[[m]], event_path, measure_contract$measure[[m]],
+        value, r, j,
+        question = paste0("settlement_date: ", settlement_dates[[r]]),
+        response = paste0("maturity_date: ", maturity_dates[[r]])
+      )
+      record$unit <- measure_contract$unit[[m]]
+      record$scale <- measure_contract$scale[[m]]
+      record$currency <- measure_contract$currency[[m]]
+      records[[k]] <- record
+    }
+  }
+  observations <- documented_bind_records(records[seq_len(k)])
+  if (nrow(observations) != sum(!is.na(numbers[data_rows, 6:16, drop = FALSE]))) stop(
+    "LRM source-cell reconciliation guard: not every numeric F:P cell emitted exactly once in ",
+    source_sheet, ".", call. = FALSE
+  )
+  if (anyDuplicated(observations[c("source_row", "source_column")])) stop(
+    "LRM source-cell reconciliation guard: a data cell emitted more than once in ",
+    source_sheet, ".", call. = FALSE
+  )
+  list(
+    observations = observations, mode = "lrm_auction_event", hierarchy_status = "flat",
+    raw_nonempty_cells = sum(!documented_blank(text)), title = title
+  )
+}
+
 # The referential daily quotation workbook publishes one calendar grid per
 # year and quote side: months across B:M, day numbers down A3:A33 and either a
 # numeric quotation or the exact token ND in each data cell.  It is not one of

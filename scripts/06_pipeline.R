@@ -921,6 +921,29 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
   # rows carry it, and the decision at the end is about it.
   schema_version <- DBI::dbGetQuery(con, "SELECT max(version) AS v FROM schema_version")$v[[1]]
   build <- build_identity_record(root, release_id, schema_version)
+  # Schema 44 changes every published LRM identifier while preserving the same
+  # immutable source vintage.  Record the coordinate-derived hop inside the
+  # candidate before the release gate evaluates superseded identifiers.  The
+  # comparison database is the untouched production file from which this
+  # isolated candidate was copied; no migration row is ever written to it.
+  if (identical(as.integer(schema_version), 44L)) {
+    existing_lrm_hop <- DBI::dbGetQuery(con, paste(
+      "SELECT count(*) AS n FROM", project_qualified_name("series_id_migration"),
+      "WHERE from_release='schema_43' AND to_release='schema_44'",
+      "AND source_id='lrm_auctions'"
+    ))$n[[1]]
+    previous_product <- file.path(root, "database", "paraguay_macro_pilot.duckdb")
+    if (!existing_lrm_hop && file.exists(previous_product) &&
+        !identical(normalizePath(previous_product, winslash = "/"),
+                   normalizePath(db_path, winslash = "/"))) {
+      build_series_id_migration(
+        con,
+        previous_product,
+        "schema_43", "schema_44", root,
+        current = DBI::dbGetQuery(con, "SELECT current_database() AS name")$name[[1]]
+      )
+    }
+  }
   # One transaction over everything that rewrites a release-wide derived table.
   #
   # These phases delete and rebuild reconciliation, region classification, table

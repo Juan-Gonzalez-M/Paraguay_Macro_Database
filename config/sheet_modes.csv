@@ -23,7 +23,7 @@ banking_indicators,Índice,skip_metadata,not_applicable,Table of contents.,,
 financial_indicators,*,,unresolved,Rates balances subtotals and portfolio components coexist.,,
 financial_indicators,Índice,skip_metadata,not_applicable,Table of contents.,,
 interbank_market,*,,unresolved,Market segments and combined totals coexist.,,
-lrm_auctions,*,,flat,Each row is an auction-tenor result.,,
+lrm_auctions,*,,flat,Each row is an auction-tenor result; annual sheets are lineage segments of one event population.,,lrm_auction_events
 compensatory_fx_sales,*,year_month_blocks,unresolved,Compensatory complementary and total sales coexist.,,
 cda_curve,*,cda_monthly_curve,unresolved,Monthly worksheet snapshots use the published Datos al date and retain rate count volume institution currency-origin and maturity labels; blank semantics and economic hierarchy remain unresolved.,,
 tcn_referential_daily,*,daily_calendar_grid,flat,"Annual Compra/Venta calendar grids are parsed independently. No continuation_group is declared, so cross-year continuity is not asserted.",,

@@ -1,5 +1,5 @@
 research_platform_database <- function() {
-  source <- file.path(project_test_root, "database", "paraguay_macro_pilot.duckdb")
+  source <- project_test_database()
   testthat::skip_if_not(file.exists(source), "production database not present")
   path <- tempfile(fileext = ".duckdb")
   file.copy(source, path, overwrite = TRUE)
@@ -16,11 +16,11 @@ research_platform_database <- function() {
   connection
 }
 
-testthat::test_that("schema 43 preserves exactly the governed grain-aware research API", {
+testthat::test_that("schema 44 preserves exactly the governed grain-aware research API", {
   con <- research_platform_database()
   testthat::expect_equal(
     DBI::dbGetQuery(con, "SELECT max(version) AS version FROM audit.schema_version")$version,
-    43L
+    44L
   )
   views <- DBI::dbGetQuery(con, paste(
     "SELECT view_name FROM duckdb_views()",

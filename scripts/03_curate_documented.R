@@ -1521,7 +1521,7 @@ documented_finalize_observations <- function(observations, item, release_id, pub
       identity_stability = dplyr::case_when(
         .data$lane_required ~ "positional_lane",
         stringr::str_detect(.data$parser_mode, "positional_lane") ~ "positional_lane",
-        stringr::str_detect(.data$parser_mode, "row_event_semantic") ~ "semantic_event",
+        stringr::str_detect(.data$parser_mode, "row_event_semantic|^lrm_auction_event$") ~ "semantic_event",
         .data$axis_required ~ "positional",
         TRUE ~ "semantic"
       ),
@@ -2368,11 +2368,7 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
   }
 
   if (source_id == "lrm_auctions") for (sheet in dimensions$sheet_name) {
-    results[[sheet]] <- documented_parse_row_events(
-      read_source_sheet(sheet), sheet, "fecha subasta",
-      c("plazos estandarizados", "plazos residuales"),
-      "lrm_auction_tenor"
-    )
+    results[[sheet]] <- documented_parse_lrm_auction_sheet(read_source_sheet(sheet), sheet)
   }
 
   if (source_id == "cda_curve") for (sheet in dimensions$sheet_name) {
@@ -2412,7 +2408,7 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
   # The credit parser supplies an explicit semantic contract, including
   # intentional NA currency/index-base fields. All record-oriented parsers use
   # deferred inference; do not overwrite explicit NA semantics by guessing.
-  if (!source_id %in% c("credit_survey", "exchange_houses", "cda_curve", "tcn_referential_daily")) {
+  if (!source_id %in% c("credit_survey", "exchange_houses", "lrm_auctions", "cda_curve", "tcn_referential_daily")) {
     metadata_labels <- dplyr::if_else(
       stringr::str_detect(observations$parser_mode, "^row_event_"),
       observations$measure, observations$series_label
