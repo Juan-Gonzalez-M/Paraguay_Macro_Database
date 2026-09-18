@@ -1521,6 +1521,9 @@ documented_finalize_observations <- function(observations, item, release_id, pub
       identity_stability = dplyr::case_when(
         .data$lane_required ~ "positional_lane",
         stringr::str_detect(.data$parser_mode, "positional_lane") ~ "positional_lane",
+        stringr::str_detect(
+          .data$parser_mode, "^cda_monthly_curve_unresolved_(?:row|column)$"
+        ) ~ "positional",
         stringr::str_detect(.data$parser_mode, "row_event_semantic|^lrm_auction_event(?:_governed_consolidation)?$") ~ "semantic_event",
         .data$axis_required ~ "positional",
         TRUE ~ "semantic"
@@ -1816,7 +1819,12 @@ documented_parse_cda_curve_sheet <- function(raw, source_sheet) {
     # unresolved identities separate until governed evidence maps them.
     institutions <- if (labelled_header) text[9, data_cols] else c("UNLABELED COLUMN H", "UNLABELED COLUMN I")
     measures <- rep("TASA PONDERADA", 2L)
-    units <- rep("percent", 2L)
+    # "Tasas ponderadas" identifies the quoted variable but no inspected
+    # workbook label states percent versus decimal, annualisation, nominal or
+    # effective convention, or compounding. Preserve the numeric cells without
+    # manufacturing a rate unit; the catalogue and native-grain admission rules
+    # make that limitation visible.
+    units <- rep("source_units", 2L)
     identity_sheet <- "CDA_RATE_CURVE"
   } else {
     expected_measures <- c("cantidad de operaciones", NA_character_, "volumen captado", NA_character_)
@@ -2397,17 +2405,30 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
   for (sheet in names(results)) {
     rule <- documented_sheet_rule(root, source_id, sheet)
     if (is.null(results[[sheet]]$hierarchy_status)) results[[sheet]]$hierarchy_status <- rule$hierarchy_status
-    identity_sheet <- dplyr::coalesce(rule$continuation_group, sheet)
+    # A continuation group is a governed override. Otherwise retain an explicit
+    # source-parser identity family before falling back to the worksheet. CDA's
+    # monthly snapshots deliberately name RATE and OPERATIONS curve families;
+    # replacing those with worksheet names fragments curve nodes every month.
+    if (!"identity_sheet" %in% names(results[[sheet]]$observations)) {
+      results[[sheet]]$observations$identity_sheet <- NA_character_
+    }
     results[[sheet]]$observations <- results[[sheet]]$observations %>%
       dplyr::mutate(
         hierarchy_status = results[[sheet]]$hierarchy_status,
-        identity_sheet = identity_sheet
+        identity_sheet = dplyr::coalesce(
+          rule$continuation_group, .data$identity_sheet, .data$source_sheet
+        )
       )
     if (!is.null(results[[sheet]]$component_observations)) {
+      if (!"identity_sheet" %in% names(results[[sheet]]$component_observations)) {
+        results[[sheet]]$component_observations$identity_sheet <- NA_character_
+      }
       results[[sheet]]$component_observations <- results[[sheet]]$component_observations %>%
         dplyr::mutate(
           hierarchy_status = results[[sheet]]$hierarchy_status,
-          identity_sheet = identity_sheet
+          identity_sheet = dplyr::coalesce(
+            rule$continuation_group, .data$identity_sheet, .data$source_sheet
+          )
         )
     }
   }

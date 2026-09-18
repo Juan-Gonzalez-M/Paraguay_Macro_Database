@@ -18,7 +18,7 @@ testthat::test_that("CDA rate curves retain published period coordinates and mat
   testthat::expect_equal(nrow(h10), 1L)
   testthat::expect_equal(h10$value, 2.8615163478971799)
   testthat::expect_match(h10$series_label, "30 DÍAS", fixed = TRUE)
-  testthat::expect_identical(h10$unit, "percent")
+  testthat::expect_identical(h10$unit, "source_units")
 
   long_nodes <- observations %>%
     dplyr::filter(.data$source_row %in% c(36L, 37L), .data$source_column == 8L)
@@ -26,6 +26,30 @@ testthat::test_that("CDA rate curves retain published period coordinates and mat
     stringr::str_extract(long_nodes$series_label, "3600 DÍAS[+]?") ,
     c("3600 DÍAS", "3600 DÍAS+")
   )
+})
+
+testthat::test_that("CDA curve families survive worksheet lineage without becoming sheet identities", {
+  item <- tibble::tibble(
+    source_id = "cda_curve", vintage_id = "cda_curve:8796a589fc2bd31317efdce7",
+    source_file = "Curva_CDA.xlsx"
+  )
+  first <- documented_parse_cda_curve_sheet(
+    read_cda_sheet("CDA_ME_062026"), "CDA_ME_062026"
+  )$observations
+  second <- documented_parse_cda_curve_sheet(
+    read_cda_sheet("CDA_ME_072026"), "CDA_ME_072026"
+  )$observations
+  observations <- dplyr::bind_rows(first, second) %>%
+    dplyr::mutate(hierarchy_status = "unresolved")
+  finalized <- documented_finalize_observations(
+    observations, item, "release:test", as.Date("2026-07-31")
+  )
+  node <- finalized %>%
+    dplyr::filter(.data$series_label == "MONEDA EXTRANJERA — TASA PONDERADA — BANCOS — 30 DÍAS — 1 MES")
+  testthat::expect_equal(nrow(node), 2L)
+  testthat::expect_equal(dplyr::n_distinct(node$series_id), 1L)
+  testthat::expect_true(all(startsWith(node$identity_basis, "CDA_RATE_CURVE|")))
+  testthat::expect_false(any(grepl("CDA_ME_0[67]2026", node$identity_basis)))
 })
 
 testthat::test_that("CDA activity curves preserve counts volumes and currency-origin wording", {
