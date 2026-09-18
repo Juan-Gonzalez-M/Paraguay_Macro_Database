@@ -4,16 +4,18 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
   testthat::expect_true(file.copy(file.path(project_test_root, "config"), smoke_root, recursive = TRUE))
   testthat::expect_true(file.copy(file.path(project_test_root, "input"), smoke_root, recursive = TRUE))
   ensure_dirs(smoke_root)
-  # The real CDA file deliberately has no invented acquisition metadata and a
-  # production candidate must therefore block. This smoke test exercises the
-  # downstream accepted-release interfaces, so give only its private copied
-  # config an explicit synthetic provenance record. Nothing here is written to
-  # the project registry or presented as publisher evidence.
+  # This smoke test exercises downstream accepted-release interfaces, so its
+  # private copied config replaces any governed snapshot record for CDA/TCN
+  # with explicit synthetic fixture provenance. Nothing here is written to the
+  # project registry or presented as publisher evidence.
   vintage_path <- file.path(smoke_root, "config", "source_vintages.csv")
   vintages <- readr::read_csv(
     vintage_path, show_col_types = FALSE,
     col_types = readr::cols(.default = readr::col_character())
   )
+  vintages <- vintages %>% dplyr::filter(!.data$source_id %in% c(
+    "cda_curve", "tcn_referential_daily"
+  ))
   cda_path <- file.path(smoke_root, "input", "current", "Curva_CDA.xlsx")
   vintages <- dplyr::bind_rows(vintages, tibble::tibble(
     source_id = "cda_curve", sha256 = file_sha256(cda_path),
