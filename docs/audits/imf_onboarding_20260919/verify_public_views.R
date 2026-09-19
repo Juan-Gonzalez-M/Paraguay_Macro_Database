@@ -5,7 +5,9 @@ suppressPackageStartupMessages(library(duckdb))
 candidate <- file.path(
   root, "database", "candidates", "accepted_for_review_20260919_203133.duckdb"
 )
-con <- DBI::dbConnect(duckdb::duckdb(), candidate, read_only = TRUE)
+args <- commandArgs(trailingOnly = TRUE)
+target <- if (length(args)) normalizePath(args[[1]], winslash = "/", mustWork = TRUE) else candidate
+con <- DBI::dbConnect(duckdb::duckdb(), target, read_only = TRUE)
 on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
 search_path <- DBI::dbGetQuery(con, "SELECT current_setting('search_path') AS value")$value[[1]]
