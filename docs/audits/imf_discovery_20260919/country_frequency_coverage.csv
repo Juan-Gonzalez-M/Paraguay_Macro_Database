@@ -1,0 +1,338 @@
+file,country,frequency,dataset,period_min,period_max,nonempty_cells,series_count
+Balance of Payments (BOP).csv,Uruguay,Quarterly,IMF.STA:BOP(21.0.0),2000-Q1,2026-Q1,77827,938
+Balance of Payments (BOP).csv,Bolivia,Quarterly,IMF.STA:BOP(21.0.0),1977-Q1,2026-Q2,77602,897
+Balance of Payments (BOP).csv,Brazil,Quarterly,IMF.STA:BOP(21.0.0),1975-Q1,2026-Q2,102634,725
+Balance of Payments (BOP).csv,Chile,Quarterly,IMF.STA:BOP(21.0.0),1991-Q1,2026-Q1,59123,581
+Balance of Payments (BOP).csv,Peru,Quarterly,IMF.STA:BOP(21.0.0),1977-Q1,2025-Q4,95089,954
+Balance of Payments (BOP).csv,Colombia,Quarterly,IMF.STA:BOP(21.0.0),1996-Q1,2026-Q1,82862,824
+Balance of Payments (BOP).csv,Paraguay,Quarterly,IMF.STA:BOP(21.0.0),1977-Q2,2026-Q1,76656,912
+Balance of Payments (BOP).csv,Argentina,Quarterly,IMF.STA:BOP(21.0.0),1976-Q1,2026-Q1,113973,924
+Balance of Payments (BOP).csv,Ecuador,Quarterly,IMF.STA:BOP(21.0.0),1993-Q1,2026-Q1,75054,765
+Commodity Terms of Trade (CTOT).csv,Paraguay,Monthly,IMF.RES:CTOT(5.0.1),1980-M01,2026-M05,6684,12
+Commodity Terms of Trade (CTOT).csv,Uruguay,Monthly,IMF.RES:CTOT(5.0.1),1980-M01,2026-M05,6684,12
+Commodity Terms of Trade (CTOT).csv,Argentina,Monthly,IMF.RES:CTOT(5.0.1),1980-M01,2026-M05,6684,12
+Commodity Terms of Trade (CTOT).csv,Bolivia,Monthly,IMF.RES:CTOT(5.0.1),1980-M01,2026-M05,6684,12
+Commodity Terms of Trade (CTOT).csv,Brazil,Monthly,IMF.RES:CTOT(5.0.1),1980-M01,2026-M05,6684,12
+Commodity Terms of Trade (CTOT).csv,Chile,Monthly,IMF.RES:CTOT(5.0.1),1980-M01,2026-M05,6684,12
+Commodity Terms of Trade (CTOT).csv,Colombia,Monthly,IMF.RES:CTOT(5.0.1),1980-M01,2026-M05,6684,12
+Commodity Terms of Trade (CTOT).csv,Ecuador,Monthly,IMF.RES:CTOT(5.0.1),1980-M01,2026-M05,6684,12
+Commodity Terms of Trade (CTOT).csv,Peru,Monthly,IMF.RES:CTOT(5.0.1),1980-M01,2026-M05,6684,12
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",Oceania,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",Europe,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",World,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",Asia,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",Advanced Economies,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",Americas,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",G7,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",G20,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",Emerging Market and Developing Economies,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",Africa,Monthly,IMF.STA:CPI_WCA(3.0.0),2010-M02,2026-M06,569,3
+Consumer Price Index (CPI).csv,Peru,Monthly,IMF.STA:CPI(5.0.0),1957-M01,2026-M05,3664,30
+Consumer Price Index (CPI).csv,Paraguay,Monthly,IMF.STA:CPI(5.0.0),1957-M01,2026-M04,12586,66
+Consumer Price Index (CPI).csv,Bolivia,Monthly,IMF.STA:CPI(5.0.0),1957-M01,2026-M06,17854,66
+Consumer Price Index (CPI).csv,Brazil,Monthly,IMF.STA:CPI(5.0.0),1979-M12,2026-M07,10151,39
+Consumer Price Index (CPI).csv,Brazil,Quarterly,IMF.STA:CPI(5.0.0),1980-Q1,2026-Q2,3361,39
+Consumer Price Index (CPI).csv,Chile,Monthly,IMF.STA:CPI(5.0.0),1970-M01,2026-M07,8368,30
+Consumer Price Index (CPI).csv,Uruguay,Monthly,IMF.STA:CPI(5.0.0),1957-M01,2026-M06,8386,30
+Consumer Price Index (CPI).csv,Peru,Quarterly,IMF.STA:CPI(5.0.0),1957-Q1,2026-Q1,1016,6
+Consumer Price Index (CPI).csv,Paraguay,Quarterly,IMF.STA:CPI(5.0.0),1957-Q1,2026-Q1,4076,42
+Consumer Price Index (CPI).csv,Ecuador,Quarterly,IMF.STA:CPI(5.0.0),1957-Q1,2026-Q1,4508,42
+Consumer Price Index (CPI).csv,Colombia,Monthly,IMF.STA:CPI(5.0.0),1955-M01,2026-M07,20341,66
+Consumer Price Index (CPI).csv,Colombia,Quarterly,IMF.STA:CPI(5.0.0),1955-Q1,2026-Q2,4154,42
+Consumer Price Index (CPI).csv,Chile,Quarterly,IMF.STA:CPI(5.0.0),1970-Q1,2026-Q2,1346,6
+Consumer Price Index (CPI).csv,Argentina,Quarterly,IMF.STA:CPI(5.0.0),2017-Q1,2026-Q2,1417,39
+Consumer Price Index (CPI).csv,Argentina,Monthly,IMF.STA:CPI(5.0.0),2016-M12,2026-M06,4316,39
+Consumer Price Index (CPI).csv,Uruguay,Quarterly,IMF.STA:CPI(5.0.0),1957-Q1,2026-Q2,1082,6
+Consumer Price Index (CPI).csv,Ecuador,Monthly,IMF.STA:CPI(5.0.0),1957-M01,2026-M05,19804,66
+Consumer Price Index (CPI).csv,Bolivia,Quarterly,IMF.STA:CPI(5.0.0),1957-Q1,2026-Q2,4118,42
+Effective Exchange Rate (EER).csv,Brazil,Quarterly,IMF.STA:EER(6.0.0),1979-Q1,2026-Q2,376,2
+Effective Exchange Rate (EER).csv,Brazil,Monthly,IMF.STA:EER(6.0.0),1979-M01,2026-M06,1129,2
+Effective Exchange Rate (EER).csv,Bolivia,Monthly,IMF.STA:EER(6.0.0),1979-M01,2026-M06,1129,2
+Effective Exchange Rate (EER).csv,Bolivia,Quarterly,IMF.STA:EER(6.0.0),1979-Q1,2026-Q2,376,2
+Effective Exchange Rate (EER).csv,Chile,Quarterly,IMF.STA:EER(6.0.0),1979-Q1,2026-Q2,376,2
+Effective Exchange Rate (EER).csv,Chile,Monthly,IMF.STA:EER(6.0.0),1979-M01,2026-M06,1129,2
+Effective Exchange Rate (EER).csv,Uruguay,Monthly,IMF.STA:EER(6.0.0),1979-M01,2026-M06,1129,2
+Effective Exchange Rate (EER).csv,Uruguay,Quarterly,IMF.STA:EER(6.0.0),1979-Q1,2026-Q2,376,2
+Effective Exchange Rate (EER).csv,Colombia,Quarterly,IMF.STA:EER(6.0.0),1979-Q1,2026-Q2,376,2
+Effective Exchange Rate (EER).csv,Colombia,Monthly,IMF.STA:EER(6.0.0),1979-M01,2026-M06,1129,2
+Effective Exchange Rate (EER).csv,Paraguay,Monthly,IMF.STA:EER(6.0.0),1979-M01,2026-M06,1129,2
+Effective Exchange Rate (EER).csv,Paraguay,Quarterly,IMF.STA:EER(6.0.0),1979-Q1,2026-Q2,376,2
+Exchange Rates (ER).csv,Uruguay,Monthly,IMF.STA:ER(4.0.1),1957-M01,2026-M07,8640,16
+Exchange Rates (ER).csv,Uruguay,Quarterly,IMF.STA:ER(4.0.1),1957-Q1,2026-Q2,2876,16
+Exchange Rates (ER).csv,Ecuador,Monthly,IMF.STA:ER(4.0.1),1957-M01,2026-M08,8980,16
+Exchange Rates (ER).csv,Ecuador,Quarterly,IMF.STA:ER(4.0.1),1957-Q1,2026-Q2,2988,16
+Exchange Rates (ER).csv,Bolivia,Monthly,IMF.STA:ER(4.0.1),1959-M03,2026-M04,8732,16
+Exchange Rates (ER).csv,Bolivia,Quarterly,IMF.STA:ER(4.0.1),1957-Q1,2026-Q1,2976,16
+Exchange Rates (ER).csv,Peru,Quarterly,IMF.STA:ER(4.0.1),1957-Q1,2026-Q2,2988,16
+Exchange Rates (ER).csv,Peru,Monthly,IMF.STA:ER(4.0.1),1960-M01,2026-M07,8688,16
+Exchange Rates (ER).csv,Argentina,Quarterly,IMF.STA:ER(4.0.1),1959-Q1,2026-Q2,2868,16
+Exchange Rates (ER).csv,Argentina,Monthly,IMF.STA:ER(4.0.1),1959-M01,2026-M07,8624,16
+Exchange Rates (ER).csv,Brazil,Quarterly,IMF.STA:ER(4.0.1),1957-Q1,2026-Q2,2988,16
+Exchange Rates (ER).csv,Brazil,Monthly,IMF.STA:ER(4.0.1),1957-M01,2026-M07,8640,16
+Exchange Rates (ER).csv,Paraguay,Monthly,IMF.STA:ER(4.0.1),1957-M01,2026-M03,8896,16
+Exchange Rates (ER).csv,Colombia,Quarterly,IMF.STA:ER(4.0.1),1957-Q1,2026-Q2,2988,16
+Exchange Rates (ER).csv,Colombia,Monthly,IMF.STA:ER(4.0.1),1957-M01,2026-M07,8976,16
+Exchange Rates (ER).csv,Paraguay,Quarterly,IMF.STA:ER(4.0.1),1957-Q1,2026-Q1,2968,16
+Exchange Rates (ER).csv,Chile,Quarterly,IMF.STA:ER(4.0.1),1957-Q1,2026-Q2,2988,16
+Exchange Rates (ER).csv,Chile,Monthly,IMF.STA:ER(4.0.1),1957-M01,2026-M07,8976,16
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Chile,Quarterly,IMF.STA:FSIBSIS(18.0.0),2001-Q1,2025-Q4,4360,56
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Paraguay,Quarterly,IMF.STA:FSIBSIS(18.0.0),2005-Q1,2026-Q1,9030,122
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Peru,Quarterly,IMF.STA:FSIBSIS(18.0.0),2010-Q4,2025-Q3,3417,58
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Chile,Monthly,IMF.STA:FSIBSIS(18.0.0),2001-M01,2025-M12,12530,53
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Paraguay,Monthly,IMF.STA:FSIBSIS(18.0.0),2005-M01,2026-M03,26413,120
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Uruguay,Quarterly,IMF.STA:FSIBSIS(18.0.0),2015-Q4,2025-Q2,1512,63
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Bolivia,Quarterly,IMF.STA:FSIBSIS(18.0.0),2010-Q1,2025-Q3,3575,59
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Bolivia,Monthly,IMF.STA:FSIBSIS(18.0.0),2010-M01,2025-M09,10657,59
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Ecuador,Monthly,IMF.STA:FSIBSIS(18.0.0),2003-M01,2026-M05,682,4
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Ecuador,Quarterly,IMF.STA:FSIBSIS(18.0.0),2003-Q1,2026-Q1,226,4
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Argentina,Quarterly,IMF.STA:FSIBSIS(18.0.0),2012-Q1,2025-Q4,3359,60
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Colombia,Quarterly,IMF.STA:FSIBSIS(18.0.0),2005-Q1,2026-Q1,4249,53
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Colombia,Monthly,IMF.STA:FSIBSIS(18.0.0),2005-M01,2026-M03,12746,53
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",Brazil,Quarterly,IMF.STA:FSIBSIS(18.0.0),2005-Q1,2026-Q1,6639,119
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Chile,Quarterly,IMF.STA:FSIC(13.0.1),2001-Q1,2025-Q4,4611,51
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Chile,Monthly,IMF.STA:FSIC(13.0.1),2001-M01,2025-M12,12282,45
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Uruguay,Quarterly,IMF.STA:FSIC(13.0.1),2015-Q4,2025-Q2,1292,54
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Bolivia,Quarterly,IMF.STA:FSIC(13.0.1),2010-Q1,2025-Q3,3247,52
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Bolivia,Monthly,IMF.STA:FSIC(13.0.1),2010-M01,2025-M09,9673,52
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Peru,Quarterly,IMF.STA:FSIC(13.0.1),2010-Q4,2025-Q3,3060,51
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Ecuador,Monthly,IMF.STA:FSIC(13.0.1),2003-M01,2026-M05,5459,23
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Ecuador,Quarterly,IMF.STA:FSIC(13.0.1),2003-Q1,2026-Q1,1808,23
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Argentina,Quarterly,IMF.STA:FSIC(13.0.1),2012-Q1,2025-Q4,3297,59
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Colombia,Quarterly,IMF.STA:FSIC(13.0.1),2005-Q1,2026-Q1,4215,51
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Colombia,Monthly,IMF.STA:FSIC(13.0.1),2005-M01,2026-M03,12645,51
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Paraguay,Monthly,IMF.STA:FSIC(13.0.1),2005-M01,2026-M03,15744,66
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Paraguay,Quarterly,IMF.STA:FSIC(13.0.1),2005-Q1,2026-Q1,5262,66
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",Brazil,Quarterly,IMF.STA:FSIC(13.0.1),2005-Q1,2026-Q1,4649,66
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",Argentina,Monthly,IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),2005-M12,2050-M12,12443,23
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",Brazil,Monthly,IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),2005-M03,2050-M12,11550,21
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",Peru,Monthly,IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),2010-M12,2050-M12,10101,21
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",Uruguay,Monthly,IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),2008-M12,2050-M12,10605,21
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",Chile,Monthly,IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),2001-M01,2050-M12,12600,21
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",Colombia,Monthly,IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),2005-M01,2050-M12,12296,25
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",Bolivia,Monthly,IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),2015-M01,2050-M12,9072,21
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",Paraguay,Monthly,IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),2005-M01,2050-M12,11592,21
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",Ecuador,Monthly,IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),2008-M01,2050-M12,10836,21
+International Investment Position (IIP).csv,Bolivia,Quarterly,IMF.STA:IIP(13.0.0),2004-Q1,2026-Q2,12988,216
+International Investment Position (IIP).csv,Argentina,Quarterly,IMF.STA:IIP(13.0.0),2016-Q1,2026-Q1,15883,388
+International Investment Position (IIP).csv,Brazil,Quarterly,IMF.STA:IIP(13.0.0),2001-Q4,2026-Q1,26404,326
+International Investment Position (IIP).csv,Colombia,Quarterly,IMF.STA:IIP(13.0.0),1996-Q4,2026-Q1,28068,265
+International Investment Position (IIP).csv,Peru,Quarterly,IMF.STA:IIP(13.0.0),1991-Q1,2025-Q4,28378,392
+International Investment Position (IIP).csv,Paraguay,Quarterly,IMF.STA:IIP(13.0.0),2000-Q1,2026-Q1,32382,387
+International Investment Position (IIP).csv,Ecuador,Quarterly,IMF.STA:IIP(13.0.0),2016-Q1,2026-Q1,16072,392
+International Investment Position (IIP).csv,Uruguay,Quarterly,IMF.STA:IIP(13.0.0),2011-Q4,2026-Q1,19761,355
+International Investment Position (IIP).csv,Chile,Quarterly,IMF.STA:IIP(13.0.0),2003-Q4,2026-Q1,17797,226
+International Liquidity (IL).csv,Bolivia,Monthly,IMF.STA:IL(13.0.1),1945-M01,2026-M07,12454,16
+International Liquidity (IL).csv,Bolivia,Quarterly,IMF.STA:IL(13.0.1),1945-Q1,2026-Q2,4207,16
+International Liquidity (IL).csv,Colombia,Quarterly,IMF.STA:IL(13.0.1),1945-Q1,2026-Q2,4236,16
+International Liquidity (IL).csv,Peru,Quarterly,IMF.STA:IL(13.0.1),1945-Q1,2026-Q2,4200,16
+International Liquidity (IL).csv,Paraguay,Monthly,IMF.STA:IL(13.0.1),1945-M01,2026-M07,12528,16
+International Liquidity (IL).csv,Paraguay,Quarterly,IMF.STA:IL(13.0.1),1945-Q1,2026-Q2,4224,16
+International Liquidity (IL).csv,Colombia,Monthly,IMF.STA:IL(13.0.1),1945-M01,2026-M07,12554,16
+International Liquidity (IL).csv,Peru,Monthly,IMF.STA:IL(13.0.1),1945-M01,2026-M07,12387,16
+International Liquidity (IL).csv,Ecuador,Monthly,IMF.STA:IL(13.0.1),1945-M01,2026-M07,12619,16
+International Liquidity (IL).csv,Ecuador,Quarterly,IMF.STA:IL(13.0.1),1945-Q1,2026-Q2,4257,16
+International Liquidity (IL).csv,Chile,Quarterly,IMF.STA:IL(13.0.1),1945-Q1,2026-Q2,4201,16
+International Liquidity (IL).csv,Chile,Monthly,IMF.STA:IL(13.0.1),1945-M01,2026-M07,12290,16
+International Liquidity (IL).csv,Uruguay,Monthly,IMF.STA:IL(13.0.1),1945-M01,2026-M07,12273,16
+International Liquidity (IL).csv,Brazil,Quarterly,IMF.STA:IL(13.0.1),1945-Q1,2026-Q2,4260,16
+International Liquidity (IL).csv,Brazil,Monthly,IMF.STA:IL(13.0.1),1945-M01,2026-M07,12614,16
+International Liquidity (IL).csv,Uruguay,Quarterly,IMF.STA:IL(13.0.1),1945-Q1,2026-Q2,4149,16
+International Liquidity (IL).csv,Argentina,Monthly,IMF.STA:IL(13.0.1),1945-M01,2026-M07,12255,16
+International Liquidity (IL).csv,Argentina,Quarterly,IMF.STA:IL(13.0.1),1945-Q1,2026-Q2,4138,16
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Colombia,Monthly,IMF.STA:IRFCL(12.0.0),2000-M04,2026-M07,32749,172
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Colombia,Quarterly,IMF.STA:IRFCL(12.0.0),2000-Q2,2026-Q2,10878,166
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Uruguay,Monthly,IMF.STA:IRFCL(12.0.0),2003-M08,2026-M07,18677,124
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Uruguay,Quarterly,IMF.STA:IRFCL(12.0.0),2003-Q3,2026-Q2,6254,117
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Argentina,Monthly,IMF.STA:IRFCL(12.0.0),2000-M09,2026-M07,14845,96
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Argentina,Quarterly,IMF.STA:IRFCL(12.0.0),2000-Q3,2026-Q2,4960,93
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Peru,Monthly,IMF.STA:IRFCL(12.0.0),2001-M08,2026-M07,21918,266
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Peru,Quarterly,IMF.STA:IRFCL(12.0.0),2001-Q3,2026-Q2,7452,266
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Chile,Monthly,IMF.STA:IRFCL(12.0.0),2000-M08,2026-M07,24194,270
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Chile,Quarterly,IMF.STA:IRFCL(12.0.0),2000-Q3,2026-Q2,7951,122
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Brazil,Quarterly,IMF.STA:IRFCL(12.0.0),2000-Q4,2026-Q2,7621,94
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Brazil,Monthly,IMF.STA:IRFCL(12.0.0),2000-M12,2026-M07,22833,98
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Bolivia,Monthly,IMF.STA:IRFCL(12.0.0),2015-M01,2021-M10,4462,59
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Bolivia,Quarterly,IMF.STA:IRFCL(12.0.0),2015-Q1,2021-Q3,1468,59
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Ecuador,Monthly,IMF.STA:IRFCL(12.0.0),2018-M12,2026-M07,4029,45
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Ecuador,Quarterly,IMF.STA:IRFCL(12.0.0),2018-Q4,2026-Q2,1359,45
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Paraguay,Quarterly,IMF.STA:IRFCL(12.0.0),2018-Q4,2026-Q1,6031,270
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,Paraguay,Monthly,IMF.STA:IRFCL(12.0.0),2018-M10,2026-M03,18083,270
+International Trade in Goods (ITG).csv,Brazil,Monthly,IMF.STA:ITG(4.0.0),2006-M01,2026-M06,516,3
+International Trade in Goods (ITG).csv,Colombia,Monthly,IMF.STA:ITG(4.0.0),2006-M01,2026-M04,488,2
+International Trade in Goods (ITG).csv,Peru,Quarterly,IMF.STA:ITG(4.0.0),2005-Q1,2026-Q2,172,2
+International Trade in Goods (ITG).csv,Chile,Quarterly,IMF.STA:ITG(4.0.0),2005-Q1,2026-Q2,172,2
+International Trade in Goods (ITG).csv,Uruguay,Quarterly,IMF.STA:ITG(4.0.0),2005-Q1,2026-Q1,170,2
+International Trade in Goods (ITG).csv,Paraguay,Quarterly,IMF.STA:ITG(4.0.0),2005-Q1,2026-Q2,172,2
+International Trade in Goods (ITG).csv,Chile,Monthly,IMF.STA:ITG(4.0.0),2006-M01,2026-M06,492,2
+International Trade in Goods (ITG).csv,Peru,Monthly,IMF.STA:ITG(4.0.0),2006-M01,2026-M06,492,2
+International Trade in Goods (ITG).csv,Bolivia,Monthly,IMF.STA:ITG(4.0.0),2006-M01,2026-M05,490,2
+International Trade in Goods (ITG).csv,Ecuador,Monthly,IMF.STA:ITG(4.0.0),2006-M01,2026-M04,488,2
+International Trade in Goods (ITG).csv,Argentina,Monthly,IMF.STA:ITG(4.0.0),2006-M01,2026-M06,492,2
+International Trade in Goods (ITG).csv,Brazil,Quarterly,IMF.STA:ITG(4.0.0),2005-Q1,2026-Q2,172,2
+International Trade in Goods (ITG).csv,Bolivia,Quarterly,IMF.STA:ITG(4.0.0),2005-Q1,2026-Q1,170,2
+International Trade in Goods (ITG).csv,Argentina,Quarterly,IMF.STA:ITG(4.0.0),2005-Q1,2026-Q2,172,2
+International Trade in Goods (ITG).csv,Paraguay,Monthly,IMF.STA:ITG(4.0.0),2006-M01,2026-M06,492,2
+International Trade in Goods (ITG).csv,Uruguay,Monthly,IMF.STA:ITG(4.0.0),2006-M01,2026-M05,490,2
+International Trade in Goods (ITG).csv,Ecuador,Quarterly,IMF.STA:ITG(4.0.0),2005-Q1,2026-Q1,170,2
+International Trade in Goods (ITG).csv,Colombia,Quarterly,IMF.STA:ITG(4.0.0),2005-Q1,2026-Q1,170,2
+International Trade in Goods (by partner country) (IMTS).csv,Chile,Quarterly,IMF.STA:IMTS(1.0.0),1960-Q4,2026-Q1,74856,618
+International Trade in Goods (by partner country) (IMTS).csv,Chile,Monthly,IMF.STA:IMTS(1.0.0),1961-M01,2026-M05,195938,618
+International Trade in Goods (by partner country) (IMTS).csv,Brazil,Quarterly,IMF.STA:IMTS(1.0.0),1960-Q1,2026-Q1,152335,872
+International Trade in Goods (by partner country) (IMTS).csv,Brazil,Monthly,IMF.STA:IMTS(1.0.0),1960-M01,2026-M05,423292,872
+International Trade in Goods (by partner country) (IMTS).csv,Uruguay,Quarterly,IMF.STA:IMTS(1.0.0),1960-Q4,2026-Q1,81144,619
+International Trade in Goods (by partner country) (IMTS).csv,Bolivia,Quarterly,IMF.STA:IMTS(1.0.0),1960-Q4,2026-Q1,61556,624
+International Trade in Goods (by partner country) (IMTS).csv,Ecuador,Monthly,IMF.STA:IMTS(1.0.0),1960-M04,2026-M05,210021,645
+International Trade in Goods (by partner country) (IMTS).csv,Ecuador,Quarterly,IMF.STA:IMTS(1.0.0),1960-Q1,2026-Q1,75306,645
+International Trade in Goods (by partner country) (IMTS).csv,Bolivia,Monthly,IMF.STA:IMTS(1.0.0),1981-M01,2026-M05,165103,624
+International Trade in Goods (by partner country) (IMTS).csv,Paraguay,Quarterly,IMF.STA:IMTS(1.0.0),1960-Q1,2026-Q1,67221,859
+International Trade in Goods (by partner country) (IMTS).csv,Argentina,Monthly,IMF.STA:IMTS(1.0.0),1960-M01,2026-M05,291675,645
+International Trade in Goods (by partner country) (IMTS).csv,Argentina,Quarterly,IMF.STA:IMTS(1.0.0),1960-Q1,2026-Q1,104630,645
+International Trade in Goods (by partner country) (IMTS).csv,Peru,Monthly,IMF.STA:IMTS(1.0.0),1960-M01,2026-M05,322653,869
+International Trade in Goods (by partner country) (IMTS).csv,Peru,Quarterly,IMF.STA:IMTS(1.0.0),1960-Q1,2026-Q1,114487,869
+International Trade in Goods (by partner country) (IMTS).csv,Colombia,Quarterly,IMF.STA:IMTS(1.0.0),1960-Q1,2026-Q1,97646,654
+International Trade in Goods (by partner country) (IMTS).csv,Paraguay,Monthly,IMF.STA:IMTS(1.0.0),1960-M01,2026-M05,191978,859
+International Trade in Goods (by partner country) (IMTS).csv,Uruguay,Monthly,IMF.STA:IMTS(1.0.0),1961-M01,2026-M05,205064,620
+International Trade in Goods (by partner country) (IMTS).csv,Colombia,Monthly,IMF.STA:IMTS(1.0.0),1960-M02,2026-M05,283797,654
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Paraguay,Quarterly,IMF.STA:MFS_CBS(24.0.0),2001-Q4,2026-Q1,2901,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Paraguay,Monthly,IMF.STA:MFS_CBS(24.0.0),2001-M12,2026-M03,8643,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Peru,Quarterly,IMF.STA:MFS_CBS(24.0.0),2006-Q1,2026-Q1,2426,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Peru,Monthly,IMF.STA:MFS_CBS(24.0.0),2006-M01,2026-M04,7308,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Argentina,Quarterly,IMF.STA:MFS_CBS(24.0.0),2017-Q1,2026-Q2,1136,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Chile,Quarterly,IMF.STA:MFS_CBS(24.0.0),1997-Q4,2026-Q2,3437,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Chile,Monthly,IMF.STA:MFS_CBS(24.0.0),1997-M12,2026-M06,10253,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Brazil,Quarterly,IMF.STA:MFS_CBS(24.0.0),2001-Q4,2026-Q2,2966,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Colombia,Quarterly,IMF.STA:MFS_CBS(24.0.0),2001-Q4,2026-Q2,2966,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Brazil,Monthly,IMF.STA:MFS_CBS(24.0.0),2001-M12,2026-M07,8868,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Colombia,Monthly,IMF.STA:MFS_CBS(24.0.0),2001-M12,2026-M07,8868,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Bolivia,Monthly,IMF.STA:MFS_CBS(24.0.0),2001-M12,2026-M07,8868,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Argentina,Monthly,IMF.STA:MFS_CBS(24.0.0),2017-M01,2026-M07,3438,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Bolivia,Quarterly,IMF.STA:MFS_CBS(24.0.0),2001-Q4,2026-Q2,2966,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Uruguay,Quarterly,IMF.STA:MFS_CBS(24.0.0),2001-Q4,2026-Q2,2966,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Ecuador,Monthly,IMF.STA:MFS_CBS(24.0.0),2001-M12,2026-M07,8854,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Ecuador,Quarterly,IMF.STA:MFS_CBS(24.0.0),2001-Q4,2026-Q2,2960,30
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",Uruguay,Monthly,IMF.STA:MFS_CBS(24.0.0),2001-M12,2026-M06,8838,30
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Peru,Monthly,IMF.STA:MFS_DC(8.0.0),2006-M01,2026-M04,16188,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Peru,Quarterly,IMF.STA:MFS_DC(8.0.0),2006-Q1,2026-Q1,5357,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Paraguay,Quarterly,IMF.STA:MFS_DC(8.0.0),2001-Q4,2026-Q1,6611,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Paraguay,Monthly,IMF.STA:MFS_DC(8.0.0),2001-M12,2026-M03,19746,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Bolivia,Quarterly,IMF.STA:MFS_DC(8.0.0),2001-Q4,2026-Q2,6679,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Chile,Quarterly,IMF.STA:MFS_DC(8.0.0),1997-Q4,2026-Q2,7729,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Argentina,Quarterly,IMF.STA:MFS_DC(8.0.0),2010-Q1,2026-Q2,1745,46
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Bolivia,Monthly,IMF.STA:MFS_DC(8.0.0),2001-M12,2026-M07,19969,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Colombia,Quarterly,IMF.STA:MFS_DC(8.0.0),2001-Q4,2026-Q2,6679,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Brazil,Quarterly,IMF.STA:MFS_DC(8.0.0),2001-Q4,2026-Q2,6728,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Colombia,Monthly,IMF.STA:MFS_DC(8.0.0),2001-M12,2026-M07,19969,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Chile,Monthly,IMF.STA:MFS_DC(8.0.0),1997-M12,2026-M06,23153,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Uruguay,Quarterly,IMF.STA:MFS_DC(8.0.0),2001-Q4,2026-Q2,6728,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Ecuador,Quarterly,IMF.STA:MFS_DC(8.0.0),2002-Q4,2026-Q2,95,1
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Brazil,Monthly,IMF.STA:MFS_DC(8.0.0),2001-M12,2026-M07,20067,68
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Argentina,Monthly,IMF.STA:MFS_DC(8.0.0),2017-M01,2026-M07,2185,19
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Ecuador,Monthly,IMF.STA:MFS_DC(8.0.0),2002-M12,2026-M07,284,1
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",Uruguay,Monthly,IMF.STA:MFS_DC(8.0.0),2001-M12,2026-M07,20116,68
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Uruguay,Monthly,IMF.STA:MFS_IR(9.0.0),1976-M07,2026-M05,4358,10
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Ecuador,Monthly,IMF.STA:MFS_IR(9.0.0),2007-M08,2025-M12,657,3
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Paraguay,Monthly,IMF.STA:MFS_IR(9.0.0),1989-M12,2021-M11,2678,9
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Chile,Monthly,IMF.STA:MFS_IR(9.0.0),1985-M01,2026-M07,3129,8
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Chile,Quarterly,IMF.STA:MFS_IR(9.0.0),1985-Q1,2026-Q2,1043,8
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Paraguay,Quarterly,IMF.STA:MFS_IR(9.0.0),1989-Q4,2021-Q3,889,9
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Ecuador,Quarterly,IMF.STA:MFS_IR(9.0.0),2007-Q3,2025-Q4,218,3
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Uruguay,Quarterly,IMF.STA:MFS_IR(9.0.0),1976-Q3,2026-Q1,1456,10
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Bolivia,Quarterly,IMF.STA:MFS_IR(9.0.0),1957-Q1,2026-Q2,1627,11
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Bolivia,Monthly,IMF.STA:MFS_IR(9.0.0),1957-M01,2026-M07,4867,11
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Brazil,Monthly,IMF.STA:MFS_IR(9.0.0),1964-M01,2026-M07,3150,7
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Brazil,Quarterly,IMF.STA:MFS_IR(9.0.0),1964-Q1,2026-Q2,1052,7
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Peru,Monthly,IMF.STA:MFS_IR(9.0.0),1957-M01,2023-M04,4412,11
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Peru,Quarterly,IMF.STA:MFS_IR(9.0.0),1957-Q1,2023-Q1,1471,11
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Argentina,Quarterly,IMF.STA:MFS_IR(9.0.0),2002-Q1,2026-Q2,688,10
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Argentina,Monthly,IMF.STA:MFS_IR(9.0.0),2002-M01,2026-M07,2073,10
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Colombia,Quarterly,IMF.STA:MFS_IR(9.0.0),1964-Q1,2026-Q2,824,5
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",Colombia,Monthly,IMF.STA:MFS_IR(9.0.0),1964-M01,2026-M07,2476,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Paraguay,Quarterly,IMF.STA:MFS_MA(10.0.1),2001-Q4,2025-Q2,475,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Paraguay,Monthly,IMF.STA:MFS_MA(10.0.1),2001-M12,2025-M06,1415,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Peru,Quarterly,IMF.STA:MFS_MA(10.0.1),2006-Q1,2023-Q2,350,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Peru,Monthly,IMF.STA:MFS_MA(10.0.1),2006-M01,2023-M06,1050,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Bolivia,Monthly,IMF.STA:MFS_MA(10.0.1),2001-M12,2025-M12,1445,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Bolivia,Quarterly,IMF.STA:MFS_MA(10.0.1),2001-Q4,2025-Q4,485,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Argentina,Quarterly,IMF.STA:MFS_MA(10.0.1),2010-Q1,2025-Q4,320,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Argentina,Monthly,IMF.STA:MFS_MA(10.0.1),2010-M01,2026-M01,965,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Uruguay,Quarterly,IMF.STA:MFS_MA(10.0.1),2001-Q4,2026-Q1,490,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Uruguay,Monthly,IMF.STA:MFS_MA(10.0.1),2001-M12,2026-M03,1460,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Chile,Quarterly,IMF.STA:MFS_MA(10.0.1),1997-Q4,2026-Q1,570,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Chile,Monthly,IMF.STA:MFS_MA(10.0.1),1997-M12,2026-M04,1705,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Colombia,Quarterly,IMF.STA:MFS_MA(10.0.1),2001-Q4,2026-Q1,490,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Colombia,Monthly,IMF.STA:MFS_MA(10.0.1),2001-M12,2026-M05,1469,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Brazil,Monthly,IMF.STA:MFS_MA(10.0.1),2001-M12,2026-M06,1475,5
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",Brazil,Quarterly,IMF.STA:MFS_MA(10.0.1),2001-Q4,2026-Q2,495,5
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Bolivia,Quarterly,IMF.STA:MFS_ODC(10.0.0),2001-Q4,2026-Q1,2842,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Paraguay,Monthly,IMF.STA:MFS_ODC(10.0.0),2001-M12,2026-M01,8410,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Paraguay,Quarterly,IMF.STA:MFS_ODC(10.0.0),2001-Q4,2025-Q4,2813,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Chile,Quarterly,IMF.STA:MFS_ODC(10.0.0),1997-Q4,2026-Q1,3274,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Peru,Quarterly,IMF.STA:MFS_ODC(10.0.0),2006-Q1,2025-Q2,2262,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Peru,Monthly,IMF.STA:MFS_ODC(10.0.0),2006-M01,2025-M08,6844,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Bolivia,Monthly,IMF.STA:MFS_ODC(10.0.0),2001-M12,2026-M04,8497,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Colombia,Monthly,IMF.STA:MFS_ODC(10.0.0),2001-M12,2026-M04,8497,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Colombia,Quarterly,IMF.STA:MFS_ODC(10.0.0),2001-Q4,2026-Q1,2842,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Uruguay,Quarterly,IMF.STA:MFS_ODC(10.0.0),2001-Q4,2026-Q2,2871,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Ecuador,Quarterly,IMF.STA:MFS_ODC(10.0.0),2001-Q4,2026-Q2,2862,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Brazil,Quarterly,IMF.STA:MFS_ODC(10.0.0),2001-Q4,2026-Q2,2871,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Brazil,Monthly,IMF.STA:MFS_ODC(10.0.0),2001-M12,2026-M06,8555,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Argentina,Monthly,IMF.STA:MFS_ODC(10.0.0),2010-M01,2026-M06,198,1
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Argentina,Quarterly,IMF.STA:MFS_ODC(10.0.0),2010-Q1,2026-Q2,66,1
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Chile,Monthly,IMF.STA:MFS_ODC(10.0.0),1997-M12,2026-M05,9822,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Ecuador,Monthly,IMF.STA:MFS_ODC(10.0.0),2001-M12,2026-M07,8563,29
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",Uruguay,Monthly,IMF.STA:MFS_ODC(10.0.0),2001-M12,2026-M07,8584,29
+"National Economic Accounts (NEA), Quarterly Data.csv",Uruguay,Quarterly,IMF.STA:QNEA(7.0.0),2016-Q1,2026-Q1,904,24
+"National Economic Accounts (NEA), Quarterly Data.csv",Bolivia,Quarterly,IMF.STA:QNEA(7.0.0),1990-Q1,2025-Q2,2322,22
+"National Economic Accounts (NEA), Quarterly Data.csv",Argentina,Quarterly,IMF.STA:QNEA(7.0.0),2004-Q1,2026-Q1,3758,45
+"National Economic Accounts (NEA), Quarterly Data.csv",Ecuador,Quarterly,IMF.STA:QNEA(7.0.0),1991-Q1,2026-Q1,4421,39
+"National Economic Accounts (NEA), Quarterly Data.csv",Brazil,Quarterly,IMF.STA:QNEA(7.0.0),1996-Q1,2026-Q2,5112,42
+"National Economic Accounts (NEA), Quarterly Data.csv",Paraguay,Quarterly,IMF.STA:QNEA(7.0.0),1994-Q1,2025-Q4,2816,22
+"National Economic Accounts (NEA), Quarterly Data.csv",Peru,Quarterly,IMF.STA:QNEA(7.0.0),2007-Q1,2025-Q4,1663,22
+"National Economic Accounts (NEA), Quarterly Data.csv",Colombia,Quarterly,IMF.STA:QNEA(7.0.0),2005-Q1,2026-Q2,3526,41
+"National Economic Accounts (NEA), Quarterly Data.csv",Chile,Quarterly,IMF.STA:QNEA(7.0.0),1996-Q1,2026-Q2,5110,43
+Primary Commodity Price System (PCPS).csv,World,Quarterly,IMF.RES:PCPS(9.0.0),1992-Q1,2026-Q2,52213,404
+Primary Commodity Price System (PCPS).csv,World,Monthly,IMF.RES:PCPS(9.0.0),1992-M01,2026-M07,157120,404
+"Production Indexes, World and Country Group Aggregates.csv",Emerging and Developing Asia,Monthly,IMF.STA:PI_WCA(1.0.0),2015-M01,2026-M05,273,2
+"Production Indexes, World and Country Group Aggregates.csv",Sub-Saharan Africa (SSA),Monthly,IMF.STA:PI_WCA(1.0.0),2015-M01,2026-M05,273,2
+"Production Indexes, World and Country Group Aggregates.csv",Emerging and Developing Europe,Monthly,IMF.STA:PI_WCA(1.0.0),2015-M01,2026-M05,273,2
+"Production Indexes, World and Country Group Aggregates.csv",Advanced Economies,Monthly,IMF.STA:PI_WCA(1.0.0),2015-M01,2026-M05,273,2
+"Production Indexes, World and Country Group Aggregates.csv",Emerging Market and Developing Economies,Monthly,IMF.STA:PI_WCA(1.0.0),2015-M01,2026-M05,273,2
+"Production Indexes, World and Country Group Aggregates.csv",Middle East and Central Asia,Monthly,IMF.STA:PI_WCA(1.0.0),2015-M01,2026-M05,273,2
+"Production Indexes, World and Country Group Aggregates.csv",Latin America and the Caribbean (LAC),Monthly,IMF.STA:PI_WCA(1.0.0),2015-M01,2026-M05,273,2
+"Production Indexes, World and Country Group Aggregates.csv",World,Monthly,IMF.STA:PI_WCA(1.0.0),2015-M01,2026-M05,273,2
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",Africa,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",G7,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",G20,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",World,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",Emerging Market and Developing Economies,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",Advanced Economies,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",Asia,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",Europe,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",Americas,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",Oceania,Quarterly,IMF.STA:QGDP_WCA(4.0.0),2012-Q1,2026-Q1,1698,30
+Reported Social Unrest Index (RSUI).csv,Paraguay,Monthly,IMF.WHD:RSUI(1.0.0),1990-M01,2026-M05,874,2
+Reported Social Unrest Index (RSUI).csv,Peru,Monthly,IMF.WHD:RSUI(1.0.0),1990-M01,2026-M05,874,2
+Reported Social Unrest Index (RSUI).csv,Argentina,Monthly,IMF.WHD:RSUI(1.0.0),1990-M01,2026-M05,874,2
+Reported Social Unrest Index (RSUI).csv,Brazil,Monthly,IMF.WHD:RSUI(1.0.0),1990-M01,2026-M05,874,2
+Reported Social Unrest Index (RSUI).csv,Ecuador,Monthly,IMF.WHD:RSUI(1.0.0),1990-M01,2026-M05,874,2
+Reported Social Unrest Index (RSUI).csv,Chile,Monthly,IMF.WHD:RSUI(1.0.0),1990-M01,2026-M05,874,2
+Reported Social Unrest Index (RSUI).csv,Colombia,Monthly,IMF.WHD:RSUI(1.0.0),1990-M01,2026-M05,874,2
+Reported Social Unrest Index (RSUI).csv,Bolivia,Monthly,IMF.WHD:RSUI(1.0.0),1990-M01,2026-M05,874,2
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Argentina,Monthly,IMF.STA:WPFXI(1.0.2),2000-M01,2024-M12,3102,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Bolivia,Monthly,IMF.STA:WPFXI(1.0.2),2000-M01,2024-M12,2913,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Brazil,Monthly,IMF.STA:WPFXI(1.0.2),2000-M01,2024-M12,3164,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Chile,Monthly,IMF.STA:WPFXI(1.0.2),2000-M01,2024-M12,2577,9
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Colombia,Monthly,IMF.STA:WPFXI(1.0.2),2000-M01,2024-M12,3102,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Ecuador,Monthly,IMF.STA:WPFXI(1.0.2),2000-M01,2024-M12,2580,9
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Paraguay,Monthly,IMF.STA:WPFXI(1.0.2),2000-M01,2024-M12,2829,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Peru,Monthly,IMF.STA:WPFXI(1.0.2),2000-M01,2024-M12,3167,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Uruguay,Monthly,IMF.STA:WPFXI(1.0.2),2000-M01,2024-M12,2579,9
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Argentina,Quarterly,IMF.STA:WPFXI(1.0.2),2000-Q1,2024-Q4,1004,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Brazil,Quarterly,IMF.STA:WPFXI(1.0.2),2000-Q1,2024-Q4,1028,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Chile,Quarterly,IMF.STA:WPFXI(1.0.2),2000-Q1,2024-Q4,859,9
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Bolivia,Quarterly,IMF.STA:WPFXI(1.0.2),2000-Q1,2024-Q4,950,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Ecuador,Quarterly,IMF.STA:WPFXI(1.0.2),2000-Q1,2024-Q4,860,9
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Colombia,Quarterly,IMF.STA:WPFXI(1.0.2),2000-Q1,2024-Q4,1028,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Paraguay,Quarterly,IMF.STA:WPFXI(1.0.2),2000-Q1,2024-Q4,912,11
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Uruguay,Quarterly,IMF.STA:WPFXI(1.0.2),2000-Q1,2024-Q4,860,9
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,Peru,Quarterly,IMF.STA:WPFXI(1.0.2),2000-Q1,2024-Q4,1027,11

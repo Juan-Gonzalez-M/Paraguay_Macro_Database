@@ -530,9 +530,10 @@ testthat::test_that("detailed trade carries explicit economic dimensions, not a 
   )
   # Every dimension value must be one the derivation can actually produce, and
   # must carry the wording it came from.
-  values <- DBI::dbGetQuery(
-    con, "SELECT dimension, value, basis, evidence FROM series_dimension"
-  )
+  values <- DBI::dbGetQuery(con, paste(
+    "SELECT x.dimension, x.value, x.basis, x.evidence FROM series_dimension x",
+    "JOIN dim_series d USING (series_id) WHERE d.source_id = 'economic_annex'"
+  ))
   testthat::expect_true(all(values$basis %in% c("published_title", "published_label", "reviewed")))
   testthat::expect_true(all(nchar(trimws(values$evidence)) > 8L))
   for (dimension in names(SERIES_DIMENSION_DERIVATIONS)) {
@@ -573,6 +574,35 @@ testthat::test_that("detailed trade carries explicit economic dimensions, not a 
   testthat::expect_gt(DBI::dbGetQuery(
     con, "SELECT count(*) AS n FROM dim_series WHERE valuation = 'fob'"
   )$n[[1]], 0L)
+})
+
+testthat::test_that("semantic derivation preserves source-published IMF dimensions", {
+  source <- project_test_database()
+  testthat::skip_if_not(file.exists(source), "production database not present")
+  path <- tempfile(fileext = ".duckdb")
+  testthat::expect_true(file.copy(source, path))
+  con <- connect_project_database(path)
+  initialize_database(con, project_test_root)
+  withr::defer({
+    DBI::dbDisconnect(con, shutdown = TRUE)
+    unlink(path)
+  }, envir = parent.frame())
+  published <- data.frame(
+    series_id = "imf_fixture:series", dimension = "COUNTRY", value = "Paraguay",
+    basis = "published_imf_export", evidence = "fixture.csv#record=2",
+    derived_at = as.POSIXct("2026-09-19 00:00:00", tz = "UTC")
+  )
+  DBI::dbWriteTable(con, "series_dimension", published, append = TRUE)
+  derive_series_dimensions(con)
+  retained <- DBI::dbGetQuery(con, paste(
+    "SELECT dimension,value,basis,evidence FROM series_dimension",
+    "WHERE series_id='imf_fixture:series'"
+  ))
+  testthat::expect_equal(nrow(retained), 1L)
+  testthat::expect_identical(retained$dimension, "COUNTRY")
+  testthat::expect_identical(retained$value, "Paraguay")
+  testthat::expect_identical(retained$basis, "published_imf_export")
+  testthat::expect_identical(retained$evidence, "fixture.csv#record=2")
 })
 
 testthat::test_that("the financial-indicator lanes the audit found are gone, with no value moved", {

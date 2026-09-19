@@ -85,3 +85,7 @@ research.curves,view,date-currency-rating-maturity,Structurally certified corpor
 research.transactions,view,transaction,Structurally certified securities transactions,dynamic view
 research.quality_flags,view,open scoped quality flag,Open quality flags for the active release,dynamic view
 research.observations_as_of,macro,research series and normalized period,Certified scalar observations available by a caller-supplied cutoff,dynamic macro
+imf_raw_records,raw,vintage-record,Exact reconstructed inner IMF CSV record with physical-line coordinates,append by vintage
+imf_series_snapshot,staging,vintage-series-measure,IMF dataflow series identity and version as received,replace by vintage
+imf_observation_snapshot,staging,vintage-series-published period,Long IMF observations with raw value and source coordinates,replace by vintage
+imf_metadata_snapshot,staging,vintage-series-published period,Long IMF textual metadata values with published period and source coordinates,replace by vintage

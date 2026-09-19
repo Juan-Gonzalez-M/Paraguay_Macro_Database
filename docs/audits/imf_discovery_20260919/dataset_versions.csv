@@ -1,0 +1,26 @@
+file,dataset,agency,dataflow,version,records
+Balance of Payments (BOP).csv,IMF.STA:BOP(21.0.0),IMF.STA,BOP,21.0.0,7520
+Commodity Terms of Trade (CTOT).csv,IMF.RES:CTOT(5.0.1),IMF.RES,CTOT,5.0.1,108
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",IMF.STA:CPI_WCA(3.0.0),IMF.STA,CPI_WCA,3.0.0,30
+Consumer Price Index (CPI).csv,IMF.STA:CPI(5.0.0),IMF.STA,CPI,5.0.0,782
+Effective Exchange Rate (EER).csv,IMF.STA:EER(6.0.0),IMF.STA,EER,6.0.0,24
+Exchange Rates (ER).csv,IMF.STA:ER(4.0.1),IMF.STA,ER,4.0.1,288
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",IMF.STA:FSIBSIS(18.0.0),IMF.STA,FSIBSIS,18.0.0,883
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",IMF.STA:FSIC(13.0.1),IMF.STA,FSIC,13.0.1,710
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",IMF.STA:FSI_COUNTRY_METADATA_TABLE_2(2.0.0),IMF.STA,FSI_COUNTRY_METADATA_TABLE_2,2.0.0,1988
+International Investment Position (IIP).csv,IMF.STA:IIP(13.0.0),IMF.STA,IIP,13.0.0,2947
+International Liquidity (IL).csv,IMF.STA:IL(13.0.1),IMF.STA,IL,13.0.1,288
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,IMF.STA:IRFCL(12.0.0),IMF.STA,IRFCL,12.0.0,2632
+International Trade in Goods (ITG).csv,IMF.STA:ITG(4.0.0),IMF.STA,ITG,4.0.0,37
+International Trade in Goods (by partner country) (IMTS).csv,IMF.STA:IMTS(1.0.0),IMF.STA,IMTS,1.0.0,12811
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",IMF.STA:MFS_CBS(24.0.0),IMF.STA,MFS_CBS,24.0.0,540
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",IMF.STA:MFS_DC(8.0.0),IMF.STA,MFS_DC,8.0.0,1019
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",IMF.STA:MFS_IR(9.0.0),IMF.STA,MFS_IR,9.0.0,148
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",IMF.STA:MFS_MA(10.0.1),IMF.STA,MFS_MA,10.0.1,80
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",IMF.STA:MFS_ODC(10.0.0),IMF.STA,MFS_ODC,10.0.0,466
+"National Economic Accounts (NEA), Quarterly Data.csv",IMF.STA:QNEA(7.0.0),IMF.STA,QNEA,7.0.0,595
+Primary Commodity Price System (PCPS).csv,IMF.RES:PCPS(9.0.0),IMF.RES,PCPS,9.0.0,852
+"Production Indexes, World and Country Group Aggregates.csv",IMF.STA:PI_WCA(1.0.0),IMF.STA,PI_WCA,1.0.0,16
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",IMF.STA:QGDP_WCA(4.0.0),IMF.STA,QGDP_WCA,4.0.0,300
+Reported Social Unrest Index (RSUI).csv,IMF.WHD:RSUI(1.0.0),IMF.WHD,RSUI,1.0.0,16
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,IMF.STA:WPFXI(1.0.2),IMF.STA,WPFXI,1.0.2,186

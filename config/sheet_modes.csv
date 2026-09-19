@@ -26,4 +26,4 @@ interbank_market,*,,unresolved,Market segments and combined totals coexist.,,
 lrm_auctions,*,,flat,Each row is an auction-tenor result; annual sheets are lineage segments of one event population.,,lrm_auction_events
 compensatory_fx_sales,*,year_month_blocks,unresolved,Compensatory complementary and total sales coexist.,,
 cda_curve,*,cda_monthly_curve,unresolved,Monthly worksheet snapshots use the published Datos al date and retain rate count volume institution currency-origin and maturity labels; blank semantics and economic hierarchy remain unresolved.,,
-tcn_referential_daily,*,daily_calendar_grid,flat,"Annual Compra/Venta calendar grids are parsed independently. No continuation_group is declared, so cross-year continuity is not asserted.",,
+tcn_referential_daily,*,daily_calendar_grid,flat,"Human source-owner review on 2026-09-19 confirmed that Compra and Venta retain the same definition across annual worksheets. One governed continuation group produces two continuous daily identities while retaining annual-sheet lineage.",,TCN_REFERENCIAL_DAILY

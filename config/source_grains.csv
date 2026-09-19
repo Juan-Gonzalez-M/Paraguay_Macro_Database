@@ -25,3 +25,27 @@ payments,*,scalar_series,Payment-system volumes and values.,unreviewed,NA
 securities_trades,*,event,One row per securities transaction; held in a snapshot table.,unreviewed,NA
 cda_curve,*,curve_panel,Monthly deposit-rate and activity curve nodes by published maturity and institution class; economic interpretation remains unreviewed.,unreviewed,NA
 tcn_referential_daily,*,scalar_series,One numeric quotation per published quote side and valid calendar date; annual worksheets remain distinct identities pending continuity review.,unreviewed,NA
+imf_cpi,*,scalar_series,IMF CPI series retain dataflow series code frequency transformation and country dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_er,*,scalar_series,IMF exchange-rate series retain quotation direction and period-average or end-of-period transformation.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_eer,*,scalar_series,IMF effective-exchange-rate indexes remain distinct by published series code and frequency.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_qnea,*,scalar_series,IMF quarterly national-account series retain price adjustment currency and transformation dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_ctot,*,scalar_series,IMF commodity terms-of-trade derived indexes remain distinct by published series code and weighting type.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_bop,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_cpi_wca,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_fsibsis,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_fsic,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_fsi_metadata,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_iip,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_il,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_irfcl,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_itg,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_mfs_cbs,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_mfs_dc,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_mfs_ir,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_mfs_ma,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_mfs_odc,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_pcps,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_pi_wca,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_qgdp_wca,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_rsui,*,scalar_series,IMF research index retains dataset version series code frequency country and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+imf_wpfxi,*,scalar_series,IMF working-paper data and proxies retain dataset version series code frequency country and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19

@@ -18,7 +18,8 @@ testthat::test_that("CDA rate curves retain published period coordinates and mat
   testthat::expect_equal(nrow(h10), 1L)
   testthat::expect_equal(h10$value, 2.8615163478971799)
   testthat::expect_match(h10$series_label, "30 DÍAS", fixed = TRUE)
-  testthat::expect_identical(h10$unit, "source_units")
+  testthat::expect_identical(h10$unit, "percent_per_annum")
+  testthat::expect_identical(h10$currency, "USD")
 
   long_nodes <- observations %>%
     dplyr::filter(.data$source_row %in% c(36L, 37L), .data$source_column == 8L)
@@ -63,9 +64,9 @@ testthat::test_that("CDA activity curves preserve counts volumes and currency-or
   testthat::expect_equal(count$value, 57)
   testthat::expect_identical(count$unit, "count")
   testthat::expect_equal(volume$value, 73535547408)
-  testthat::expect_identical(volume$unit, "source_units")
+  testthat::expect_identical(volume$unit, "USD")
   testthat::expect_identical(volume$scale, "units")
-  testthat::expect_true(is.na(volume$currency))
+  testthat::expect_identical(volume$currency, "USD")
   testthat::expect_match(volume$series_path, "MONEDA EXTRANJERA", fixed = TRUE)
   testthat::expect_equal(
     nrow(observations),
@@ -85,25 +86,27 @@ testthat::test_that("CDA parsing uses cell evidence rather than historical sheet
   }
 })
 
-testthat::test_that("CDA missing institution headers remain explicit and unresolved", {
+testthat::test_that("CDA missing institution headers use the reviewed stable layout", {
   result <- documented_parse_cda_curve_sheet(read_cda_sheet("CDA_ML_102021"), "CDA_ML_102021")
-  testthat::expect_true(any(stringr::str_detect(result$observations$series_label, "UNLABELED COLUMN H")))
-  testthat::expect_true(any(stringr::str_detect(result$observations$series_label, "UNLABELED COLUMN I")))
+  testthat::expect_setequal(unique(result$observations$measure), "TASA PONDERADA")
+  testthat::expect_true(any(stringr::str_detect(result$observations$series_label, "BANCOS")))
+  testthat::expect_true(any(stringr::str_detect(result$observations$series_label, "FINANCIERAS")))
+  testthat::expect_false(any(stringr::str_detect(result$observations$series_label, "UNLABELED")))
+  testthat::expect_true(all(
+    result$observations$parser_mode == "cda_monthly_curve_reviewed_header_mapping"
+  ))
   testthat::expect_identical(result$hierarchy_status, "unresolved")
 })
 
-testthat::test_that("CDA anomalous numeric cells are retained under unresolved identities", {
+testthat::test_that("CDA publisher-error cells remain raw evidence but emit no observations", {
   extra <- documented_parse_cda_curve_sheet(
     read_cda_sheet("OPERACIONES_VOLUMEN_ML_072025"), "OPERACIONES_VOLUMEN_ML_072025"
   )$observations
-  o12 <- extra %>% dplyr::filter(.data$source_row == 12L, .data$source_column == 15L)
-  testthat::expect_equal(o12$value, 35603423)
-  testthat::expect_match(o12$series_label, "Monto Capital Original", fixed = TRUE)
-  testthat::expect_match(o12$series_label, "INSTITUTION NOT PUBLISHED", fixed = TRUE)
+  testthat::expect_false(any(extra$source_column == 15L))
 
   unlabeled <- documented_parse_cda_curve_sheet(
     read_cda_sheet("OPERACIONES_VOLUMEN_ML_062025"), "OPERACIONES_VOLUMEN_ML_062025"
-  )$observations %>% dplyr::filter(.data$source_row == 40L, .data$source_column == 7L)
-  testthat::expect_equal(unlabeled$value, 1748724340582)
-  testthat::expect_match(unlabeled$series_label, "UNLABELED ROW 40", fixed = TRUE)
+  )$observations
+  testthat::expect_false(any(unlabeled$source_row == 40L & unlabeled$source_column == 7L))
+  testthat::expect_true(all(unlabeled$currency == "PYG"))
 })

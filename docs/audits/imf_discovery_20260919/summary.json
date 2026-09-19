@@ -1,0 +1,11 @@
+{
+  "files": 25,
+  "bytes": 180202064,
+  "data_records": 35266,
+  "distinct_series_rows_sum": 33775,
+  "potential_observations": 5778535,
+  "outer_malformed_records": 0,
+  "irregular_inner_records": 0,
+  "inner_parse_errors": 0,
+  "multiline_records": 30
+}

@@ -1,7 +1,7 @@
-6079c80ce0edd26f899b9f54fe98f73eee08c90c5f006759b051960edbd7a9fa  paraguay_macro_pilot.duckdb
-# build=build:a3e94ab54dacd47000223d28
-# schema_version=43
-# bytes=423374848
-# recorded_at=2026-09-16T17:43:03
-# supersedes_sha256=17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180
+9cf802028b8693506f5f6ad9ab321f2ace93f314fbeffe0a5ac831cdad087ca4  paraguay_macro_pilot.duckdb
+# build=build:6928154663966c1f7d0ee63d
+# schema_version=46
+# bytes=497823744
+# recorded_at=2026-09-19T15:45:57
+# supersedes_sha256=11727959edd135bb211dd267dedd0d7c569dea3e473510ee72b6ef8cb1155876
 # Written after final close. Verify with: shasum -a 256 -c <this file>

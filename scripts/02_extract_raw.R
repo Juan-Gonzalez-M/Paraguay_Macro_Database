@@ -450,6 +450,12 @@ SCHEMA_MIGRATIONS <- list(
        change = "Human-confirmed annual-percentage LRM rate units and governed consolidation of the two same-day 2013 operation pairs, with immutable component observations and multi-cell derived lineage retained separately from the current analytical facts.")
   ,list(version = 46L, reingests = "lrm_auctions", registry_driven = TRUE,
        change = "LRM consolidation lineage explicitly retains structurally blank component coordinates used to establish absence of assignment, and every consolidated observation reports governed derived multi-cell lineage.")
+  ,list(version = 47L, reingests = character(), registry_driven = TRUE,
+       change = "IMF wide exports gain lossless two-layer record preservation, explicit dataflow/version and dimension catalogues, long observation snapshots with published periods and source coordinates, and provisional catalog/explore-only ingestion. Existing sources and research admission do not change.")
+  ,list(version = 48L, reingests = character(), registry_driven = TRUE,
+       change = "IMF onboarding expands to official sectoral, monetary, financial, global-factor and aggregate dataflows; textual FSI metadata is retained in a dedicated carrier and never coerced into numeric observations. Bilateral trade and experimental research products remain excluded.")
+  ,list(version = 49L, reingests = character(), registry_driven = TRUE,
+       change = "The IMF RSUI research indicator and WPFXI working-paper public-data/proxy dataset enter isolated experimental catalog and explore scope with explicit non-official status, product-specific rights review pending, and no research admission. Bilateral IMTS remains excluded.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -1306,6 +1312,7 @@ DATABASE_TABLE_STATEMENTS <- c(
   "CREATE TABLE IF NOT EXISTS release_sources (release_id VARCHAR, source_id VARCHAR, vintage_id VARCHAR, PRIMARY KEY (release_id, vintage_id))",
   "CREATE TABLE IF NOT EXISTS source_files (vintage_id VARCHAR PRIMARY KEY, first_ingested_release_id VARCHAR, source_id VARCHAR, source_label VARCHAR, publisher VARCHAR, source_format VARCHAR, source_file VARCHAR, source_path VARCHAR, archive_path VARCHAR, sha256 VARCHAR, size_bytes BIGINT, publication_date DATE, publication_date_source VARCHAR, first_ingested_at TIMESTAMP, ingestion_status VARCHAR)",
   "CREATE TABLE IF NOT EXISTS source_sheets (vintage_id VARCHAR, release_id VARCHAR, source_id VARCHAR, source_file VARCHAR, sheet_name VARCHAR, used_rows BIGINT, used_cols BIGINT, content_first_row BIGINT, content_first_col BIGINT, content_last_row BIGINT, content_last_col BIGINT, merge_ranges VARCHAR, formula_cells BIGINT, hidden_rows VARCHAR, hidden_columns VARCHAR, ingest_mode VARCHAR, structure_signature VARCHAR)",
+  "CREATE TABLE IF NOT EXISTS imf_raw_records (vintage_id VARCHAR, release_id VARCHAR, source_id VARCHAR, source_file VARCHAR, source_record BIGINT, physical_start BIGINT, physical_end BIGINT, dataset VARCHAR, series_code VARCHAR, obs_measure VARCHAR, raw_payload VARCHAR, PRIMARY KEY (vintage_id, source_record))",
   "CREATE TABLE IF NOT EXISTS structure_checks (vintage_id VARCHAR, release_id VARCHAR, source_id VARCHAR, source_sheet VARCHAR, component VARCHAR, expected_signature VARCHAR, observed_signature VARCHAR, status VARCHAR, checked_at TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS quality_flags (check_id VARCHAR PRIMARY KEY, attempt_id VARCHAR, release_id VARCHAR, vintage_id VARCHAR, severity VARCHAR, check_name VARCHAR, source_id VARCHAR, source_sheet VARCHAR, detail VARCHAR, created_at TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS discarded_rows (discard_id VARCHAR PRIMARY KEY, release_id VARCHAR, vintage_id VARCHAR, source_id VARCHAR, source_sheet VARCHAR, row_id BIGINT, reason VARCHAR, raw_label VARCHAR)",
@@ -1340,6 +1347,9 @@ DATABASE_TABLE_STATEMENTS <- c(
   "CREATE TABLE IF NOT EXISTS dim_series (series_id VARCHAR PRIMARY KEY, source_id VARCHAR, label VARCHAR, unit VARCHAR, scale VARCHAR, frequency VARCHAR, currency VARCHAR, index_base VARCHAR, hierarchy_level VARCHAR, parent_series_id VARCHAR, is_total BOOLEAN, identity_basis VARCHAR, identity_stability VARCHAR, hierarchy_status VARCHAR, semantic_status VARCHAR, first_vintage_id VARCHAR, price_base_year VARCHAR)",
   "CREATE TABLE IF NOT EXISTS bond_curve_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_file VARCHAR, source_row BIGINT, period DATE, currency VARCHAR, risk_rating VARCHAR, maturity_years DOUBLE, zero_coupon_rate DOUBLE, discount_factor DOUBLE, par_rate DOUBLE, beta0 DOUBLE, beta1 DOUBLE, beta2 DOUBLE, beta3 DOUBLE, lambda1 DOUBLE, lambda2 DOUBLE)",
   "CREATE TABLE IF NOT EXISTS securities_transactions_snapshot (vintage_id VARCHAR, release_id VARCHAR, publication_date DATE, source_file VARCHAR, transaction_id VARCHAR, source_row BIGINT, operation_date DATE, broker_tax_id VARCHAR, broker_name VARCHAR, isin VARCHAR, issuer_tax_id VARCHAR, issuer_name VARCHAR, instrument VARCHAR, market VARCHAR, operation_type VARCHAR, local_currency_volume DOUBLE, volume_status VARCHAR, currency VARCHAR, trading_venue VARCHAR)",
+  "CREATE TABLE IF NOT EXISTS imf_series_snapshot (vintage_id VARCHAR, release_id VARCHAR, source_id VARCHAR, dataset VARCHAR, agency VARCHAR, dataflow VARCHAR, dataflow_version VARCHAR, series_id VARCHAR, series_code VARCHAR, obs_measure VARCHAR, frequency VARCHAR, source_record BIGINT, PRIMARY KEY (vintage_id, series_id, obs_measure))",
+  "CREATE TABLE IF NOT EXISTS imf_observation_snapshot (vintage_id VARCHAR, release_id VARCHAR, source_id VARCHAR, series_id VARCHAR, published_period VARCHAR, period_start DATE, period_end DATE, value DOUBLE, raw_value VARCHAR, source_record BIGINT, source_column BIGINT, PRIMARY KEY (vintage_id, series_id, published_period))",
+  "CREATE TABLE IF NOT EXISTS imf_metadata_snapshot (vintage_id VARCHAR, release_id VARCHAR, source_id VARCHAR, series_id VARCHAR, metadata_measure VARCHAR, published_period VARCHAR, period_start DATE, period_end DATE, text_value VARCHAR, source_record BIGINT, source_column BIGINT, PRIMARY KEY (vintage_id, series_id, published_period))",
   "CREATE TABLE IF NOT EXISTS dim_concept (concept_id VARCHAR PRIMARY KEY, concept_label VARCHAR, concept_domain VARCHAR, definition VARCHAR, unit VARCHAR, scale VARCHAR, frequency VARCHAR, mapping_status VARCHAR, first_vintage_id VARCHAR)",
   "CREATE TABLE IF NOT EXISTS map_series_concept (series_id VARCHAR, concept_id VARCHAR, relationship VARCHAR, mapping_status VARCHAR, evidence VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, first_vintage_id VARCHAR, PRIMARY KEY (series_id, concept_id))",
   "CREATE TABLE IF NOT EXISTS table_status (source_id VARCHAR, source_sheet VARCHAR, status VARCHAR, reviewed_by VARCHAR, reviewed_at DATE, note VARCHAR, PRIMARY KEY (source_id, source_sheet))",
@@ -2066,6 +2076,15 @@ initialize_database <- function(con, root = NULL) {
   if (!fresh_bootstrap) invalidate_v46_lrm_structural_absence_lineage(con)
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 46")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (46, current_timestamp, 'LRM derived lineage includes structurally blank component coordinates that establish absence of assignment')")
+  }
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 47")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (47, current_timestamp, 'Lossless IMF two-layer export preservation and provisional catalog/explore onboarding')")
+  }
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 48")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (48, current_timestamp, 'Expanded IMF provisional onboarding with dedicated textual metadata preservation')")
+  }
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 49")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (49, current_timestamp, 'Isolated experimental IMF RSUI and WPFXI catalog and explore onboarding')")
   }
 }
 

@@ -1,8 +1,8 @@
 # Schema migrations
 
-Generated from the migration registry (`SCHEMA_MIGRATIONS` in `scripts/02_extract_raw.R`) and the `schema_version` table on 2026-09-17. Do not edit by hand -- `write_migration_runbook()` rewrites this file on every release.
+Generated from the migration registry (`SCHEMA_MIGRATIONS` in `scripts/02_extract_raw.R`) and the `schema_version` table on 2026-09-19. Do not edit by hand -- `write_migration_runbook()` rewrites this file on every release.
 
-The database is at **schema 46**.
+The database is at **schema 49**.
 
 `initialize_database()` applies every version step a database still needs, in order, on each run. A step that changes how `series_id` is built also invalidates the affected sources so they re-parse from the immutable raw layer instead of merging into stale identities; those sources reappear as `needs_v<N>_reingestion` and are re-ingested by the same run. Back up `database/paraguay_macro_pilot.duckdb` into `database/backups/` before a migrating run: the migration deletes curated content by design, and the backup is what lets you diff observation totals source by source afterwards, and what `build_migration_map.R` compares against.
 
@@ -52,6 +52,9 @@ The database is at **schema 46**.
 | 44 | 2026-09-17 | `lrm_auctions` | LRM auction sheets are reingested under a source-specific two-level-header contract: offered and assigned rate statistics are distinct, annual sheets are lineage rather than identity, amount/count units are explicit, unresolved rate units remain withheld, and published-field event-key collisions remain catalog-only. |
 | 45 | 2026-09-17 | `lrm_auctions` | Human-confirmed annual-percentage LRM rate units and governed consolidation of the two same-day 2013 operation pairs, with immutable component observations and multi-cell derived lineage retained separately from the current analytical facts. |
 | 46 | 2026-09-17 | `lrm_auctions` | LRM consolidation lineage explicitly retains structurally blank component coordinates used to establish absence of assignment, and every consolidated observation reports governed derived multi-cell lineage. |
+| 47 | 2026-09-19 | nothing | IMF wide exports gain lossless two-layer record preservation, explicit dataflow/version and dimension catalogues, long observation snapshots with published periods and source coordinates, and provisional catalog/explore-only ingestion. Existing sources and research admission do not change. |
+| 48 | 2026-09-19 | nothing | IMF onboarding expands to official sectoral, monetary, financial, global-factor and aggregate dataflows; textual FSI metadata is retained in a dedicated carrier and never coerced into numeric observations. Bilateral trade and experimental research products remain excluded. |
+| 49 | 2026-09-19 | nothing | The IMF RSUI research indicator and WPFXI working-paper public-data/proxy dataset enter isolated experimental catalog and explore scope with explicit non-official status, product-specific rights review pending, and no research admission. Bilateral IMTS remains excluded. |
 
 ## From a version-1 database
 

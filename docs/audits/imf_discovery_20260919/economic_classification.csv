@@ -1,0 +1,26 @@
+file,dataflow,statistical_status,geographic_scope,module,pilot_priority,research_admission,recommended_handling
+Balance of Payments (BOP).csv,BOP,official_statistical_dataset,countries,external_sector,later,no,preserve_then_explore
+Commodity Terms of Trade (CTOT).csv,CTOT,imf_research_derived_indicator,countries,global_factors,pilot,no,preserve_then_explore_with_derived_label
+"Consumer Price Index (CPI), World and Country Aggregates (CPI_WCA).csv",CPI_WCA,imf_staff_estimated_aggregate,regional_world_aggregates,global_aggregates,later,no,separate_aggregate_module
+Consumer Price Index (CPI).csv,CPI,official_statistical_dataset,countries,regional_macro,pilot,no,preserve_then_explore
+Effective Exchange Rate (EER).csv,EER,official_statistical_derived_indicator,countries,regional_macro,pilot,no,preserve_then_explore
+Exchange Rates (ER).csv,ER,official_statistical_dataset,countries,regional_macro,pilot,no,preserve_then_explore
+"Financial Soundness Indicators (FSI), Balance Sheet, Income Statement and Memorandum Series.csv",FSIBSIS,official_statistical_dataset,countries,banking,later,no,preserve_then_explore
+"Financial Soundness Indicators (FSI), Core and Additional Indicators.csv",FSIC,official_statistical_indicators,countries,banking,later,no,preserve_then_explore
+"Financial Soundness Indicators (FSI), Country Metadata Table 2.csv",FSI_COUNTRY_METADATA_TABLE_2,statistical_metadata,countries,banking_metadata,later,no,metadata_store_not_observations
+International Investment Position (IIP).csv,IIP,official_statistical_dataset,countries,external_sector,later,no,preserve_then_explore
+International Liquidity (IL).csv,IL,official_statistical_dataset,countries,external_sector,later,no,preserve_then_explore
+International Reserves and Foreign Currency Liquidity (IRFCL).csv,IRFCL,official_statistical_dataset,countries,external_sector,later,no,preserve_then_explore
+International Trade in Goods (ITG).csv,ITG,official_statistical_dataset,countries,trade,later,no,preserve_then_explore
+International Trade in Goods (by partner country) (IMTS).csv,IMTS,official_statistical_dataset,country_partner,trade_bilateral,later,no,separate_bilateral_module
+"Monetary and Financial Statistics (MFS), Central Bank Data.csv",MFS_CBS,official_statistical_dataset,countries,monetary_financial,later,no,preserve_then_explore
+"Monetary and Financial Statistics (MFS), Depository Corporations.csv",MFS_DC,official_statistical_dataset,countries,monetary_financial,later,no,preserve_then_explore
+"Monetary and Financial Statistics (MFS), Interest Rate.csv",MFS_IR,official_statistical_dataset,countries,monetary_financial,later,no,preserve_then_explore
+"Monetary and Financial Statistics (MFS), Monetary Aggregates.csv",MFS_MA,official_statistical_dataset,countries,monetary_financial,later,no,preserve_then_explore
+"Monetary and Financial Statistics (MFS), Other Depository Corporations.csv",MFS_ODC,official_statistical_dataset,countries,monetary_financial,later,no,preserve_then_explore
+"National Economic Accounts (NEA), Quarterly Data.csv",QNEA,official_statistical_dataset,countries,regional_macro,pilot,no,preserve_then_explore
+Primary Commodity Price System (PCPS).csv,PCPS,official_imf_global_price_dataset,world,global_factors,later,no,separate_global_factor_module
+"Production Indexes, World and Country Group Aggregates.csv",PI_WCA,imf_staff_estimated_aggregate,regional_world_aggregates,global_aggregates,later,no,separate_aggregate_module
+"Quarterly Gross Domestic Product (GDP), World and Country Aggregates.csv",QGDP_WCA,imf_staff_estimated_aggregate,regional_world_aggregates,global_aggregates,later,no,separate_aggregate_module
+Reported Social Unrest Index (RSUI).csv,RSUI,experimental_research_indicator,countries,experimental,later,no,separate_experimental_module
+Working Paper Foreign Exchange Intervention (WPFXI) A Dataset of Public Data and Proxies.csv,WPFXI,research_estimates_and_proxies,countries,experimental,later,no,separate_experimental_module

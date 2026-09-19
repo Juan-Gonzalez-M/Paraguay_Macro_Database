@@ -1814,17 +1814,15 @@ documented_parse_cda_curve_sheet <- function(raw, source_sheet) {
       source_sheet, ".", call. = FALSE
     )
     maturity_col <- 6L; display_col <- 7L; data_cols <- 8:9
-    # CDA_ML_102021 omits both column labels. Retain its values without silently
-    # borrowing semantics from adjacent sheets; explicit column labels keep the
-    # unresolved identities separate until governed evidence maps them.
-    institutions <- if (labelled_header) text[9, data_cols] else c("UNLABELED COLUMN H", "UNLABELED COLUMN I")
+    # CDA_ML_102021 omits both column labels. Human source-owner review on
+    # 2026-09-19 confirmed that the workbook keeps the same layout as adjacent
+    # sheets: H is BANCOS and I is FINANCIERAS. The blank source cells remain in
+    # raw evidence; this reviewed mapping only supplies their missing semantics.
+    institutions <- if (labelled_header) text[9, data_cols] else c("BANCOS", "FINANCIERAS")
     measures <- rep("TASA PONDERADA", 2L)
-    # "Tasas ponderadas" identifies the quoted variable but no inspected
-    # workbook label states percent versus decimal, annualisation, nominal or
-    # effective convention, or compounding. Preserve the numeric cells without
-    # manufacturing a rate unit; the catalogue and native-grain admission rules
-    # make that limitation visible.
-    units <- rep("source_units", 2L)
+    # Human domain review on 2026-09-19 established nominal annual percentages.
+    # Values remain exactly as published: no division by 100 or annualisation.
+    units <- rep("percent_per_annum", 2L)
     identity_sheet <- "CDA_RATE_CURVE"
   } else {
     expected_measures <- c("cantidad de operaciones", NA_character_, "volumen captado", NA_character_)
@@ -1838,9 +1836,9 @@ documented_parse_cda_curve_sheet <- function(raw, source_sheet) {
     institutions <- text[11, data_cols]
     measures <- c("CANTIDAD DE OPERACIONES", "CANTIDAD DE OPERACIONES",
                   "VOLUMEN CAPTADO", "VOLUMEN CAPTADO")
-    # Counts are explicit. The volume title and stored numeric cells do not
-    # establish one consistent scale across vintages, so never rescale here.
-    units <- c("count", "count", "source_units", "source_units")
+    # Human domain review on 2026-09-19 established whole-currency volumes.
+    volume_unit <- if (local_origin) "PYG" else "USD"
+    units <- c("count", "count", volume_unit, volume_unit)
     identity_sheet <- "CDA_OPERATIONS_CURVE"
   }
 
@@ -1865,65 +1863,22 @@ documented_parse_cda_curve_sheet <- function(raw, source_sheet) {
     series_label <- paste(
       origin_label, measure, institution, maturity_label, display_label, sep = " — "
     )
+    parser_mode <- if (is_rate && !labelled_header) {
+      "cda_monthly_curve_reviewed_header_mapping"
+    } else {
+      "cda_monthly_curve"
+    }
     k <- k + 1L
     records[[k]] <- documented_record(
-      source_sheet, title, "cda_monthly_curve", period, period_label, "monthly",
+      source_sheet, title, parser_mode, period, period_label, "monthly",
       series_label, origin_label, measure, value, r, j
     )
     records[[k]]$unit <- units[[z]]
     records[[k]]$scale <- "units"
-    # The publisher's currency-origin wording remains in category/series_path.
-    # A single currency field cannot represent origin and reporting currency;
-    # leave it unknown instead of collapsing those two concepts.
-    records[[k]]$currency <- NA_character_
+    records[[k]]$currency <- if (local_origin) "PYG" else "USD"
   }
-  if (is_operations) {
-    # Two worksheets contain numeric publisher cells outside the regular E:H
-    # block. Retain them as explicitly unresolved observations rather than
-    # dropping them or assigning semantics from neighbouring cells.
-    extra_cols <- if (ncol(text) > max(data_cols)) seq.int(max(data_cols) + 1L, ncol(text)) else integer()
-    extra_cols <- extra_cols[
-      !documented_blank(text[11, extra_cols]) &
-        colSums(!is.na(numbers[maturity_rows, extra_cols, drop = FALSE])) > 0L
-    ]
-    for (j in extra_cols) for (r in maturity_rows) {
-      value <- numbers[r, j]
-      if (is.na(value)) next
-      measure <- text[11, j]
-      series_label <- paste(
-        origin_label, measure, "INSTITUTION NOT PUBLISHED", text[r, maturity_col],
-        text[r, display_col], sep = " — "
-      )
-      k <- k + 1L
-      records[[k]] <- documented_record(
-        source_sheet, title, "cda_monthly_curve_unresolved_column", period, period_label,
-        "monthly", series_label, origin_label, measure, value, r, j
-      )
-      records[[k]]$unit <- "source_units"
-      records[[k]]$scale <- "units"
-      records[[k]]$currency <- NA_character_
-    }
-
-    candidate_rows <- seq.int(min(maturity_rows), min(nrow(text), max(maturity_rows) + 1L))
-    unlabeled_rows <- setdiff(candidate_rows, maturity_rows)
-    for (r in unlabeled_rows) for (z in seq_along(data_cols)) {
-      j <- data_cols[[z]]
-      value <- numbers[r, j]
-      if (is.na(value)) next
-      measure <- measures[[z]]
-      series_label <- paste(
-        origin_label, measure, institutions[[z]], paste0("UNLABELED ROW ", r), sep = " — "
-      )
-      k <- k + 1L
-      records[[k]] <- documented_record(
-        source_sheet, title, "cda_monthly_curve_unresolved_row", period, period_label,
-        "monthly", series_label, origin_label, measure, value, r, j
-      )
-      records[[k]]$unit <- units[[z]]
-      records[[k]]$scale <- "units"
-      records[[k]]$currency <- NA_character_
-    }
-  }
+  # Numeric cells outside the governed rate or E:H operations blocks remain in
+  # raw evidence and are classified explicitly in reconciliation_cell_rules.csv.
   observations <- documented_bind_records(records)
   if (!nrow(observations)) stop(
     "CDA curve structure guard: no numeric observations in ", source_sheet, ".",

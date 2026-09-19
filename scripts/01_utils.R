@@ -120,12 +120,15 @@ PROJECT_TABLE_SCHEMA <- c(
   source_files = "raw", source_sheets = "raw", report_sheet_versions = "raw",
   report_sheet_vintages = "raw", report_cell_values = "raw", report_cells_legacy = "raw",
   reference_table_loads = "raw",
+  imf_raw_records = "raw",
   # staging: parser output and parser diagnostics
   documented_table_catalog = "staging", documented_series_snapshot = "staging",
   lrm_component_observations = "staging", lrm_derived_observation_lineage = "staging",
   documented_sheet_drift = "staging", documented_series_continuity = "staging",
   discarded_rows = "staging", semantic_coverage = "staging",
   bond_curve_snapshot = "staging", securities_transactions_snapshot = "staging",
+  imf_series_snapshot = "staging", imf_observation_snapshot = "staging",
+  imf_metadata_snapshot = "staging",
   # canonical: the curated economic layer
   dim_series = "canonical", fact_series_events = "canonical", series_revisions = "canonical",
   dim_concept = "canonical", map_series_concept = "canonical", dim_entity = "canonical",

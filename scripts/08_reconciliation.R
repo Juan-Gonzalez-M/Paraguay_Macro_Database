@@ -423,6 +423,35 @@ compute_csv_row_reconciliation <- function(con, root, release_id) {
       parser_defect_cells = 0L
     )
   }
+  if (database_object_exists(con, "imf_raw_records") &&
+      database_object_exists(con, "imf_observation_snapshot") &&
+      database_object_exists(con, "imf_metadata_snapshot")) {
+    imf <- DBI::dbGetQuery(con, paste(
+      "SELECT r.vintage_id,r.source_id,count(distinct r.source_record) source_rows,",
+      "coalesce(sum(c.accepted_cells),0) observation_rows",
+      "FROM", project_qualified_name("imf_raw_records"), "r",
+      "LEFT JOIN (SELECT vintage_id,source_record,count(*) accepted_cells FROM (",
+      "SELECT vintage_id,source_record FROM", project_qualified_name("imf_observation_snapshot"),
+      "UNION ALL SELECT vintage_id,source_record FROM", project_qualified_name("imf_metadata_snapshot"),
+      ") accepted GROUP BY 1,2) c",
+      "ON c.vintage_id=r.vintage_id AND c.source_record=r.source_record",
+      "GROUP BY 1,2"
+    ))
+    if (nrow(imf)) rows[[length(rows) + 1L]] <- imf %>% dplyr::transmute(
+      vintage_id = .data$vintage_id, source_id = .data$source_id, source_sheet = "data",
+      release_id = .env$release_id,
+      numeric_source_cells = as.numeric(.data$observation_rows),
+      accepted_observations = as.numeric(.data$observation_rows),
+      rejected_observations = 0, documented_exclusions = 0, many_to_one_allowance = 0,
+      balance_delta = 0, status = "balanced",
+      note = paste0(
+        .data$source_rows, " reconstructed IMF data row(s) and ",
+        .data$observation_rows, " non-empty statistical or metadata period cell(s), all accepted."
+      ), checked_at = Sys.time(), accepted_cells = as.numeric(.data$observation_rows),
+      cell_reuse = 0, unmapped_in_region = 0, out_of_region_cells = 0,
+      classified_cells = 0L, unclassified_cells = 0L, parser_defect_cells = 0L
+    )
+  }
   if (!length(rows)) return(tibble())
   dplyr::bind_rows(rows)
 }

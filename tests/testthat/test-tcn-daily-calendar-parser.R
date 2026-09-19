@@ -29,9 +29,9 @@ testthat::test_that("TCN daily calendar grids retain exact dates, values and coo
   testthat::expect_equal(max(observations$period), as.Date("2026-08-25"))
   testthat::expect_setequal(unique(observations$series_label), c("Compra", "Venta"))
   testthat::expect_true(all(observations$frequency == "daily"))
-  testthat::expect_true(all(observations$unit == "source_units"))
+  testthat::expect_true(all(observations$unit == "PYG_per_USD"))
   testthat::expect_true(all(observations$scale == "units"))
-  testthat::expect_true(all(is.na(observations$currency)))
+  testthat::expect_true(all(observations$currency == "PYG/USD"))
 
   representative <- observations %>%
     dplyr::filter(
@@ -50,7 +50,7 @@ testthat::test_that("TCN daily calendar grids retain exact dates, values and coo
   ))
 })
 
-testthat::test_that("TCN ND cells and the damaged title remain unresolved source evidence", {
+testthat::test_that("TCN ND cells remain raw non-business-day evidence", {
   parsed <- tcn_parsed_workbook()
   dimensions <- parsed$dimensions
   nd_cells <- 0L
@@ -99,10 +99,10 @@ testthat::test_that("TCN calendar-grid guards fail on token and calendar drift",
   )
 })
 
-testthat::test_that("TCN annual worksheets remain separate source identities", {
+testthat::test_that("TCN annual worksheets join the reviewed Compra and Venta continuities", {
   parsed <- tcn_parsed_workbook()
   observations <- parsed$observations %>%
-    dplyr::mutate(hierarchy_status = "flat", identity_sheet = .data$source_sheet)
+    dplyr::mutate(hierarchy_status = "flat", identity_sheet = "TCN_REFERENCIAL_DAILY")
   finalized <- documented_finalize_observations(
     observations,
     list(
@@ -113,8 +113,13 @@ testthat::test_that("TCN annual worksheets remain separate source identities", {
     "release:test", as.Date(NA)
   )
 
-  testthat::expect_equal(dplyr::n_distinct(finalized$series_id), 30L)
+  testthat::expect_equal(dplyr::n_distinct(finalized$series_id), 2L)
   testthat::expect_equal(anyDuplicated(finalized[c("series_id", "period")]), 0L)
   testthat::expect_true(all(finalized$identity_stability == "semantic"))
   testthat::expect_true(all(is.na(finalized$publication_date)))
+  testthat::expect_equal(
+    finalized %>% dplyr::count(.data$series_label, name = "observations") %>%
+      dplyr::arrange(.data$series_label),
+    tibble::tibble(series_label = c("Compra", "Venta"), observations = c(3502L, 3502L))
+  )
 })

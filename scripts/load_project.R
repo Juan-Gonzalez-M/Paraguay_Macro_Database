@@ -10,14 +10,14 @@ PROJECT_SCRIPT_PROFILES <- list(
     "03_curate_documented.R", "03_curate_expanded.R", "03_curate_special.R",
     "04_validate.R", "05_query_helpers.R", "07_migration.R", "08_reconciliation.R",
     "09_semantics.R", "10_canonical.R", "11_marts.R", "12_platform.R",
-    "13_explore.R", "14_review_readiness.R", "15_series_quality.R", "06_pipeline.R"
+    "13_explore.R", "14_review_readiness.R", "15_series_quality.R", "16_imf_wide.R", "06_pipeline.R"
   ),
   research_tools = c(
     "01_utils.R", "03_concepts.R", "02_extract_raw.R", "03_reference_semantics.R",
     "03_curate_documented.R", "03_curate_expanded.R", "03_curate_special.R",
     "04_validate.R", "05_query_helpers.R", "07_migration.R", "08_reconciliation.R",
     "09_semantics.R", "10_canonical.R", "11_marts.R", "12_platform.R",
-    "13_explore.R", "14_review_readiness.R", "15_series_quality.R"
+    "13_explore.R", "14_review_readiness.R", "15_series_quality.R", "16_imf_wide.R"
   ),
   governance = c(
     "01_utils.R", "03_concepts.R", "02_extract_raw.R", "04_validate.R",

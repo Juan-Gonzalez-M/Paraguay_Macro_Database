@@ -1,11 +1,18 @@
 CDA_PROVISIONAL_SCOPE_ID <- "schema46_cda_provisional_20260917"
 CDA_EXACT_SHA256 <- "8796a589fc2bd31317efdce7865d4598473fdacd048cf04b676dc8f78e2b144c"
 TCN_EXACT_SHA256 <- "74df666397a33b9c8cdfac10d7ffedd23acf7cbd5907ea21332e100fb939c0a4"
+COMBINED_CDA_TCN_SCOPE_ID <- "schema46_cda_tcn_provisional_20260919"
 
-testthat::test_that("bounded CDA scope admits only the authorized hash and keeps TCN deferred", {
+historical_scope_registry <- function(scope_id) {
   registry <- readr::read_csv(
     file.path(project_test_root, "config", "source_registry.csv"), show_col_types = FALSE
   )
+  scope <- read_release_input_scope(project_test_root, scope_id)
+  registry[registry$source_id %in% scope$source_id, , drop = FALSE]
+}
+
+testthat::test_that("bounded CDA scope admits only the authorized hash and keeps TCN deferred", {
+  registry <- historical_scope_registry(CDA_PROVISIONAL_SCOPE_ID)
   scoped <- build_scoped_current_manifest(
     registry, project_test_root, CDA_PROVISIONAL_SCOPE_ID, expected_schema_version = 46L
   )
@@ -26,13 +33,35 @@ testthat::test_that("bounded CDA scope admits only the authorized hash and keeps
   )
   testthat::expect_false("tcn_referential_daily" %in% scoped$manifest$source_id)
   testthat::expect_true("cda_curve" %in% scoped$manifest$source_id)
-  testthat::expect_false(any(scoped$issues$severity == "error"))
+  testthat::expect_true(
+    nrow(scoped$issues) == 0L || !any(scoped$issues$severity == "error")
+  )
+})
+
+testthat::test_that("combined bounded scope admits exact CDA and TCN hashes", {
+  registry <- historical_scope_registry(COMBINED_CDA_TCN_SCOPE_ID)
+  scoped <- build_scoped_current_manifest(
+    registry, project_test_root, COMBINED_CDA_TCN_SCOPE_ID,
+    expected_schema_version = 46L
+  )
+  testthat::expect_equal(nrow(scoped$scope), nrow(registry))
+  testthat::expect_true(all(scoped$scope$disposition == "admit"))
+  testthat::expect_setequal(
+    scoped$manifest$source_id, registry$source_id[registry$required]
+  )
+  testthat::expect_identical(
+    scoped$scope$sha256[scoped$scope$source_id == "cda_curve"], CDA_EXACT_SHA256
+  )
+  testthat::expect_identical(
+    scoped$scope$sha256[scoped$scope$source_id == "tcn_referential_daily"], TCN_EXACT_SHA256
+  )
+  testthat::expect_true(
+    nrow(scoped$issues) == 0L || !any(scoped$issues$severity == "error")
+  )
 })
 
 testthat::test_that("bounded CDA scope fails closed when CDA bytes drift", {
-  registry <- readr::read_csv(
-    file.path(project_test_root, "config", "source_registry.csv"), show_col_types = FALSE
-  )
+  registry <- historical_scope_registry(CDA_PROVISIONAL_SCOPE_ID)
   resolved <- build_current_manifest(registry, project_test_root)
   hit <- resolved$manifest$source_id == "cda_curve"
   drift_sha <- paste(rep("a", 64L), collapse = "")

@@ -1,0 +1,131 @@
+schema43 controlled-release verification
+verified_at_utc=2026-09-14T21:11:43.521Z
+git_commit=98370c2c26f8162401cf6e0e3eb3019ef7f687c1
+production_path=/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/database/paraguay_macro_pilot.duckdb
+reported_path=/private/tmp/schema43-lineage-final.JPitWw/paraguay_macro_schema43_candidate.duckdb
+pre_fix_path=/private/tmp/paraguay-exploratory-schema43.60oOOT/paraguay_macro_schema43.duckdb
+blocked_path=/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/database/candidates/blocked_20260914_180218.duckdb
+
+[schema versions and active pointers]
+production
+  schema_version
+1             41
+  singleton                data_release_id                 source_bundle_id
+1      TRUE build:57fe1ff64fb654508b2a8f0a release:748d41036c3a73638a1c2086
+          promoted_at  promoted_by
+1 2026-09-09 11:43:07 release_gate
+pre_fix
+  schema_version
+1             43
+  singleton                data_release_id                 source_bundle_id
+1      TRUE build:57fe1ff64fb654508b2a8f0a release:748d41036c3a73638a1c2086
+          promoted_at  promoted_by
+1 2026-09-09 11:43:07 release_gate
+reported
+  schema_version
+1             43
+  singleton                data_release_id                 source_bundle_id
+1      TRUE build:57fe1ff64fb654508b2a8f0a release:748d41036c3a73638a1c2086
+          promoted_at  promoted_by
+1 2026-09-09 11:43:07 release_gate
+blocked
+  schema_version
+1             43
+  singleton                data_release_id                 source_bundle_id
+1      TRUE build:57fe1ff64fb654508b2a8f0a release:748d41036c3a73638a1c2086
+          promoted_at  promoted_by
+1 2026-09-09 11:43:07 release_gate
+
+[reported candidate lineage]
+  observations candidates
+1       957627       6881
+  corrected_observations corrected_candidates bcp_fx_daily_rows
+1                  39543                   27             37800
+  financial_indicator_rows
+1                     1743
+  sheet_disagreements title_disagreements value_disagreements
+1                   0                   0                   0
+  coordinate_disagreements
+1                        0
+  missing_raw_cells numeric_disagreements
+1                 0                     0
+             source_id candidates corrected_rows min_sheets max_sheets
+1         bcp_fx_daily         12          37800         14         14
+2 financial_indicators         15           1743          1          1
+                      statuses
+1 complete_multiple_worksheets
+2    complete_single_worksheet
+
+[reported candidate versus production]
+canonical.fact_series_events reported_only=0 production_only=0
+canonical.dim_series reported_only=0 production_only=0
+audit.table_status reported_only=0 production_only=0
+main.v_series_latest reported_only=0 production_only=0
+
+[reported lineage fix versus pre-fix schema 43]
+canonical.fact_series_events reported_only=0 pre_fix_only=0
+canonical.dim_series reported_only=0 pre_fix_only=0
+audit.table_status reported_only=0 pre_fix_only=0
+main.v_series_latest reported_only=0 pre_fix_only=0
+explore.observations shared_non_lineage_reported_only=0 pre_fix_only=0
+catalog.series shared_non_lineage_reported_only=0 pre_fix_only=0
+research.curves reported_only=0 pre_fix_only=0
+research.dataset_catalog reported_only=0 pre_fix_only=0
+research.entity_panel reported_only=0 pre_fix_only=0
+research.events reported_only=0 pre_fix_only=0
+research.observations_latest_actual reported_only=0 pre_fix_only=0
+research.observations_latest_statement reported_only=0 pre_fix_only=0
+research.quality_flags reported_only=0 pre_fix_only=0
+research.series_catalog reported_only=0 pre_fix_only=0
+research.transactions reported_only=0 pre_fix_only=0
+research.curves added_columns= removed_columns= reported_only=0 production_only=0
+research.dataset_catalog added_columns= removed_columns= reported_only=2 production_only=0
+research.entity_panel added_columns=source_currency_code|currency_of_origin|unit_currency|economic_currency removed_columns= reported_only=239528 production_only=0
+research.events added_columns= removed_columns= reported_only=0 production_only=0
+research.observations_latest_actual added_columns= removed_columns= reported_only=0 production_only=0
+research.observations_latest_statement added_columns= removed_columns= reported_only=0 production_only=0
+research.quality_flags added_columns= removed_columns= reported_only=0 production_only=0
+research.series_catalog added_columns= removed_columns= reported_only=0 production_only=0
+research.transactions added_columns= removed_columns= reported_only=0 production_only=0
+
+[reported catalogue and exploratory integrity]
+  catalogue_rows catalogue_ids orphan_profiles
+1          13985         13985               0
+     interface   rows candidates duplicate_keys bad_rows orphan_rows
+1 observations 957627       6881              0        0           0
+  interface  rows candidates duplicate_keys bad_rows orphan_rows
+1    events 95560       4486              0        0           0
+           interface  rows candidates duplicate_keys bad_rows orphan_rows
+1 panel_observations 17044        984              0        0           0
+           interface   rows candidates duplicate_keys bad_rows orphan_rows
+1 curve_observations 116766       1287              0        0           0
+
+[blocked official build decision and population drift]
+                 data_release_id                 source_bundle_id
+1 build:43303bc15d28971e37dfd49f release:549669d609b3dc600b81b9bf
+                        build_id schema_version  status error_count
+1 build:43303bc15d28971e37dfd49f             43 blocked           1
+  warning_count          decided_at
+1            40 2026-09-14 21:05:30
+                         check_name
+1 new_vintage_provenance_incomplete
+                                                        detail
+1 2 non-legacy vintage(s) lack mandatory acquisition metadata.
+                        attempt_id
+1 attempt:f3811e32fe3f4f71a7921548
+              source_id                                     vintage_id
+1             cda_curve             cda_curve:8796a589fc2bd31317efdce7
+2 tcn_referential_daily tcn_referential_daily:74df666397a33b9c8cdfac10
+canonical.fact_series_events blocked_only=28858 production_only=0
+canonical.dim_series blocked_only=501 production_only=0
+main.v_series_latest blocked_only=0 production_only=0
+
+[production state after blocked run]
+  schema_version
+1             41
+  singleton                data_release_id                 source_bundle_id
+1      TRUE build:57fe1ff64fb654508b2a8f0a release:748d41036c3a73638a1c2086
+          promoted_at  promoted_by
+1 2026-09-09 11:43:07 release_gate
+
+verification_complete=true

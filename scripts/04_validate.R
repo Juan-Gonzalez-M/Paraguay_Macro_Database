@@ -444,6 +444,26 @@ validate_source <- function(con, item, release_id, root) {
     validate_fx_aggregates(con, release_id, item$vintage_id, root)
   }
   if (item$ingest_mode == "long_csv") validate_long_csv_source(con, item, release_id, root)
+  if (item$ingest_mode == "imf_wide") {
+    counts <- DBI::dbGetQuery(con, paste0(
+      "SELECT (SELECT count(*) FROM ", project_qualified_name("imf_raw_records"),
+      " WHERE vintage_id=", sql_string(item$vintage_id), ") records,",
+      "(SELECT count(distinct series_code) FROM ", project_qualified_name("imf_series_snapshot"),
+      " WHERE vintage_id=", sql_string(item$vintage_id), ") series,",
+      "(SELECT count(*) FROM ", project_qualified_name("imf_observation_snapshot"),
+      " WHERE vintage_id=", sql_string(item$vintage_id), ") observations,",
+      "(SELECT count(*) FROM ", project_qualified_name("imf_metadata_snapshot"),
+      " WHERE vintage_id=", sql_string(item$vintage_id), ") metadata_values"
+    ))
+    contract <- read_imf_wide_contracts(root)
+    contract <- contract[contract$source_id == item$source_id, , drop = FALSE]
+    if (nrow(contract) != 1L || counts$records[[1]] != as.numeric(contract$data_records[[1]]) ||
+        counts$series[[1]] != as.numeric(contract$series_count[[1]]) ||
+        counts$observations[[1]] != as.numeric(contract$observation_count[[1]]) ||
+        counts$metadata_values[[1]] != as.numeric(contract$metadata_value_count[[1]])) stop(
+      "IMF stored-population guard failed for ", item$source_id, call. = FALSE
+    )
+  }
   if (item$ingest_mode == "semantic_table") validate_documented_source(con, item, release_id, root)
   if (item$source_id %in% c("banks", "financial")) {
     validate_documented_financial_source(con, item, release_id)

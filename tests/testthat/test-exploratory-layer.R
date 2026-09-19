@@ -16,10 +16,10 @@ exploratory_layer_database <- function() {
   connection
 }
 
-testthat::test_that("schema 46 catalogues every candidate and separates access by grain", {
+testthat::test_that("schema 49 catalogues every candidate and separates access by grain", {
   con <- exploratory_layer_database()
   testthat::expect_equal(
-    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 46L
+    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 49L
   )
   catalog_views <- DBI::dbGetQuery(con, paste(
     "SELECT view_name FROM duckdb_views() WHERE schema_name='catalog' AND NOT internal ORDER BY 1"
@@ -174,7 +174,8 @@ testthat::test_that("schema 46 catalogues every candidate and separates access b
     "(SELECT count(*) FROM explore.events) exposed_events,",
     "(SELECT sum(observation_count) FROM catalog.series WHERE data_structure='entity_panel') expected_panels,",
     "(SELECT count(*) FROM explore.panel_observations) exposed_panels,",
-    "(SELECT sum(observation_count) FROM catalog.series WHERE data_structure='curve_panel') expected_curves,",
+    "(SELECT sum(observation_count) FROM catalog.series WHERE data_structure='curve_panel'",
+    " AND explore_admission_status='eligible_native_grain') expected_curves,",
     "(SELECT count(*) FROM explore.curve_observations) exposed_curves"
   ))
   testthat::expect_equal(special$exposed_events, special$expected_events)
@@ -217,11 +218,14 @@ testthat::test_that("worksheet lineage resolves every documented exploratory obs
     "FROM explore.observations WHERE worksheet_lineage_correction_reason IS NOT NULL",
     "GROUP BY 1 ORDER BY 1"
   ))
-  testthat::expect_equal(corrected$source_id, c("bcp_fx_daily", "financial_indicators"))
-  testthat::expect_equal(corrected$observations, c(37800, 1743))
-  testthat::expect_equal(corrected$candidates, c(12, 15))
-  testthat::expect_equal(sum(corrected$observations), 39543)
-  testthat::expect_equal(sum(corrected$candidates), 27)
+  testthat::expect_equal(
+    corrected$source_id,
+    c("bcp_fx_daily", "financial_indicators", "tcn_referential_daily")
+  )
+  testthat::expect_equal(corrected$observations, c(37800, 1743, 6498))
+  testthat::expect_equal(corrected$candidates, c(12, 15, 2))
+  testthat::expect_equal(sum(corrected$observations), 46041)
+  testthat::expect_equal(sum(corrected$candidates), 29)
 
   profiles <- DBI::dbGetQuery(con, paste(
     "SELECT source_id,count(*) AS candidates,sum(worksheet_lineage_correction_rows) AS observations,",
@@ -230,14 +234,21 @@ testthat::test_that("worksheet lineage resolves every documented exploratory obs
     "string_agg(DISTINCT worksheet_lineage_status,';' ORDER BY worksheet_lineage_status) AS statuses",
     "FROM catalog.series WHERE worksheet_lineage_correction_rows>0 GROUP BY 1 ORDER BY 1"
   ))
-  testthat::expect_equal(profiles$candidates, c(12, 15, 353))
-  testthat::expect_equal(profiles$observations, c(37800, 1743, 8404))
-  testthat::expect_equal(profiles$min_sheets, c(14, 1, 2))
-  testthat::expect_equal(profiles$max_sheets, c(14, 1, 14))
-  testthat::expect_equal(profiles$single_sheet_profiles, c(0, 15, 0))
+  testthat::expect_equal(
+    profiles$source_id,
+    c("bcp_fx_daily", "cda_curve", "financial_indicators", "lrm_auctions",
+      "tcn_referential_daily")
+  )
+  testthat::expect_equal(profiles$candidates, c(12, 342, 15, 353, 2))
+  testthat::expect_equal(profiles$observations, c(37800, 21418, 1743, 8404, 6498))
+  testthat::expect_equal(profiles$min_sheets, c(14, 2, 1, 2, 15))
+  testthat::expect_equal(profiles$max_sheets, c(14, 103, 1, 14, 15))
+  testthat::expect_equal(profiles$single_sheet_profiles, c(0, 0, 15, 0, 0))
   testthat::expect_equal(
     profiles$statuses, c(
-      "complete_multiple_worksheets", "complete_single_worksheet",
+      "complete_multiple_worksheets", "complete_multiple_worksheets",
+      "complete_single_worksheet",
+      "complete_multiple_worksheets",
       "complete_multiple_worksheets"
     )
   )

@@ -1,0 +1,860 @@
+{
+  "manifest_version": 1,
+  "release_run": "schema43_20260914_180157",
+  "decision": "rejected",
+  "blocker": "new_vintage_provenance_incomplete",
+  "generated_at": "2026-09-14T21:12:21.536Z",
+  "git": {
+    "commit": "98370c2c26f8162401cf6e0e3eb3019ef7f687c1",
+    "pre_release_tracked_changes": [],
+    "branch": "empirical-readiness-schema-39"
+  },
+  "artifacts": {
+    "production": {
+      "path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/database/paraguay_macro_pilot.duckdb",
+      "schema_version": 41,
+      "sha256_before": "17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180",
+      "sha256_after": "17e0a825c7279da6bacff5fdee31b008bc936432f69ff796462004eaa876b180"
+    },
+    "reported_candidate": {
+      "path": "/private/tmp/schema43-lineage-final.JPitWw/paraguay_macro_schema43_candidate.duckdb",
+      "schema_version": 43,
+      "sha256": "586f2e7af80d54316d45233f1532d03d6f6846d279316d194fa5dbc1d1c26dd8"
+    },
+    "pre_fix_candidate": {
+      "path": "/private/tmp/paraguay-exploratory-schema43.60oOOT/paraguay_macro_schema43.duckdb",
+      "schema_version": 43,
+      "sha256": "23d8feacf1492fc2847d05c5e5f55342f97265f525342a1a76696a7c1af0a015"
+    },
+    "blocked_official_build": {
+      "path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/database/candidates/blocked_20260914_180218.duckdb",
+      "schema_version": 43,
+      "sha256": "e31e444a4ca79cb18f9bc322391562d553a28b179c6cf10e3037b881cb61169b"
+    }
+  },
+  "build_identity": {
+    "build_id": "build:43303bc15d28971e37dfd49f",
+    "release_id": "release:549669d609b3dc600b81b9bf",
+    "git_commit": "98370c2c26f8162401cf6e0e3eb3019ef7f687c1",
+    "git_dirty": false,
+    "schema_version": 43,
+    "config_digest": "0a1abf1f20876ddbbce154ee",
+    "code_digest": "2522cb187c6c62f8ca09a6a3",
+    "environment_digest": "16bed9afaddb5f23c6f27fd7",
+    "r_version": "R version 4.5.1 (2025-06-13)",
+    "built_at": "2026-09-14 21:04:31",
+    "package_versions_digest": "e85120defdcfd58c70c4f54e",
+    "platform": "aarch64-apple-darwin20",
+    "os_release": "macOS Tahoe 26.5.1",
+    "loaded_namespaces_digest": "7ae298811d343b7b90109750"
+  },
+  "decision_record": {
+    "data_release_id": "build:43303bc15d28971e37dfd49f",
+    "source_bundle_id": "release:549669d609b3dc600b81b9bf",
+    "build_id": "build:43303bc15d28971e37dfd49f",
+    "attempt_id": "attempt:f3811e32fe3f4f71a7921548",
+    "schema_version": 43,
+    "status": "blocked",
+    "error_count": 1,
+    "warning_count": 40,
+    "decided_at": "2026-09-14 21:05:30",
+    "decided_by": "release_gate"
+  },
+  "environment": [
+    {
+      "package": "DBI",
+      "version": "1.3.0",
+      "built_under": "R 4.5.2",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "R6",
+      "version": "2.6.1",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "Rcpp",
+      "version": "1.1.1-1.1",
+      "built_under": "R 4.5.2",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "bit",
+      "version": "4.6.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "bit64",
+      "version": "4.8.2",
+      "built_under": "R 4.5.2",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "brio",
+      "version": "1.1.5",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "callr",
+      "version": "3.8.0",
+      "built_under": "R 4.5.2",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "cellranger",
+      "version": "1.1.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "cli",
+      "version": "3.6.5",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "clipr",
+      "version": "0.8.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "cpp11",
+      "version": "0.5.2",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "crayon",
+      "version": "1.5.3",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "desc",
+      "version": "1.4.3",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "diffobj",
+      "version": "0.3.6",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "digest",
+      "version": "0.6.37",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "dplyr",
+      "version": "1.1.4",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "duckdb",
+      "version": "1.5.5",
+      "built_under": "R 4.5.2",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "evaluate",
+      "version": "1.0.5",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "fs",
+      "version": "1.6.6",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "generics",
+      "version": "0.1.4",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "glue",
+      "version": "1.8.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "hms",
+      "version": "1.1.4",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "janitor",
+      "version": "2.2.1",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "jsonlite",
+      "version": "2.0.0",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "lifecycle",
+      "version": "1.0.4",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "lubridate",
+      "version": "1.9.4",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "magrittr",
+      "version": "2.0.4",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "openxlsx",
+      "version": "4.2.8.1",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "otel",
+      "version": "0.2.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "pillar",
+      "version": "1.11.1",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "pkgbuild",
+      "version": "1.4.8",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "pkgconfig",
+      "version": "2.0.3",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "pkgload",
+      "version": "1.4.1",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "praise",
+      "version": "1.0.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "prettyunits",
+      "version": "1.2.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "processx",
+      "version": "3.8.6",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "progress",
+      "version": "1.2.3",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "ps",
+      "version": "1.9.1",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "purrr",
+      "version": "1.2.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "readr",
+      "version": "2.2.0",
+      "built_under": "R 4.5.2",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "readxl",
+      "version": "1.4.5",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "rematch",
+      "version": "2.0.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "renv",
+      "version": "1.1.5",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "rlang",
+      "version": "1.1.6",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "snakecase",
+      "version": "0.11.1",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "stringi",
+      "version": "1.8.7",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "stringr",
+      "version": "1.6.0",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "testthat",
+      "version": "3.3.2",
+      "built_under": "R 4.5.2",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "tibble",
+      "version": "3.3.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "tidyr",
+      "version": "1.3.1",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "tidyselect",
+      "version": "1.2.1",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "timechange",
+      "version": "0.3.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "tzdb",
+      "version": "0.5.0",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "utf8",
+      "version": "1.2.6",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "vctrs",
+      "version": "0.6.5",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "vroom",
+      "version": "1.7.1",
+      "built_under": "R 4.5.2",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "waldo",
+      "version": "0.6.2",
+      "built_under": "R 4.5.0",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "withr",
+      "version": "3.0.2",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "xml2",
+      "version": "1.5.2",
+      "built_under": "R 4.5.2",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "yaml",
+      "version": "2.3.10",
+      "built_under": "R 4.5.0",
+      "is_direct": true,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    },
+    {
+      "package": "zip",
+      "version": "3.0.2",
+      "built_under": "R 4.5.2",
+      "is_direct": false,
+      "library_path": "/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library",
+      "recorded_at": "2026-09-14 21:05:30"
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "bank_reference",
+      "vintage_id": "bank_reference:cd800f82e64f8f2a0b65eea7",
+      "source_file": "Referencias_bancos_financieras.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/bank_reference/Referencias_bancos_financieras.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/bank_reference/cd800f82e64f8f2a0b65eea781becf06df2c42cd060b366f73f17393eead8ba9.xlsx",
+      "sha256": "cd800f82e64f8f2a0b65eea781becf06df2c42cd060b366f73f17393eead8ba9",
+      "size_bytes": 142075,
+      "publication_date": null,
+      "publication_date_source": "pending_content_inference",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "banking_indicators",
+      "vintage_id": "banking_indicators:c57dc0f6a422ac9e54dafccd",
+      "source_file": "IDB_JUN26.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/banking_indicators/IDB_JUN26.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/banking_indicators/c57dc0f6a422ac9e54dafccd2fabfd7cbc358ed67fe3be9c50a46efffad3246d.xlsx",
+      "sha256": "c57dc0f6a422ac9e54dafccd2fabfd7cbc358ed67fe3be9c50a46efffad3246d",
+      "size_bytes": 223521,
+      "publication_date": "2026-06-30",
+      "publication_date_source": "filename",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "banks",
+      "vintage_id": "banks:3809900872e5af28e11ae86e",
+      "source_file": "1.1 Tablas Boletín Bancos Jul26 1.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/banks/1.1 Tablas Boletín Bancos Jul26 1.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/banks/3809900872e5af28e11ae86ecca29027159ffec268d9f059b4aa448bf0b76879.xlsx",
+      "sha256": "3809900872e5af28e11ae86ecca29027159ffec268d9f059b4aa448bf0b76879",
+      "size_bytes": 18100537,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "filename",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "bcp_fx_daily",
+      "vintage_id": "bcp_fx_daily:a45bea1e1508bb019befcac9",
+      "source_file": "Compra_Venta de Divisas del BCP_2026 (1).xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/bcp_fx_daily/Compra_Venta de Divisas del BCP_2026 (1).xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/bcp_fx_daily/a45bea1e1508bb019befcac9c545dfb03e0e537649a4d7a20d2a8bea59652091.xlsx",
+      "sha256": "a45bea1e1508bb019befcac9c545dfb03e0e537649a4d7a20d2a8bea59652091",
+      "size_bytes": 708526,
+      "publication_date": "2026-08-14",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "cda_curve",
+      "vintage_id": "cda_curve:8796a589fc2bd31317efdce7",
+      "source_file": "Curva_CDA.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/Curva_CDA.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/cda_curve/8796a589fc2bd31317efdce7865d4598473fdacd048cf04b676dc8f78e2b144c.xlsx",
+      "sha256": "8796a589fc2bd31317efdce7865d4598473fdacd048cf04b676dc8f78e2b144c",
+      "size_bytes": 4505245,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "compensatory_fx_sales",
+      "vintage_id": "compensatory_fx_sales:474d8c47b1ad9622b1bb8b29",
+      "source_file": "Ventas Compensatorias_Ventas Complementarias_2026.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/compensatory_fx_sales/Ventas Compensatorias_Ventas Complementarias_2026.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/compensatory_fx_sales/474d8c47b1ad9622b1bb8b29c229f87104f01dba4c461150a894d13b679812e1.xlsx",
+      "sha256": "474d8c47b1ad9622b1bb8b29c229f87104f01dba4c461150a894d13b679812e1",
+      "size_bytes": 46445,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "corporate_bond_curves",
+      "vintage_id": "corporate_bond_curves:e5d5a3a5c3e2b00d96d76a11",
+      "source_file": "Curvas Bonoc Corporativos.csv",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/corporate_bond_curves/Curvas Bonoc Corporativos.csv",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/corporate_bond_curves/e5d5a3a5c3e2b00d96d76a112c579af506be1b2446c98d531aa5d6e756de85d3.csv",
+      "sha256": "e5d5a3a5c3e2b00d96d76a112c579af506be1b2446c98d531aa5d6e756de85d3",
+      "size_bytes": 7440407,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "credit_survey",
+      "vintage_id": "credit_survey:58a83c5bcd64e4423fc13c40",
+      "source_file": "Estadística Situación General del Crédito.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/credit_survey/Estadística Situación General del Crédito.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/credit_survey/58a83c5bcd64e4423fc13c407b372d283eb185de2ea452405ae3ced47f88a4ed.xlsx",
+      "sha256": "58a83c5bcd64e4423fc13c407b372d283eb185de2ea452405ae3ced47f88a4ed",
+      "size_bytes": 183146,
+      "publication_date": "2026-06-30",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "direct_investment",
+      "vintage_id": "direct_investment:fbc612f5e64f6905a2e84928",
+      "source_file": "Anexo estadístico de Inversión Directa (ID) 1995 - 2024 (1).xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/direct_investment/Anexo estadístico de Inversión Directa (ID) 1995 - 2024 (1).xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/direct_investment/fbc612f5e64f6905a2e84928d4cdd25582ac491b647b0e5a1eab7146d059858a.xlsx",
+      "sha256": "fbc612f5e64f6905a2e84928d4cdd25582ac491b647b0e5a1eab7146d059858a",
+      "size_bytes": 6100024,
+      "publication_date": "2024-12-31",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "economic_annex",
+      "vintage_id": "economic_annex:25818cb75022083e13cab48e",
+      "source_file": "Anexo_Estadístico_del_Informe_Económico_13_08_2026.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/economic_annex/Anexo_Estadístico_del_Informe_Económico_13_08_2026.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/economic_annex/25818cb75022083e13cab48e773038b4f4c82557fa6e307ec50b428eefd9f0ae.xlsx",
+      "sha256": "25818cb75022083e13cab48e773038b4f4c82557fa6e307ec50b428eefd9f0ae",
+      "size_bytes": 8855976,
+      "publication_date": "2026-08-13",
+      "publication_date_source": "filename",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "eve",
+      "vintage_id": "eve:9eef7e154e7e7c6f3990e0fc",
+      "source_file": "EVE_Anexo Estadístico_agosto_2026.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/eve/EVE_Anexo Estadístico_agosto_2026.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/eve/9eef7e154e7e7c6f3990e0fccc4e91667e6c271f3bcacf6fcce6091d3cdbf559.xlsx",
+      "sha256": "9eef7e154e7e7c6f3990e0fccc4e91667e6c271f3bcacf6fcce6091d3cdbf559",
+      "size_bytes": 42191,
+      "publication_date": "2026-08-31",
+      "publication_date_source": "filename",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "exchange_houses",
+      "vintage_id": "exchange_houses:93e85a8013fb6cf2b842f72e",
+      "source_file": "3. Boletín Casa de Cambio Jul26.xlsm",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/exchange_houses/3. Boletín Casa de Cambio Jul26.xlsm",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/exchange_houses/93e85a8013fb6cf2b842f72e25427bc5449f859329428edb3280e77ad999b33a.xlsm",
+      "sha256": "93e85a8013fb6cf2b842f72e25427bc5449f859329428edb3280e77ad999b33a",
+      "size_bytes": 11252107,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "filename",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "exchange_rates",
+      "vintage_id": "exchange_rates:a822c1e0cb97438c1bde2836",
+      "source_file": "Cotizaciones - Julio 2026.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/exchange_rates/Cotizaciones - Julio 2026.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/exchange_rates/a822c1e0cb97438c1bde2836cca9d8b58777f2ae3f8dcb8160197345aabf62a2.xlsx",
+      "sha256": "a822c1e0cb97438c1bde2836cca9d8b58777f2ae3f8dcb8160197345aabf62a2",
+      "size_bytes": 257516,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "filename",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "financial",
+      "vintage_id": "financial:5ebb0bcb3260e482dbf6f83e",
+      "source_file": "2.1 Tablas Boletín Financieras Jul26 1.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/financial/2.1 Tablas Boletín Financieras Jul26 1.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/financial/5ebb0bcb3260e482dbf6f83e4c80aa5b7d5e50d65e3b974c6e33221d4998ca3b.xlsx",
+      "sha256": "5ebb0bcb3260e482dbf6f83e4c80aa5b7d5e50d65e3b974c6e33221d4998ca3b",
+      "size_bytes": 6447642,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "filename",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "financial_indicators",
+      "vintage_id": "financial_indicators:f9ded3c4fe24e11b14caa1df",
+      "source_file": "Ind. Financieros web-Junio 2026.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/financial_indicators/Ind. Financieros web-Junio 2026.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/financial_indicators/f9ded3c4fe24e11b14caa1df69f4390a3e3367ed076e6c35b1328cbe0c3eaff3.xlsx",
+      "sha256": "f9ded3c4fe24e11b14caa1df69f4390a3e3367ed076e6c35b1328cbe0c3eaff3",
+      "size_bytes": 1821852,
+      "publication_date": "2026-06-30",
+      "publication_date_source": "filename",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "fx_operations",
+      "vintage_id": "fx_operations:40495acf211c2c2d11664e42",
+      "source_file": "Histórico - Operaciones Cambiarias.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/fx_operations/Histórico - Operaciones Cambiarias.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/fx_operations/40495acf211c2c2d11664e42db84c028df796bcf8a65b7013ef2e6612504f90c.xlsx",
+      "sha256": "40495acf211c2c2d11664e42db84c028df796bcf8a65b7013ef2e6612504f90c",
+      "size_bytes": 103024,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "icc",
+      "vintage_id": "icc:b15c74f9723cd0465d088b85",
+      "source_file": "Estadistica ICC.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/icc/Estadistica ICC.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/icc/b15c74f9723cd0465d088b855aa36a670c06997a1a439c81ccf95913f9b3d3a5.xlsx",
+      "sha256": "b15c74f9723cd0465d088b855aa36a670c06997a1a439c81ccf95913f9b3d3a5",
+      "size_bytes": 96710,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "insurance_annex",
+      "vintage_id": "insurance_annex:7cb2b1d2ffa3badb8113e890",
+      "source_file": "Anexo_estadístico_2025.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/insurance_annex/Anexo_estadístico_2025.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/insurance_annex/7cb2b1d2ffa3badb8113e890339f41cd2f24187ecdf925e532da24e5583fd131.xlsx",
+      "sha256": "7cb2b1d2ffa3badb8113e890339f41cd2f24187ecdf925e532da24e5583fd131",
+      "size_bytes": 338853,
+      "publication_date": "2025-06-30",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "interbank_market",
+      "vintage_id": "interbank_market:dbcda6fadd28e3dd5bb3afc2",
+      "source_file": "mercado-interbancario.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/interbank_market/mercado-interbancario.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/interbank_market/dbcda6fadd28e3dd5bb3afc24d640ebfdf12a60742fd46fee753fcc0f5ef7766.xlsx",
+      "sha256": "dbcda6fadd28e3dd5bb3afc24d640ebfdf12a60742fd46fee753fcc0f5ef7766",
+      "size_bytes": 3195739,
+      "publication_date": "2026-08-14",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "liquidity_facility",
+      "vintage_id": "liquidity_facility:d0704796350e86652138be52",
+      "source_file": "administracion-de-liquidez-web_1.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/liquidity_facility/administracion-de-liquidez-web_1.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/liquidity_facility/d0704796350e86652138be5232f960021933a28d186b25aebdb9b53236dd31e2.xlsx",
+      "sha256": "d0704796350e86652138be5232f960021933a28d186b25aebdb9b53236dd31e2",
+      "size_bytes": 94980,
+      "publication_date": "2021-09-09",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "lrm_auctions",
+      "vintage_id": "lrm_auctions:b7e160f57d37a215d182eaef",
+      "source_file": "Subasta de LRM_WEB.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/lrm_auctions/Subasta de LRM_WEB.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/lrm_auctions/b7e160f57d37a215d182eaeffea7d18a4e99151ebbde1efd9aa320d08ba71a37.xlsx",
+      "sha256": "b7e160f57d37a215d182eaeffea7d18a4e99151ebbde1efd9aa320d08ba71a37",
+      "size_bytes": 273448,
+      "publication_date": "2026-07-30",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "payments",
+      "vintage_id": "payments:de7b4a670c8e2d7430cd91d6",
+      "source_file": "Boletín Estadístico de Sistemas de Pago_Julio_2026.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/payments/Boletín Estadístico de Sistemas de Pago_Julio_2026.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/payments/de7b4a670c8e2d7430cd91d609b53d8ae239db5b9ec4efe6611e331e492f5081.xlsx",
+      "sha256": "de7b4a670c8e2d7430cd91d609b53d8ae239db5b9ec4efe6611e331e492f5081",
+      "size_bytes": 757217,
+      "publication_date": "2026-07-31",
+      "publication_date_source": "filename",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "securities_trades",
+      "vintage_id": "securities_trades:80f03b3d8b9c898031344ee4",
+      "source_file": "Negociaciones_Bursatiles.csv",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/securities_trades/Negociaciones_Bursatiles.csv",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/securities_trades/80f03b3d8b9c898031344ee43cda6814e04e4475cb4cd52b1a03b810126c8609.csv",
+      "sha256": "80f03b3d8b9c898031344ee43cda6814e04e4475cb4cd52b1a03b810126c8609",
+      "size_bytes": 42372829,
+      "publication_date": "2026-08-19",
+      "publication_date_source": "content_max_period",
+      "ingestion_status": "completed"
+    },
+    {
+      "source_id": "tcn_referential_daily",
+      "vintage_id": "tcn_referential_daily:74df666397a33b9c8cdfac10",
+      "source_file": "TCN_Referencial_Diario.xlsx",
+      "source_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input/current/TCN_Referencial_Diario.xlsx",
+      "archive_path": "/Users/juanmanuelgonzalezmasulli/Documents/Paraguay_Macro_Database/input_archive/tcn_referential_daily/74df666397a33b9c8cdfac10d7ffedd23acf7cbd5907ea21332e100fb939c0a4.xlsx",
+      "sha256": "74df666397a33b9c8cdfac10d7ffedd23acf7cbd5907ea21332e100fb939c0a4",
+      "size_bytes": 117740,
+      "publication_date": null,
+      "publication_date_source": "pending_content_inference",
+      "ingestion_status": "completed"
+    }
+  ],
+  "validation": {
+    "error_count": 1,
+    "warning_count": 40,
+    "error_check": "new_vintage_provenance_incomplete",
+    "error_detail": "2 non-legacy vintage(s) lack mandatory acquisition metadata.",
+    "reconciliation": [
+      {
+        "status": "balanced",
+        "worksheets": 686,
+        "balance_delta": 0,
+        "unclassified_cells": 0,
+        "parser_defect_cells": 0
+      }
+    ],
+    "full_regression_suite_run": false,
+    "full_regression_suite_reason": "Stopped after the official isolated build failed a release gate."
+  }
+}

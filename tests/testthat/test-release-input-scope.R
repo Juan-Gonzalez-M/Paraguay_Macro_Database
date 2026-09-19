@@ -8,6 +8,8 @@ schema43_scope_fixture <- function() {
   registry <- readr::read_csv(
     file.path(project_test_root, "config", "source_registry.csv"), show_col_types = FALSE
   )
+  historical_scope <- read_release_input_scope(project_test_root, SCHEMA43_SCOPE_ID)
+  registry <- registry[registry$source_id %in% historical_scope$source_id, , drop = FALSE]
   discovered <- build_current_manifest(registry, project_test_root)
   list(registry = registry, discovered = discovered)
 }

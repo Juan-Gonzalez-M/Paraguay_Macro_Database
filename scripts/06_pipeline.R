@@ -829,7 +829,7 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
         # read of every workbook while preserving both layers.
         curated <- ingest_curated_source(con, item, dimensions, release_id, root, publication_date)
         publication_date <- curated$publication_date
-      } else if (item$ingest_mode == "long_csv") {
+      } else if (item$ingest_mode %in% c("long_csv", "imf_wide")) {
         curated <- ingest_curated_source(con, item, dimensions, release_id, root, publication_date)
         publication_date <- curated$publication_date
       } else {
@@ -842,7 +842,7 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
         }
       }
       add_timing("ingestion_and_curation", ingestion_started)
-      if (!item$ingest_mode %in% c("semantic_table", "long_csv", "direct", "reference")) {
+      if (!item$ingest_mode %in% c("semantic_table", "long_csv", "imf_wide", "direct", "reference")) {
         if (curated$curated_rows > 0 && !is.na(curated$source_sheet)) DBI::dbExecute(con, paste0(
           "UPDATE semantic_coverage SET curated_observations = ", curated$curated_rows,
           ", semantic_status = 'curated', coverage_note = 'Semantic parser passed its structure guard; raw coordinate layer also retained.' WHERE vintage_id = ",
@@ -942,6 +942,45 @@ run_manifest_pipeline <- function(root, registry, manifest, resolution_issues = 
         con,
         previous_product,
         from_schema, to_schema, root,
+        current = DBI::dbGetQuery(con, "SELECT current_database() AS name")$name[[1]]
+      )
+    }
+  }
+  # A same-schema CDA parser decision can also retire published identifiers.
+  # Compare the candidate directly with the untouched active product and, only
+  # when the CDA identity set changed, record the complete product-to-product
+  # outcome map before the release gate runs. This makes the fifteen reviewed
+  # publisher-error identities explicit retirements rather than silent loss.
+  previous_product <- file.path(root, "database", "paraguay_macro_pilot.duckdb")
+  if (file.exists(previous_product) &&
+      !identical(normalizePath(previous_product, winslash = "/"),
+                 normalizePath(db_path, winslash = "/"))) {
+    previous_con <- connect_project_database(previous_product, read_only = TRUE)
+    on.exit({
+      if (DBI::dbIsValid(previous_con)) {
+        try(DBI::dbDisconnect(previous_con, shutdown = TRUE), silent = TRUE)
+      }
+    }, add = TRUE)
+    previous_release <- DBI::dbGetQuery(
+      previous_con, "SELECT data_release_id FROM audit.active_data_release"
+    )$data_release_id[[1]]
+    previous_cda <- DBI::dbGetQuery(
+      previous_con,
+      "SELECT series_id FROM canonical.dim_series WHERE source_id='cda_curve' ORDER BY 1"
+    )$series_id
+    current_cda <- DBI::dbGetQuery(
+      con, "SELECT series_id FROM dim_series WHERE source_id='cda_curve' ORDER BY 1"
+    )$series_id
+    cda_changed <- !identical(previous_cda, current_cda)
+    existing_product_hop <- DBI::dbGetQuery(con, paste(
+      "SELECT count(*) AS n FROM", project_qualified_name("series_id_migration"),
+      "WHERE from_release=", sql_string(previous_release),
+      "AND to_release=", sql_string(build$build_id)
+    ))$n[[1]]
+    DBI::dbDisconnect(previous_con, shutdown = TRUE)
+    if (cda_changed && !existing_product_hop && !identical(previous_release, build$build_id)) {
+      build_series_id_migration(
+        con, previous_product, previous_release, build$build_id, root,
         current = DBI::dbGetQuery(con, "SELECT current_database() AS name")$name[[1]]
       )
     }

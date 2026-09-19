@@ -334,6 +334,7 @@ ingest_curated_source <- function(con, item, dimensions, release_id, root, publi
          fx_operations = fx_parser(con, item, dimensions, release_id, root, publication_date),
          semantic_table = documented_source_parser(con, item, dimensions, release_id, root, publication_date),
          long_csv = long_csv_parser(con, item, dimensions, release_id, root, publication_date),
+         imf_wide = imf_wide_parser(con, item, dimensions, release_id, root, publication_date),
          reference = ingest_reference_workbook(con, item, dimensions, release_id, root, publication_date),
          list(curated_rows = 0L, event_rows = 0L, publication_date = publication_date, source_sheet = NA_character_))
 }

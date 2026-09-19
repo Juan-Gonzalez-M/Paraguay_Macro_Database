@@ -484,18 +484,20 @@ documented_parse_daily_calendar_grid <- function(raw, source_sheet) {
       )
       next
     }
-    # ND is preserved in the raw cell layer. Its meaning is not governed, so it
-    # produces neither an observation nor a missingness classification here.
+    # Human source-owner review on 2026-09-19 confirmed that ND denotes a
+    # weekend or holiday for which no quotation exists. Preserve the exact token
+    # in raw evidence and emit no observation: it is neither zero nor a value to
+    # interpolate.
     if (is.na(value)) next
     period_label <- paste(text[r, 1], text[2, j], year)
     k <- k + 1L
     records[[k]] <- documented_record(
       source_sheet, title, "daily_calendar_grid", period, period_label, "daily",
-      side, source_sheet, side, value, r, j
+      side, "TCN REFERENCIAL DIARIO", side, value, r, j
     )
-    records[[k]]$unit <- "source_units"
+    records[[k]]$unit <- "PYG_per_USD"
     records[[k]]$scale <- "units"
-    records[[k]]$currency <- NA_character_
+    records[[k]]$currency <- "PYG/USD"
     records[[k]]$is_total <- FALSE
   }
   observations <- documented_bind_records(records)

@@ -380,6 +380,10 @@ apply_series_semantics <- function(con) {
     "WHEN price_base_year IS NOT NULL AND trim(price_base_year) <> '' THEN 'real'",
     "ELSE 'not_reviewed' END"
   ))
+  DBI::dbExecute(con, paste(
+    "UPDATE dim_series SET nominal_real='nominal'",
+    "WHERE source_id='cda_curve' AND unit='percent_per_annum'"
+  ))
   # An index number is a transformation of a level, and the unit says so
   # without any inference. Everything else waits for review.
   DBI::dbExecute(con, paste(
@@ -989,7 +993,12 @@ derive_series_dimensions <- function(con) {
 
   dimensions <- dplyr::bind_rows(rows)
   with_project_transaction(con, {
-    DBI::dbExecute(con, "DELETE FROM series_dimension WHERE basis <> 'reviewed'")
+    # Source-published dimensions are parser evidence, not semantic derivations.
+    # Rebuilding label/title-derived dimensions must never erase them.
+    DBI::dbExecute(con, paste(
+      "DELETE FROM series_dimension",
+      "WHERE basis NOT IN ('reviewed', 'published_imf_export')"
+    ))
     if (nrow(dimensions)) DBI::dbWriteTable(con, "series_dimension", dimensions, append = TRUE)
   })
   invisible(nrow(dimensions))

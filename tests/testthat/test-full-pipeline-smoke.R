@@ -231,8 +231,8 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
     "COUNT(DISTINCT source_sheet) sheets, MIN(period) first_period, MAX(period) last_period ",
     "FROM documented_series_snapshot WHERE source_id = 'cda_curve'"
   ))
-  testthat::expect_equal(cda$observations[[1]], 21854L)
-  testthat::expect_equal(cda$series[[1]], 471L)
+  testthat::expect_equal(cda$observations[[1]], 21839L)
+  testthat::expect_equal(cda$series[[1]], 421L)
   testthat::expect_equal(cda$sheets[[1]], 412L)
   testthat::expect_equal(as.Date(cda$first_period[[1]]), as.Date("2018-01-31"))
   testthat::expect_equal(as.Date(cda$last_period[[1]]), as.Date("2026-07-31"))
@@ -243,8 +243,17 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
   ))
   testthat::expect_equal(unlist(cda_accounting[1, ]), c(reuse = 0, unmapped = 0, unclassified = 0, defects = 0))
   testthat::expect_equal(DBI::dbGetQuery(
-    con, "SELECT COUNT(*) n FROM source_region_classification WHERE source_id = 'cda_curve'"
-  )$n[[1]], 0L)
+    con, paste0(
+      "SELECT COUNT(*) n FROM source_region_classification ",
+      "WHERE source_id = 'cda_curve' AND classification = 'unreviewed'"
+    )
+  )$n[[1]], 15L)
+  testthat::expect_equal(DBI::dbGetQuery(
+    con, paste0(
+      "SELECT SUM(out_of_region_cells) n FROM table_reconciliation ",
+      "WHERE source_id = 'cda_curve'"
+    )
+  )$n[[1]], 15L)
   testthat::expect_equal(DBI::dbGetQuery(
     con, "SELECT COUNT(*) n FROM v_research_series WHERE source_id = 'cda_curve'"
   )$n[[1]], 0L)
@@ -258,12 +267,12 @@ testthat::test_that("the full real-workbook pipeline completes with plausible ou
     "FROM documented_series_snapshot WHERE source_id = 'tcn_referential_daily'"
   ))
   testthat::expect_equal(tcn$observations[[1]], 7004L)
-  testthat::expect_equal(tcn$series[[1]], 30L)
+  testthat::expect_equal(tcn$series[[1]], 2L)
   testthat::expect_equal(tcn$sheets[[1]], 30L)
   testthat::expect_equal(as.Date(tcn$first_period[[1]]), as.Date("2012-08-06"))
   testthat::expect_equal(as.Date(tcn$last_period[[1]]), as.Date("2026-08-25"))
   testthat::expect_equal(tcn$units[[1]], 1L)
-  testthat::expect_equal(tcn$currencies[[1]], 0L)
+  testthat::expect_equal(tcn$currencies[[1]], 7004L)
   tcn_accounting <- DBI::dbGetQuery(con, paste0(
     "SELECT SUM(cell_reuse) reuse, SUM(unmapped_in_region) unmapped, ",
     "SUM(unclassified_cells) unclassified, SUM(parser_defect_cells) defects ",
