@@ -1,0 +1,18 @@
+role,series_id,frequency,status,interpretation,limitation
+inflation_yoy,economic_annex:cuadro_15:080dbf95a46f3bcb97aeb69d,monthly,selected,Inflación total variación interanual,Resultado final no vintage real-time
+imaep,economic_annex:cuadro_9:fc9a02c5dcc0573b3c038553,monthly,selected,IMAEP serie original,Debe preservarse el régimen metodológico
+imaep_ex_agri_bin,economic_annex:cuadro_9:50676b58c0b150737790879f,monthly,selected,IMAEP sin agricultura ni binacionales serie original,No sustituye actividad total
+forward_buy_total,economic_annex:cuadro_61:c1e3d7c587159be995288eee,monthly,selected,Compra total forward en USD,Volumen y no precio forward
+forward_sell_total,economic_annex:cuadro_61:d964d9000ef92ca9b9bdd9a1,monthly,selected,Venta total forward en USD,Volumen y no precio forward
+fx_bcp_financial_net,bcp_fx_daily:op_divisas_datos_diarios:5aa4e7262dee69adde87a3ae,daily,selected,Compras netas del BCP con sector financiero,Operación observada no shock exógeno
+fx_bcp_total_net,bcp_fx_daily:op_divisas_datos_diarios:542ac0ab6cb137a1139018b2,daily,selected,Compras netas sector público más financiero,Puede mezclar propósitos distintos
+pyg_usd_daily_buy,tcn_referential_daily:tcn_referencial_daily:a07f02c9c6cdd8a96698da73,daily,selected,Cotización referencial compra,Unidad y continuidad requieren mantener advertencias de fuente
+pyg_usd_daily_sell,tcn_referential_daily:tcn_referencial_daily:5fc9eaa0817a8a6ece9666c4,daily,selected,Cotización referencial venta,Unidad y continuidad requieren mantener advertencias de fuente
+broad_usd,,monthly,pending_selection,Dólar amplio,Seleccionar indicador y transformación exactos
+brazil_fx_macro,,monthly,pending_selection,Variables de Brasil,Seleccionar indicadores exactos
+argentina_fx_macro,,monthly,pending_selection,Variables de Argentina,Seleccionar régimen cambiario y precio exactos
+commodities,,monthly,pending_selection,Commodities relevantes para Paraguay,Seleccionar canasta y ponderación
+trade,,monthly,pending_selection,Comercio exterior,Seleccionar flujo total o bilateral y transformación
+relative_rates,,monthly,pending_selection,Tasas relativas,Definir tasa doméstica y externa comparables
+eve_fx,,monthly,pending_semantic_validation,Expectativa de tipo de cambio,Confirmar estadístico publicado y fecha disponible
+
