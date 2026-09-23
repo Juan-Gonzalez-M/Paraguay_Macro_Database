@@ -26,11 +26,16 @@ Exploratory validation uses a separate vocabulary:
 |---|---|
 | `research_ready` | The candidate is admitted to `research.*` at its stated assurance level. |
 | `exploratory_structurally_valid` | Scalar observations pass the documented mechanical checks; economic review is incomplete. |
-| `candidate_needs_review` | The candidate is identifiable but ordinary retrieval is withheld, commonly for positional identity or fewer than three observations. |
+| `candidate_needs_review` | The candidate is identifiable but ordinary retrieval is withheld, commonly for positional identity or no current numeric observation. |
 | `quarantined_or_invalid` | A governed invalid status or key/date/value-integrity failure prevents exploratory exposure. |
 | `non_scalar_or_special_structure` | Use the event, panel, curve, transaction, or other native-grain interface. |
 
 Validation tier is computed for access and never replaces `assurance_level`.
+`usability_level` provides the product-facing summary `formal`,
+`preliminary_with_warnings`, `specialized_structure`, or `blocked`; it does not create assurance.
+Semantic one- and two-observation histories are permitted in `explore.observations` when all other
+mechanical gates pass. Their `short_scalar_candidate` warning remains attached, and the same history
+still fails the formal research gate.
 `primary_review_category` is a separate census disposition. It assigns every candidate exactly one
 review queue while `classification_issue_codes` preserves additional concerns. The
 `catalog_admission_status`, `explore_admission_status`, `research_admission_status`, and exclusion
@@ -60,6 +65,11 @@ ORDER BY validation_tier, researcher_name;
 
 -- Source datasets, including direct panels and long-format data.
 SELECT * FROM catalog.datasets ORDER BY source_id;
+
+-- Reproducible prioritization. Every effort coefficient is returned as a column;
+-- estimated_total_hours is a planning estimate, not measured labour.
+SELECT * FROM catalog.family_readiness
+ORDER BY releasable_series_per_hour DESC NULLS LAST;
 
 -- 2. Inspect one concise candidate profile.
 SELECT * FROM catalog.profile('economic_annex:cuadro_1:example_id');
@@ -135,6 +145,29 @@ complete panel key.
 
 No automatic logs, growth rates, seasonal adjustment, deflation, interpolation, or splicing are
 stored. `value_in_base_units` is only the deterministic published scale multiplication.
+
+## Minimal R workflow
+
+Load the project functions with `scripts/load_project.R`, then use `preliminary_search()` to search
+by text, source, frequency or domain. `preliminary_observations()` requires
+`accept_warnings = TRUE` for non-formal scalar candidates and supports `formal_only = TRUE` when the
+caller wants the stricter surface. `preliminary_wide()` pivots only one unambiguous frequency and
+fails rather than silently aggregate incompatible frequencies.
+
+```r
+source("scripts/load_project.R")
+load_project_scripts(getwd(), profile = "research_tools")
+con <- connect_project_database("database/paraguay_macro_pilot.duckdb", read_only = TRUE)
+
+hits <- preliminary_search(con, text = "reserve", source_id = "imf_irfcl")
+meta <- hits[1, c("candidate_id", "earliest_period", "latest_period",
+                  "unit_code", "warning_codes", "usability_level")]
+long <- preliminary_observations(con, meta$candidate_id, accept_warnings = TRUE)
+wide <- preliminary_wide(con, hits$candidate_id[1:2], accept_warnings = TRUE)
+
+formal <- preliminary_search(con, text = "exchange", formal_only = TRUE)
+ranking <- preliminary_family_ranking(con) # pass assumptions = list(...) for scenarios
+```
 
 ## First review workstream
 

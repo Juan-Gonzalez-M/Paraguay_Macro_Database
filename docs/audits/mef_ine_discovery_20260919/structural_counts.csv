@@ -1,0 +1,17 @@
+source_key,sheet_name,frequency,period_coverage,dimension_lanes,candidate_series,populated_numeric_observations,text_or_flag_cells_in_data_region,initial_layer
+mef,Serie,monthly,2003-01 through 2026-08,account,84,23676,0,preservation/staging
+ine,Tasas,quarterly,2017-Q1 through 2026-Q2,area|indicator|sex,67,2232,228,preservation/staging
+ine,CARACTERÍSTICAS_OCU,quarterly,2017-Q1 through 2026-Q2,area|characteristic|measure,70,2143,92,preservation/staging
+ine,SECTORECONÓMICO,quarterly,2017-Q1 through 2026-Q2,area|sector|measure,35,1093,80,preservation/staging
+ine,CATEGORÍAOCUPACIONAL,quarterly,2017-Q1 through 2026-Q2,area|occupational_category|measure,32,1061,108,preservation/staging
+ine,TAMAÑODEEMPRESA,quarterly,2017-Q1 through 2026-Q2,area|enterprise_size|measure,26,863,73,preservation/staging
+ine,HORASHABITUALES,quarterly,2017-Q1 through 2026-Q2,area|usual_hours_band|measure,17,518,67,preservation/staging
+ine,TIEMPOEXPERIENCIA,quarterly,2017-Q1 through 2026-Q2,area|experience_band|measure,20,610,92,preservation/staging
+ine,PROMEDIODEAÑODEESTUDIO,quarterly,2017-Q1 through 2026-Q2,area|education_band|sex,69,2394,21,preservation/staging
+ine,INGRESOS_CATE,quarterly,2017-Q1 through 2026-Q2,area|occupational_category|sex,51,1575,150,preservation/staging
+ine,INGRESOSPORHORAS,quarterly,2017-Q1 through 2026-Q2,area|occupational_category|sex,51,1575,150,preservation/staging
+ine,INGRESOS_SECTOR,quarterly,2017-Q1 through 2026-Q2,area|sector|sex,96,2831,277,preservation/staging
+ine,INGRESOS_OCUP,quarterly,2017-Q1 through 2026-Q2,area|occupation|sex,102,3432,363,preservation/staging
+ine,Población Total,quarterly,2017-Q1 through 2026-Q2,area|labour_status|sex,90,2916,194,preservation/staging
+ine,FORMALIDAD,quarterly,2017-Q1 through 2026-Q2,occupational_category|formal_status_measure,24,900,17,preservation/staging
+ine,PROMEDIO DE HORAS,quarterly,2017-Q1 through 2026-Q2,area|sector|sex,96,3069,39,preservation/staging

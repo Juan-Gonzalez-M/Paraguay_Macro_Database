@@ -861,7 +861,7 @@ validate_platform_contracts <- function(con, release_id, root) {
       ))$n,
       ineligible_rows = DBI::dbGetQuery(con, paste(
         "SELECT count(*) AS n FROM explore.observations o JOIN catalog.series c USING(candidate_id)",
-        "WHERE c.identity_stability<>'semantic' OR c.non_missing_observation_count<3"
+        "WHERE c.identity_stability<>'semantic' OR c.non_missing_observation_count<=0"
       ))$n
     )
     if (exploratory$expected_rows != exploratory$exposed_rows || exploratory$invalid_links > 0 ||

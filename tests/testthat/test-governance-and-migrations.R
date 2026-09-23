@@ -94,14 +94,15 @@ testthat::test_that("measurement metadata is derived where determinate and hones
   # be complete wherever a scale is published.
   testthat::expect_equal(DBI::dbGetQuery(con, paste(
     "SELECT count(*) AS n FROM dim_series",
-    "WHERE scale IS NOT NULL AND scale <> '' AND scale_multiplier IS NULL"
+    "WHERE scale IS NOT NULL AND scale <> '' AND scale_multiplier IS NULL",
+    "AND lower(trim(scale)) <> 'source_scale'"
   ))$n[[1]], 0L)
   multipliers <- DBI::dbGetQuery(con, paste(
     "SELECT DISTINCT scale, scale_multiplier FROM dim_series WHERE scale_multiplier IS NOT NULL"
   ))
   testthat::expect_equal(
     multipliers$scale_multiplier,
-    unname(SERIES_SCALE_MULTIPLIERS[multipliers$scale])
+    unname(SERIES_SCALE_MULTIPLIERS[tolower(trimws(multipliers$scale))])
   )
   testthat::expect_equal(DBI::dbGetQuery(con, paste(
     "SELECT count(*) AS n FROM dim_series WHERE unit IS NOT NULL AND unit_code IS NULL"
@@ -569,7 +570,8 @@ testthat::test_that("detailed trade carries explicit economic dimensions, not a 
   # Valuation is derived from the published title, and FOB and CIF must never be
   # asserted for the same series.
   testthat::expect_equal(DBI::dbGetQuery(con, paste(
-    "SELECT count(*) AS n FROM dim_series WHERE valuation NOT IN ('fob', 'not_reviewed')"
+    "SELECT count(*) AS n FROM dim_series WHERE source_id='economic_annex'",
+    "AND valuation NOT IN ('fob', 'not_reviewed')"
   ))$n[[1]], 0L)
   testthat::expect_gt(DBI::dbGetQuery(
     con, "SELECT count(*) AS n FROM dim_series WHERE valuation = 'fob'"

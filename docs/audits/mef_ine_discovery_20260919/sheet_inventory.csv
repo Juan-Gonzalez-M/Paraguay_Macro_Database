@@ -1,0 +1,18 @@
+"source_key","sheet_index","sheet_name","sheet_state","declared_dimension","materialized_rows","materialized_columns","xml_rows","xml_cells","nonempty_materialized_cells","numeric_like_cells","special_token_cells","formula_cells","merged_ranges","hidden_rows","hidden_column_ranges"
+"mef",1,"Serie","visible","A3:JZ132",109,286,130,29758,24052,23961,0,568,0,15,0
+"ine",1,"Tasas","visible","B1:AQ87",79,40,87,2917,2519,2232,162,0,18,0,0
+"ine",2,"CARACTERÍSTICAS_OCU","visible","B1:AV78",78,40,78,3132,2289,2143,23,0,13,0,0
+"ine",3,"SECTORECONÓMICO","visible","B1:AY43",43,40,43,1734,1227,1093,47,96,13,0,0
+"ine",4,"CATEGORÍAOCUPACIONAL","visible","B1:AW38",38,40,38,1591,1222,1061,79,96,13,0,0
+"ine",5,"TAMAÑODEEMPRESA","visible","B1:AX33",33,40,33,1335,990,863,49,0,13,0,0
+"ine",6,"HORASHABITUALES","visible","B1:AX23",23,40,23,946,638,518,52,0,13,0,0
+"ine",7,"TIEMPOEXPERIENCIA","visible","B1:AW26",26,40,26,1070,755,610,74,0,13,0,0
+"ine",8,"PROMEDIODEAÑODEESTUDIO","visible","B1:DL31",31,116,31,3361,2583,2394,0,0,51,0,0
+"ine",9,"INGRESOS_CATE","visible","B1:DL60",28,116,60,5018,1895,1575,135,0,51,0,0
+"ine",10,"INGRESOSPORHORAS","visible","B1:DL32",28,116,32,3158,1895,1575,135,0,52,0,0
+"ine",11,"INGRESOS_SECTOR","visible","B1:DQ69",43,116,69,5118,3279,2831,247,0,51,0,0
+"ine",12,"INGRESOS_OCUP","visible","B1:DO48",45,116,48,5198,3966,3433,330,0,51,0,0
+"ine",13,"Población Total","visible","B1:DM45",42,116,45,4795,3282,2916,162,0,51,0,0
+"ine",14,"FORMALIDAD","visible","A1:DQ29",19,116,29,2242,1125,900,9,0,127,0,0
+"ine",15,"Hoja2","hidden","A1",0,0,0,0,0,0,0,0,0,0,0
+"ine",16,"PROMEDIO DE HORAS","visible","B1:DQ44",42,116,44,4820,3277,3069,9,0,51,0,0

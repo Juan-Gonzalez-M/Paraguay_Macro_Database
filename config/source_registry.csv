@@ -23,6 +23,8 @@ lrm_auctions,Subastas de LRM,Banco Central del Paraguay,xlsx,input/current/lrm_a
 compensatory_fx_sales,Ventas Compensatorias y Complementarias,Banco Central del Paraguay,xlsx,input/current/compensatory_fx_sales,\.(xlsx|xlsm)$,FALSE,manifest,semantic_table,documented_series,TRUE
 cda_curve,Curva de Certificados de Depósitos de Ahorro,Banco Central del Paraguay,xlsx,input/current,^Curva_CDA\.xlsx$,FALSE,manifest,semantic_table,documented_series,TRUE
 tcn_referential_daily,TCN Referencial Diario,Banco Central del Paraguay,xlsx,input/current,^TCN_Referencial_Diario\.xlsx$,FALSE,manifest,semantic_table,documented_series,TRUE
+mef_central_government,Estado de Operaciones del Gobierno - Administración Central,Ministerio de Economía y Finanzas,xlsx,input/current,^MEFP 2001 ADMINISTRACI.*N CENTRAL 2003-2026 serie mensual\.xlsx$,FALSE,manifest,semantic_table,documented_series,TRUE
+ine_ephc,Anexo EPHC 2017-2026,Instituto Nacional de Estadística,xlsx,input/current,^Anexo_EPHC_2017-2026\.xlsx$,FALSE,manifest,semantic_table,documented_series,TRUE
 imf_cpi,IMF Consumer Price Index,International Monetary Fund,csv,input/current/IMF_Data,^Consumer Price Index \(CPI\)\.csv$,FALSE,manifest,imf_wide,imf_provisional,TRUE
 imf_er,IMF Exchange Rates,International Monetary Fund,csv,input/current/IMF_Data,^Exchange Rates \(ER\)\.csv$,FALSE,manifest,imf_wide,imf_provisional,TRUE
 imf_eer,IMF Effective Exchange Rates,International Monetary Fund,csv,input/current/IMF_Data,^Effective Exchange Rate \(EER\)\.csv$,FALSE,manifest,imf_wide,imf_provisional,TRUE

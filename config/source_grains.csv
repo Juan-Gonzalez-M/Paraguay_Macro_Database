@@ -49,3 +49,5 @@ imf_pi_wca,*,scalar_series,IMF dataflow retains dataset version series code obse
 imf_qgdp_wca,*,scalar_series,IMF dataflow retains dataset version series code observation measure frequency and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
 imf_rsui,*,scalar_series,IMF research index retains dataset version series code frequency country and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
 imf_wpfxi,*,scalar_series,IMF working-paper data and proxies retain dataset version series code frequency country and all published dimensions.,Juan Manuel Gonzalez Masulli,2026-09-19
+mef_central_government,*,scalar_series,Monthly Gobierno Central flow series preserve the published account hierarchy measure unit scale and source coordinates; formulas are excluded by source-owner decision.,Juan Manuel Gonzalez Masulli,2026-09-19
+ine_ephc,*,scalar_series,Quarterly EPHC survey estimates preserve published domain geography population group measure unit and source coordinates; they are not administrative counts.,Juan Manuel Gonzalez Masulli,2026-09-19

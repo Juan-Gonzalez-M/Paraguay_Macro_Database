@@ -1,8 +1,8 @@
 # Schema migrations
 
-Generated from the migration registry (`SCHEMA_MIGRATIONS` in `scripts/02_extract_raw.R`) and the `schema_version` table on 2026-09-19. Do not edit by hand -- `write_migration_runbook()` rewrites this file on every release.
+Generated from the migration registry (`SCHEMA_MIGRATIONS` in `scripts/02_extract_raw.R`) and the `schema_version` table on 2026-09-20. Do not edit by hand -- `write_migration_runbook()` rewrites this file on every release.
 
-The database is at **schema 49**.
+The database is at **schema 50**.
 
 `initialize_database()` applies every version step a database still needs, in order, on each run. A step that changes how `series_id` is built also invalidates the affected sources so they re-parse from the immutable raw layer instead of merging into stale identities; those sources reappear as `needs_v<N>_reingestion` and are re-ingested by the same run. Back up `database/paraguay_macro_pilot.duckdb` into `database/backups/` before a migrating run: the migration deletes curated content by design, and the backup is what lets you diff observation totals source by source afterwards, and what `build_migration_map.R` compares against.
 
@@ -55,6 +55,7 @@ The database is at **schema 49**.
 | 47 | 2026-09-19 | nothing | IMF wide exports gain lossless two-layer record preservation, explicit dataflow/version and dimension catalogues, long observation snapshots with published periods and source coordinates, and provisional catalog/explore-only ingestion. Existing sources and research admission do not change. |
 | 48 | 2026-09-19 | nothing | IMF onboarding expands to official sectoral, monetary, financial, global-factor and aggregate dataflows; textual FSI metadata is retained in a dedicated carrier and never coerced into numeric observations. Bilateral trade and experimental research products remain excluded. |
 | 49 | 2026-09-19 | nothing | The IMF RSUI research indicator and WPFXI working-paper public-data/proxy dataset enter isolated experimental catalog and explore scope with explicit non-official status, product-specific rights review pending, and no research admission. Bilateral IMTS remains excluded. |
+| 50 | 2026-09-20 | nothing | A parameter-visible family readiness ranking prioritizes additional preliminary series, and semantic collision-free numeric short histories enter explore with explicit warnings while formal research admission remains unchanged. Changes no source observation. |
 
 ## From a version-1 database
 

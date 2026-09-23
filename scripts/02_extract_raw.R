@@ -456,6 +456,8 @@ SCHEMA_MIGRATIONS <- list(
        change = "IMF onboarding expands to official sectoral, monetary, financial, global-factor and aggregate dataflows; textual FSI metadata is retained in a dedicated carrier and never coerced into numeric observations. Bilateral trade and experimental research products remain excluded.")
   ,list(version = 49L, reingests = character(), registry_driven = TRUE,
        change = "The IMF RSUI research indicator and WPFXI working-paper public-data/proxy dataset enter isolated experimental catalog and explore scope with explicit non-official status, product-specific rights review pending, and no research admission. Bilateral IMTS remains excluded.")
+  ,list(version = 50L, reingests = character(), registry_driven = TRUE,
+       change = "A parameter-visible family readiness ranking prioritizes additional preliminary series, and semantic collision-free numeric short histories enter explore with explicit warnings while formal research admission remains unchanged. Changes no source observation.")
 )
 
 # The audit's P2 test: "operations migration paths and schema version are
@@ -2085,6 +2087,9 @@ initialize_database <- function(con, root = NULL) {
   }
   if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 49")$n[[1]]) {
     DBI::dbExecute(con, "INSERT INTO schema_version VALUES (49, current_timestamp, 'Isolated experimental IMF RSUI and WPFXI catalog and explore onboarding')")
+  }
+  if (!DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM schema_version WHERE version = 50")$n[[1]]) {
+    DBI::dbExecute(con, "INSERT INTO schema_version VALUES (50, current_timestamp, 'Parameterized preliminary-readiness ranking and general short-history explore admission without changing formal research admission')")
   }
 }
 

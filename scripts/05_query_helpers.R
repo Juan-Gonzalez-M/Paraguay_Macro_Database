@@ -333,3 +333,119 @@ research_quality_flags <- function(con, series_id = NULL) {
     " ORDER BY severity DESC, check_name, source_id, source_sheet, series_id, period"
   ))
 }
+
+# --- Preliminary discovery and retrieval -----------------------------------
+
+preliminary_search <- function(con, text = NULL, source_id = NULL, frequency = NULL,
+                               domain = NULL, formal_only = FALSE) {
+  filters <- character()
+  if (!is.null(text)) filters <- c(filters, paste0(
+    "lower(concat_ws(' ',researcher_name,original_source_label,full_series_path,table_title)) LIKE ",
+    sql_string(paste0("%", tolower(text), "%"))
+  ))
+  add_in <- function(column, values) paste0(
+    column, " IN (", paste(vapply(values, sql_string, character(1)), collapse = ","), ")"
+  )
+  if (!is.null(source_id)) filters <- c(filters, add_in("source_id", source_id))
+  if (!is.null(frequency)) filters <- c(filters, add_in("frequency", frequency))
+  if (!is.null(domain)) filters <- c(filters, add_in("domain", domain))
+  if (isTRUE(formal_only)) filters <- c(filters, "usability_level='formal'")
+  where <- if (length(filters)) paste0(" WHERE ", paste(filters, collapse = " AND ")) else ""
+  DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM catalog.series", where,
+    " ORDER BY source_id,researcher_name,candidate_id"
+  ))
+}
+
+preliminary_observations <- function(con, candidate_id, accept_warnings = FALSE,
+                                     formal_only = FALSE) {
+  if (!length(candidate_id)) stop("At least one candidate_id is required.", call. = FALSE)
+  ids <- paste(vapply(candidate_id, sql_string, character(1)), collapse = ",")
+  profiles <- DBI::dbGetQuery(con, paste0(
+    "SELECT candidate_id,usability_level,warning_codes,observation_interface ",
+    "FROM catalog.series WHERE candidate_id IN (", ids, ")"
+  ))
+  missing <- setdiff(candidate_id, profiles$candidate_id)
+  if (length(missing)) stop("Unknown candidate_id: ", paste(missing, collapse = ", "), call. = FALSE)
+  if (isTRUE(formal_only) && any(profiles$usability_level != "formal")) stop(
+    "formal_only=TRUE rejects non-formal candidates: ",
+    paste(profiles$candidate_id[profiles$usability_level != "formal"], collapse = ", "), call. = FALSE
+  )
+  preliminary <- profiles$usability_level == "preliminary_with_warnings"
+  if (any(preliminary) && !isTRUE(accept_warnings)) stop(
+    "Preliminary candidates require accept_warnings=TRUE after inspecting catalog.series warnings: ",
+    paste(profiles$candidate_id[preliminary], collapse = ", "), call. = FALSE
+  )
+  unsupported <- !profiles$observation_interface %in% c(
+    "explore.observations", "research.observations_latest_actual"
+  )
+  if (any(unsupported)) stop(
+    "Requested candidates require a native-grain interface: ",
+    paste(profiles$candidate_id[unsupported], collapse = ", "), call. = FALSE
+  )
+  DBI::dbGetQuery(con, paste0(
+    "SELECT * FROM explore.observations WHERE candidate_id IN (", ids, ") ",
+    "ORDER BY candidate_id,reference_period_start,source_period_date"
+  ))
+}
+
+preliminary_wide <- function(con, candidate_id, key = "reference_period_start",
+                             accept_warnings = FALSE, formal_only = FALSE) {
+  allowed <- c("reference_period_start", "reference_period_end")
+  if (!key %in% allowed) stop("key must be reference_period_start or reference_period_end.", call. = FALSE)
+  long <- preliminary_observations(
+    con, candidate_id, accept_warnings = accept_warnings, formal_only = formal_only
+  )
+  frequencies <- unique(long$frequency)
+  if (length(frequencies) != 1L) stop(
+    "Cannot silently join incompatible frequencies: ", paste(frequencies, collapse = ", "), call. = FALSE
+  )
+  if (anyDuplicated(long[c("candidate_id", key)])) stop(
+    "The requested series are not unique at the selected normalized-period key.", call. = FALSE
+  )
+  wide <- stats::reshape(
+    long[c("candidate_id", key, "value")], idvar = key, timevar = "candidate_id",
+    direction = "wide"
+  )
+  names(wide) <- sub("^value\\.", "", names(wide))
+  wide[order(wide[[key]]), c(key, intersect(candidate_id, names(wide))), drop = FALSE]
+}
+
+preliminary_family_ranking <- function(
+    con,
+    assumptions = list(
+      fixed_hours = 1.5, per_series = 0.03, unresolved_unit = 0.06,
+      ambiguous_time = 0.12, positional_identity = 0.08, collision = 0.50,
+      overlap = 0.04, unknown_transformation = 0.04, methodology = 0.05,
+      hierarchy = 0.03, specialized_structure = 0.05,
+      incomplete_reconciliation = 0.08, parser_error = 1.00,
+      structured_metadata_reward = 0.005, semantic_identity_reward = 0.005,
+      reconciliation_reward = 0.005, explicit_dimension_reward = 0.005
+    )) {
+  defaults <- formals(preliminary_family_ranking)$assumptions
+  defaults <- eval(defaults)
+  unknown <- setdiff(names(assumptions), names(defaults))
+  if (length(unknown)) stop("Unknown effort assumption(s): ", paste(unknown, collapse = ", "), call. = FALSE)
+  a <- utils::modifyList(defaults, assumptions)
+  if (any(!vapply(a, is.numeric, logical(1))) || any(unlist(a) < 0)) stop(
+    "Effort assumptions must be non-negative numeric scalars.", call. = FALSE
+  )
+  x <- DBI::dbGetQuery(con, "SELECT * FROM catalog.family_readiness")
+  penalty <- a$per_series * x$additional_releasable_series +
+    a$unresolved_unit * x$unresolved_units + a$ambiguous_time * x$ambiguous_time +
+    a$positional_identity * x$positional_ids + a$collision * x$collisions +
+    a$overlap * x$overlap_series + a$unknown_transformation * x$unknown_transformations +
+    a$methodology * x$methodology_uncertainty + a$hierarchy * x$complex_hierarchy +
+    a$specialized_structure * x$specialized_series +
+    a$incomplete_reconciliation * x$incomplete_reconciliation + a$parser_error * x$parser_errors
+  reward <- a$structured_metadata_reward * x$structured_metadata +
+    a$semantic_identity_reward * x$semantic_ids +
+    a$reconciliation_reward * x$reconciled_series +
+    a$explicit_dimension_reward * x$explicit_dimensions
+  x$estimated_fixed_hours <- a$fixed_hours
+  x$estimated_variable_hours <- pmax(0, penalty - reward)
+  x$estimated_total_hours <- x$estimated_fixed_hours + x$estimated_variable_hours
+  x$releasable_series_per_hour <- x$additional_releasable_series / x$estimated_total_hours
+  x$effort_assumptions <- paste(names(a), unlist(a), sep = "=", collapse = ";")
+  x[order(-x$releasable_series_per_hour, x$family), , drop = FALSE]
+}

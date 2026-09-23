@@ -1452,7 +1452,8 @@ documented_attach_payment_participants <- function(observations, participants) {
 # and produced 2,534 single-observation identities out of 2,805.
 documented_horizontal_period_modes <- c(
   "horizontal_date", "horizontal_year", "horizontal_year_month", "horizontal_year_quarter",
-  "credit_question_quarter", "credit_index_quarter"
+  "credit_question_quarter", "credit_index_quarter", "mef_central_government_monthly",
+  "ine_ephc_quarterly"
 )
 
 documented_period_axis_is_horizontal <- function(parser_mode) {
@@ -1736,6 +1737,144 @@ documented_parse_credit_sheet <- function(raw, source_sheet) {
   mode <- if (nrow(observations)) unique(observations$parser_mode)[[1]] else "unparsed_credit_layout"
   list(observations = observations, mode = mode,
        raw_nonempty_cells = sum(!documented_blank(text)), title = title)
+}
+
+# Monthly central-government statement published by the Ministerio de Economía
+# y Finanzas. Dates are published across row 10 and accounts down column A.
+# Formula coordinates are removed later from every parser result, so the two
+# derived rows remain raw evidence without becoming observations.
+documented_parse_mef_central_government <- function(raw, source_sheet) {
+  text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
+  if (!identical(source_sheet, "Serie") || nrow(text) < 114L || ncol(text) < 286L) stop(
+    "MEF central-government structure guard: expected the published Serie layout.", call. = FALSE
+  )
+  title <- text[7, 1]
+  if (!stringr::str_detect(normalize_semantic_label(title), "estado de operaciones del gobierno.*administracion central")) stop(
+    "MEF central-government structure guard: title evidence is missing at A7.", call. = FALSE
+  )
+  dates <- documented_date_matrix(raw, text)
+  data_cols <- which(!is.na(dates[10, ]))
+  if (length(data_cols) != 284L || min(data_cols) != 3L || max(data_cols) != 286L) stop(
+    "MEF central-government period guard: expected 284 monthly dates in C10:JZ10.", call. = FALSE
+  )
+  periods <- as.Date(dates[10, data_cols])
+  if (!identical(periods, seq(as.Date("2003-01-01"), as.Date("2026-08-01"), by = "month"))) stop(
+    "MEF central-government period guard: monthly axis is not 2003-01 through 2026-08.", call. = FALSE
+  )
+  records <- list(); k <- 0L; section <- ""
+  for (r in 11:110) {
+    label <- text[r, 1]; values <- numbers[r, data_cols]
+    if (documented_blank(label)) next
+    if (all(is.na(values))) { section <- label; next }
+    path <- documented_compact_path(c(section, label))
+    for (z in seq_along(data_cols)) {
+      if (is.na(values[[z]])) next
+      k <- k + 1L
+      records[[k]] <- documented_record(
+        source_sheet, title, "mef_central_government_monthly", periods[[z]],
+        text[10, data_cols[[z]]], "monthly", path, "Gobierno Central", label,
+        values[[z]], r, data_cols[[z]]
+      )
+      records[[k]]$unit <- "PYG"; records[[k]]$scale <- "billions"
+      records[[k]]$currency <- "PYG"; records[[k]]$is_total <- documented_is_total(label)
+    }
+  }
+  observations <- documented_bind_records(records)
+  list(observations = observations, mode = "mef_central_government_monthly",
+       hierarchy_status = "unresolved", raw_nonempty_cells = sum(!documented_blank(text)), title = title)
+}
+
+documented_ephc_layout <- function(text) {
+  year_match <- stringr::str_match(normalize_semantic_label(text), "(?:^| )ano ([12][0-9]{3})(?:$| )")
+  years <- matrix(suppressWarnings(as.integer(year_match[, 2])), nrow = nrow(text), ncol = ncol(text))
+  year_row <- which.max(rowSums(!is.na(years)))
+  ephc_quarter_text <- stringr::str_replace_all(text, "°", "do")
+  dim(ephc_quarter_text) <- dim(text)
+  quarter_rows <- rowSums(!is.na(documented_quarter_number(ephc_quarter_text)))
+  quarter_row <- which.max(quarter_rows)
+  if (max(rowSums(!is.na(years))) < 2L || max(quarter_rows) < 2L || quarter_row <= year_row) stop(
+    "INE EPHC structure guard: year/quarter header axis was not found.", call. = FALSE
+  )
+  first_col <- min(which(!is.na(years[year_row, ])))
+  data_cols <- seq.int(first_col, ncol(text))
+  year_values <- years[year_row, ]
+  for (j in data_cols) if (is.na(year_values[[j]]) && j > first_col) year_values[[j]] <- year_values[[j - 1L]]
+  quarter_values <- documented_quarter_number(ephc_quarter_text[quarter_row, ])
+  for (j in data_cols) if (is.na(quarter_values[[j]]) && j > first_col) quarter_values[[j]] <- quarter_values[[j - 1L]]
+  valid <- data_cols[!is.na(year_values[data_cols]) & !is.na(quarter_values[data_cols])]
+  periods <- as.Date(vapply(valid, function(j) as.character(
+    as.Date(sprintf("%04d-%02d-01", year_values[[j]], (quarter_values[[j]] - 1L) * 3L + 1L))
+  ), character(1)))
+  list(year_row = year_row, quarter_row = quarter_row, columns = valid,
+       years = year_values, quarters = quarter_values, periods = periods)
+}
+
+documented_parse_ine_ephc_sheet <- function(raw, source_sheet) {
+  text <- documented_text_matrix(raw); numbers <- documented_number_matrix(raw)
+  if (!nrow(text) || !ncol(text)) return(documented_skipped_result(raw, "empty_hidden_sheet"))
+  layout <- documented_ephc_layout(text)
+  low_precision <- stringr::str_match(trimws(text), "^[(]([+-]?[0-9]+(?:[.,][0-9]+)?)[)]$")
+  low_precision_value <- suppressWarnings(as.numeric(stringr::str_replace(low_precision[, 2], ",", ".")))
+  low_precision_value <- matrix(low_precision_value, nrow = nrow(text), ncol = ncol(text))
+  numbers[is.na(numbers) & !is.na(low_precision_value)] <- low_precision_value[is.na(numbers) & !is.na(low_precision_value)]
+  title <- text[2, 2]
+  if (documented_blank(title) || !stringr::str_detect(normalize_semantic_label(title), "2017.*2026")) stop(
+    "INE EPHC structure guard: published 2017-2026 title is missing on ", source_sheet, ".", call. = FALSE
+  )
+  measure_row <- layout$quarter_row + 1L
+  measure_values <- text[measure_row, layout$columns]
+  has_measure_axis <- sum(stringr::str_detect(
+    normalize_semantic_label(measure_values), "^(total|hombres|mujeres|ocupados formales|valor absoluto|%)"
+  ), na.rm = TRUE) >= 3L
+  data_start <- if (has_measure_axis) measure_row + 1L else layout$quarter_row + 1L
+  note_rows <- which(stringr::str_detect(normalize_semantic_label(text[, 2]), "^(fuente|nota|[123]/)"))
+  data_end <- if (length(note_rows)) min(note_rows) - 1L else nrow(text)
+  records <- list(); k <- 0L; area <- ""; section <- ""
+  area_pattern <- "^(total pais|urbana|rural)"
+  for (r in seq.int(data_start, data_end)) {
+    label <- text[r, 2]; values <- numbers[r, layout$columns]
+    if (documented_blank(label)) next
+    label_key <- normalize_semantic_label(label)
+    if (stringr::str_detect(label_key, area_pattern)) area <- label
+    if (all(is.na(values))) {
+      if (!stringr::str_detect(label_key, area_pattern)) section <- label
+      next
+    }
+    for (z in seq_along(layout$columns)) {
+      j <- layout$columns[[z]]; value <- values[[z]]
+      if (is.na(value)) next
+      measure <- if (has_measure_axis) documented_compact_path(c(
+        text[layout$quarter_row + 1L, j],
+        if (layout$quarter_row + 2L < data_start) text[layout$quarter_row + 2L, j] else NA_character_
+      )) else "valor publicado"
+      path <- documented_compact_path(c(area, section, label, measure))
+      k <- k + 1L
+      records[[k]] <- documented_record(
+        source_sheet, title, "ine_ephc_quarterly", layout$periods[[z]],
+        paste(layout$years[[j]], text[layout$quarter_row, j]), "quarterly",
+        path, documented_compact_path(c(area, section)), measure, value, r, j
+      )
+      records[[k]]$footnote_marker <- if (!is.na(low_precision_value[r, j])) "low_sample_precision_lt_30" else NA_character_
+      title_key <- normalize_semantic_label(title)
+      if (stringr::str_detect(title_key, "miles de guaranies")) {
+        records[[k]]$unit <- "PYG"; records[[k]]$scale <- "thousands"; records[[k]]$currency <- "PYG"
+      } else if (stringr::str_detect(title_key, "ingreso por hora.*guaranies")) {
+        records[[k]]$unit <- "PYG"; records[[k]]$scale <- "units"; records[[k]]$currency <- "PYG"
+      } else if (stringr::str_detect(title_key, "promedio de anos de estudio")) {
+        records[[k]]$unit <- "years"; records[[k]]$scale <- "units"
+      } else if (stringr::str_detect(title_key, "promedio de horas")) {
+        records[[k]]$unit <- "hours"; records[[k]]$scale <- "units"
+      } else if (source_sheet == "Tasas" || stringr::str_detect(normalize_semantic_label(section), "porcentaje")) {
+        records[[k]]$unit <- "percent"; records[[k]]$scale <- "units"
+      } else {
+        records[[k]]$unit <- "source_units"; records[[k]]$scale <- "units"
+      }
+      records[[k]]$is_total <- stringr::str_detect(label_key, area_pattern)
+    }
+  }
+  observations <- documented_bind_records(records)
+  list(observations = observations, mode = "ine_ephc_quarterly",
+       hierarchy_status = "unresolved", raw_nonempty_cells = sum(!documented_blank(text)), title = title)
 }
 
 # CUADRO 61 -- "Compra / Venta de divisas en el mercado cambiario local".
@@ -2345,6 +2484,19 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
     }
   }
 
+  if (source_id == "mef_central_government") for (sheet in dimensions$sheet_name) {
+    results[[sheet]] <- documented_parse_mef_central_government(read_source_sheet(sheet), sheet)
+  }
+
+  if (source_id == "ine_ephc") for (sheet in dimensions$sheet_name) {
+    raw <- read_source_sheet(sheet)
+    results[[sheet]] <- documented_parse_ine_ephc_sheet(raw, sheet)
+    if (sheet == "Hoja2") {
+      result_status[[sheet]] <- "empty_hidden_sheet"
+      result_note[[sheet]] <- "Publisher workbook contains this hidden empty worksheet; preserved in the sheet inventory."
+    }
+  }
+
   generic_sources <- c("direct_investment", "bcp_fx_daily",
                        "banking_indicators", "financial_indicators")
   if (source_id %in% generic_sources) for (sheet in dimensions$sheet_name) {
@@ -2387,11 +2539,30 @@ documented_source_parser <- function(con, item, dimensions, release_id, root, pu
         )
     }
   }
+  # The source owner explicitly excluded workbook formulas from integration.
+  # Coordinates remain preserved in raw.report_cell_formulas and are governed
+  # as published derived cells by reconciliation rules.
+  formula_cells <- if (source_id %in% c("mef_central_government", "ine_ephc")) {
+    xlsx_formula_cell_coordinates(dimensions)
+  } else {
+    tibble::tibble(sheet_name = character(), row_id = integer(), column_id = integer())
+  }
+  if (nrow(formula_cells)) for (sheet in names(results)) {
+    sheet_formulas <- formula_cells[formula_cells$sheet_name == sheet, , drop = FALSE]
+    if (!nrow(sheet_formulas) || !nrow(results[[sheet]]$observations)) next
+    formula_key <- paste(sheet_formulas$row_id, sheet_formulas$column_id, sep = ":")
+    observation_key <- paste(
+      results[[sheet]]$observations$source_row,
+      results[[sheet]]$observations$source_column, sep = ":"
+    )
+    results[[sheet]]$observations <- results[[sheet]]$observations[!observation_key %in% formula_key, , drop = FALSE]
+  }
   observations <- dplyr::bind_rows(lapply(results, `[[`, "observations"))
   # The credit parser supplies an explicit semantic contract, including
   # intentional NA currency/index-base fields. All record-oriented parsers use
   # deferred inference; do not overwrite explicit NA semantics by guessing.
-  if (!source_id %in% c("credit_survey", "exchange_houses", "lrm_auctions", "cda_curve", "tcn_referential_daily")) {
+  if (!source_id %in% c("credit_survey", "exchange_houses", "lrm_auctions", "cda_curve", "tcn_referential_daily",
+                        "mef_central_government", "ine_ephc")) {
     metadata_labels <- dplyr::if_else(
       stringr::str_detect(observations$parser_mode, "^row_event_"),
       observations$measure, observations$series_label

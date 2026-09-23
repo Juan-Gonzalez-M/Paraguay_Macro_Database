@@ -16,10 +16,10 @@ exploratory_layer_database <- function() {
   connection
 }
 
-testthat::test_that("schema 49 catalogues every candidate and separates access by grain", {
+testthat::test_that("schema 50 catalogues every candidate and separates access by grain", {
   con <- exploratory_layer_database()
   testthat::expect_equal(
-    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 49L
+    DBI::dbGetQuery(con, "SELECT max(version) AS v FROM audit.schema_version")$v, 50L
   )
   catalog_views <- DBI::dbGetQuery(con, paste(
     "SELECT view_name FROM duckdb_views() WHERE schema_name='catalog' AND NOT internal ORDER BY 1"
@@ -27,7 +27,9 @@ testthat::test_that("schema 49 catalogues every candidate and separates access b
   explore_views <- DBI::dbGetQuery(con, paste(
     "SELECT view_name FROM duckdb_views() WHERE schema_name='explore' AND NOT internal ORDER BY 1"
   ))$view_name
-  testthat::expect_setequal(catalog_views, c("series", "series_warnings", "datasets"))
+  testthat::expect_setequal(catalog_views, c(
+    "series", "series_warnings", "datasets", "family_readiness"
+  ))
   testthat::expect_setequal(explore_views, c(
     "series_catalog", "observations", "events", "panel_observations", "curve_observations"
   ))
@@ -147,7 +149,7 @@ testthat::test_that("schema 49 catalogues every candidate and separates access b
     " OR reference_period_start IS NULL OR reference_period_end<reference_period_start",
     " OR observation_status<>'observed') AS malformed_rows,",
     "(SELECT count(*) FROM explore.observations o JOIN catalog.series c USING(candidate_id)",
-    " WHERE c.identity_stability<>'semantic' OR c.non_missing_observation_count<3) AS ineligible_rows"
+    " WHERE c.identity_stability<>'semantic' OR c.non_missing_observation_count=0) AS ineligible_rows"
   ))
   testthat::expect_equal(scalar$exposed_rows, scalar$expected_rows)
   testthat::expect_equal(scalar$duplicate_keys, 0)
@@ -160,10 +162,13 @@ testthat::test_that("schema 49 catalogues every candidate and separates access b
     "WHERE data_structure='scalar_series' AND non_missing_observation_count<=2"
   ))
   testthat::expect_gt(short$candidates, 0)
-  testthat::expect_equal(short$labelled, short$candidates)
+  testthat::expect_equal(short$labelled, sum(short$candidates) - DBI::dbGetQuery(con, paste(
+    "SELECT count(*) n FROM catalog.series WHERE data_structure='scalar_series'",
+    "AND non_missing_observation_count BETWEEN 1 AND 2 AND identity_stability='semantic'"
+  ))$n)
   testthat::expect_equal(DBI::dbGetQuery(con, paste(
     "SELECT count(*) n FROM explore.observations o JOIN catalog.series c USING(candidate_id)",
-    "WHERE c.data_structure='scalar_series' AND c.non_missing_observation_count<=2"
+    "WHERE c.data_structure='scalar_series' AND c.non_missing_observation_count=0"
   ))$n, 0)
 
   special <- DBI::dbGetQuery(con, paste(
@@ -185,6 +190,35 @@ testthat::test_that("schema 49 catalogues every candidate and separates access b
     "SELECT count(*) n FROM explore.observations o JOIN catalog.series c USING(candidate_id)",
     "WHERE c.data_structure<>'scalar_series'"
   ))$n, 0)
+})
+
+testthat::test_that("semantic short histories expand explore without research admission", {
+  con <- exploratory_layer_database()
+  pilot <- DBI::dbGetQuery(con, paste(
+    "SELECT count(*) AS series,sum(observation_count) AS observations,",
+    " count(*) FILTER(WHERE usability_level='preliminary_with_warnings') AS warned,",
+    " count(*) FILTER(WHERE contains(warning_codes,'short_scalar_candidate')) AS short_warned",
+    "FROM catalog.series WHERE source_id='imf_irfcl'",
+    "AND non_missing_observation_count BETWEEN 1 AND 2"
+  ))
+  testthat::expect_equal(pilot$series, 247)
+  testthat::expect_equal(pilot$observations, 438)
+  testthat::expect_equal(pilot$warned, pilot$series)
+  testthat::expect_equal(pilot$short_warned, pilot$series)
+  testthat::expect_equal(DBI::dbGetQuery(con, paste(
+    "SELECT count(DISTINCT candidate_id) n FROM explore.observations",
+    "WHERE source_id='imf_irfcl' AND contains(warning_codes,'short_scalar_candidate')"
+  ))$n, pilot$series)
+  testthat::expect_equal(DBI::dbGetQuery(con, paste(
+    "SELECT count(*) n FROM research.series_catalog WHERE source_id='imf_irfcl'"
+  ))$n, 0)
+
+  ranking <- DBI::dbGetQuery(con, "SELECT * FROM catalog.family_readiness")
+  testthat::expect_equal(nrow(ranking), DBI::dbGetQuery(
+    con, "SELECT count(DISTINCT source_id) n FROM catalog.series"
+  )$n)
+  testthat::expect_true(all(ranking$estimated_total_hours > 0))
+  testthat::expect_true(all(ranking$estimate_confidence %in% c("low", "medium", "high")))
 })
 
 testthat::test_that("candidate profile and retrieval carry warnings and lineage", {
