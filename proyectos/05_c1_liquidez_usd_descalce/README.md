@@ -107,3 +107,36 @@ La posición neta y la dolarización agregada no miden ni la liquidez de liquida
 4. El panel por actividad cubre solo 4 cultivos, que es lo que trae el boletín actual; no es la clasificación completa de 1.112 actividades de la tabla de referencia.
 5. Las tasas externas de la hoja 8 (Fed, SOFR, Selic) figuran con unidad no resuelta; las leo como % anual.
 6. Paneles completos sin filtrar, como acordamos para C1.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Fondeo en dólares de los bancos y shocks externos
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Ivashina, V., Scharfstein, D. S. y Stein, J. C. (2015). "Dollar Funding and the Lending Behavior of Global Banks." *Quarterly Journal of Economics*, 130(3), 1241–1281. **[Revista]** | Los bancos con fondeo en USD más frágil recortan más el crédito en USD ante tensiones de fondeo. Respalda la **vulnerabilidad de liquidez en USD por banco** del paso 1 (fondeo externo, disponible en ME / depósitos en ME). |
+| Bruno, V. y Shin, H. S. (2015). "Cross-Border Banking and Global Liquidity." *Review of Economic Studies*, 82(2), 535–564. **[Revista]** | El fondeo bancario transfronterizo transmite las condiciones financieras globales. Respalda el fondeo externo y el VIX/dólar como shocks. |
+| Bräuning, F. e Ivashina, V. (2020). "U.S. Monetary Policy and Emerging Market Credit Cycles." *Journal of Monetary Economics*, 112, 57–76. **[Revista]** | Efecto de la política de la Fed en el crédito a economías emergentes. Respalda los Fed funds como shock separado. |
+| Rey, H. (2013). "Dilemma not Trilemma: The Global Financial Cycle and Monetary Policy Independence." *Jackson Hole Economic Policy Symposium*, Federal Reserve Bank of Kansas City. **[Conferencia]** | Ciclo financiero global medido con el VIX. Justifica el VIX como variable de estado, con la advertencia de la ficha sobre su exogeneidad. |
+
+### 8.2 Descalce de prestatarios y depreciaciones
+
+| Referencia | Qué respalda |
+|---|---|
+| Bleakley, H. y Cowan, K. (2008). "Corporate Dollar Debt and Depreciations: Much Ado About Nothing?" *Review of Economics and Statistics*, 90(4), 612–626. **[Revista]** | Con datos de firmas de cinco países latinoamericanos, las empresas endeudadas en USD tienden a tener ingresos sensibles al tipo de cambio (**cobertura natural**) y no invierten menos tras una depreciación. Respalda comparar sectores exportadores (agro) con no exportadores en el paso 3. |
+| Aguiar, M. (2005). "Investment, Devaluation, and Foreign Currency Exposure: The Case of Mexico." *Journal of Development Economics*, 78(1), 95–113. **[Revista]** | Efecto de hoja de balance negativo en México 1994–95. Contraste con Bleakley y Cowan: el signo es empírico. |
+| Galindo, A., Panizza, U. y Schiantarelli, F. (2003). "Debt Composition and Balance Sheet Effects of Currency Depreciation: A Summary of the Micro Evidence." *Emerging Markets Review*, 4(4), 330–339. **[Revista]** | Síntesis de la evidencia microeconómica en América Latina. |
+| Kalemli-Özcan, Ş., Kamil, H. y Villegas-Sanchez, C. (2016). "What Hinders Investment in the Aftermath of Financial Crises: Insolvent Firms or Illiquid Banks?" *Review of Economics and Statistics*, 98(4), 756–769. **[Revista]** | Combina el descalce de firmas con la liquidez bancaria en crisis latinoamericanas. Es la **versión causal** a la que apunta el proyecto con datos de prestatario. |
+
+### 8.3 Métodos
+
+- Jordà (2005, *AER*) para las proyecciones locales, y Khwaja y Mian (2008, *AER*) y Kashyap y Stein (2000, *AER*) para la exposición bancaria predeterminada × shock agregado con efectos fijos sector-tiempo (ver las referencias completas en la carpeta 06).
+
+### 8.4 Antecedentes para Paraguay
+
+- **[PY]** Banco Central del Paraguay (2017). Informe de Política Monetaria, junio 2017, Recuadro I, "Dolarización financiera en Paraguay".
+- **[PY]** Moreno Mareco, J. A. (2026). "Desdolarización del sistema financiero paraguayo: análisis de la evolución 1995–2024." *Economía & Negocios*, 8(1). **[Revista regional]** Descriptivo: la participación del guaraní en depósitos y créditos, el máximo de dolarización en 2002 y la recuperación parcial desde las metas de inflación.
+
+Ninguno de los dos trabaja a nivel banco ni con descalce de prestatarios; ese es el aporte del proyecto.

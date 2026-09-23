@@ -94,3 +94,34 @@ El dólar amplio, el PYG/USD, el real y el peso pueden trasladarse a los precios
 3. Los pares valor/toneladas se emparejan por etiqueta; algunas series de los Cuadros 51–52 son "no comprobadas" (identidad posicional): verificar el emparejamiento antes de calcular valores unitarios.
 4. `ipp_importados` es el índice de productos importados del IPP, que cambió de base en marzo de 2025.
 5. El IPC de Argentina del FMI empieza en 2016-12.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Pass-through por etapa y moneda de facturación
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Campa, J. M. y Goldberg, L. S. (2005). "Exchange Rate Pass-Through into Import Prices." *Review of Economics and Statistics*, 87(4), 679–690. **[Revista]** | Pass-through a precios de importación, incompleto y distinto por tipo de bien. Respalda el paso 1 (valores unitarios por tipo de bien). |
+| Burstein, A. y Gopinath, G. (2014). "International Prices and Exchange Rates." En *Handbook of International Economics*, vol. 4, 391–451. Elsevier. **[Capítulo]** | Revisión de referencia: el pass-through cae de la frontera al consumidor por costos locales de distribución. Respalda el análisis **por etapa** (importación → productor → consumidor). |
+| Gopinath, G., Boz, E., Casas, C., Díez, F. J., Gourinchas, P.-O. y Plagborg-Møller, M. (2020). "Dominant Currency Paradigm." *American Economic Review*, 110(3), 677–719. **[Revista]** | Los precios de comercio se fijan en dólares y el tipo de cambio frente al dólar domina sobre el bilateral. Respalda el paso 3 (dólar frente a canasta ponderada por comercio). |
+| Forbes, K., Hjortsoe, I. y Nenova, T. (2018). "The Shocks Matter: Improving Our Estimates of Exchange Rate Pass-Through." *Journal of International Economics*, 114, 255–275. **[Revista]** | El pass-through depende del **shock** que mueve el tipo de cambio. Respalda comparar el dólar amplio, el PYG/USD y los bilaterales como fuentes distintas. |
+
+### 8.2 Canal regional y fronterizo
+
+| Referencia | Qué respalda |
+|---|---|
+| Burstein, A., Eichenbaum, M. y Rebelo, S. (2005). "Large Devaluations and the Real Exchange Rate." *Journal of Political Economy*, 113(4), 742–784. **[Revista]** | Tras grandes devaluaciones, los precios de no transables y de distribución se ajustan lentamente. Respalda los no transables como placebo y los episodios de Brasil y Argentina. |
+| Campbell, J. R. y Lapham, B. (2004). "Real Exchange Rate Fluctuations and the Dynamics of Retail Trade Industries on the U.S.-Canada Border." *American Economic Review*, 94(4), 1194–1206. **[Revista]** | El comercio minorista en la frontera responde al tipo de cambio real bilateral. Es el antecedente conceptual del canal fronterizo (régimen de turismo frente a `tcr_brasil` y `tcr_argentina`). |
+
+### 8.3 Medición
+
+| Referencia | Uso |
+|---|---|
+| Silver, M. (2009). "Do Unit Value Export, Import, and Terms-of-Trade Indices Misrepresent Price Indices?" *IMF Staff Papers*, 56(2), 297–322. **[Revista]** | Sesgos de los **valores unitarios** por cambios de composición y calidad. Respalda la advertencia del paso 1 y la limpieza de outliers. |
+
+### 8.4 Antecedentes para Paraguay
+
+- **[PY]** Monfort, B. y Peña, S. (2008). IMF Working Paper 08/270 (ver carpeta 12). Los precios de Brasil pesan en la inflación de corto plazo, lo que respalda los bilaterales BRL frente al dólar.
+- **[PY]** Masi, F. (2006). *Paraguay: los vaivenes de la política comercial externa en una economía abierta.* CADEP. Describe el régimen de turismo y la reexportación a Brasil y Argentina (comercio de triangulación). Es el contexto institucional del paso 4.

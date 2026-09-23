@@ -104,3 +104,36 @@ Los spreads de bonos y los de préstamos no son comparables sin ajustar por ries
 3. Las etiquetas del Cuadro 32 (operaciones de la BVA) están contaminadas con números; las asigné por el texto inicial.
 4. Financiamiento interno y externo de la Administración Central tomados del estado de operaciones del MEF (MEFP 2001); los signos siguen al publicador.
 5. Las subastas de LRM tienen identidad anual por hoja no resuelta en la base (tasas ofertadas vs. asignadas); revisar contra el Excel antes de usarlas.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Módulo A: bono frente a préstamo bancario
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Schwert, M. (2020). "Does Borrowing from Banks Cost More than Borrowing from the Market?" *Journal of Finance*, 75(2), 905–947. **[Revista]** | **Referencia central del Módulo A**: compara préstamos y bonos de la misma empresa en la misma fecha y encuentra una prima bancaria después de ajustar por riesgo. Respalda el spread emparejado por calificación, moneda y plazo; aquí se aproxima con curvas por calificación en lugar de emparejar empresa por empresa. |
+| Becker, B. e Ivashina, V. (2014). "Cyclicality of Credit Supply: Firm Level Evidence." *Journal of Monetary Economics*, 62, 76–93. **[Revista]** | Las empresas sustituyen préstamos por bonos cuando se contrae la oferta bancaria. Respalda leer el spread bono−banco como indicador de condiciones de oferta. |
+| Gertler, M. y Karadi, P. (2015). "Monetary Policy Surprises, Credit Costs, and Economic Activity." *American Economic Journal: Macroeconomics*, 7(1), 44–76. **[Revista]** | La política monetaria mueve los spreads de crédito además de las tasas libres de riesgo. Respalda la respuesta de spreads y pendiente a la TPM (paso 3). |
+| Du, W. y Schreger, J. (2016). "Local Currency Sovereign Risk." *Journal of Finance*, 71(3), 1027–1070. **[Revista]** | Diferencias entre deuda en moneda local y en dólares de emergentes. Respalda separar las curvas PYG y USD y controlar por `ust_10a` en USD. |
+
+### 8.2 Construcción de curvas
+
+| Referencia | Uso |
+|---|---|
+| Nelson, C. R. y Siegel, A. F. (1987). "Parsimonious Modeling of Yield Curves." *Journal of Business*, 60(4), 473–489. **[Revista]** | Forma funcional de las curvas `research.curves`. |
+| Svensson, L. E. O. (1994). "Estimating and Interpreting Forward Interest Rates: Sweden 1992–1994." NBER Working Paper 4871. **[DT]** | Extensión NSS usada en las curvas por calificación. |
+
+### 8.3 Módulo B: oferta de deuda pública y subastas
+
+| Referencia | Qué respalda |
+|---|---|
+| Krishnamurthy, A. y Vissing-Jorgensen, A. (2012). "The Aggregate Demand for Treasury Debt." *Journal of Political Economy*, 120(2), 233–267. **[Revista]** | Curva de demanda con pendiente negativa por deuda pública: más oferta, mayores rendimientos. Es el estimando del Módulo B. |
+| Greenwood, R. y Vayanos, D. (2014). "Bond Supply and Excess Bond Returns." *Review of Financial Studies*, 27(3), 663–713. **[Revista]** | La oferta por plazo predice los retornos de los bonos. Respalda usar la composición del financiamiento interno y externo. |
+| Lou, D., Yan, H. y Zhang, J. (2013). "Anticipated and Repeated Shocks in Liquid Markets." *Review of Financial Studies*, 26(8), 1891–1912. **[Revista]** | Ciclo de precios alrededor de las subastas del Tesoro por capacidad limitada de los intermediarios. Respalda el event study de subastas de LRM (paso 6). |
+| Beetsma, R., Giuliodori, M., de Jong, F. y Widijanto, D. (2016). "Price Effects of Sovereign Debt Auctions in the Euro-Zone: The Role of the Crisis." *Journal of Financial Intermediation*, 25, 30–53. **[Revista]** | El efecto de las subastas es mayor en mercados menos profundos y en crisis. Relevante para un mercado pequeño como el paraguayo. |
+
+### 8.4 Antecedentes para Paraguay
+
+No encontré estudios académicos sobre spreads del mercado de bonos paraguayo (BVA). Hay cobertura de prensa sobre el crecimiento de las emisiones y el regreso de los Bonos del Tesoro a la Bolsa en 2026. Es un **tema poco estudiado**, lo que aumenta el aporte pero obliga a documentar bien la construcción de los datos.

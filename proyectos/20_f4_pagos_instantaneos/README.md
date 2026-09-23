@@ -123,3 +123,28 @@ Boletín de sistemas de pago completo (38 hojas), bancarización y agregados mon
 2. Varias series de montos del boletín tienen unidad no resuelta; las leo como guaraníes (o USD/EUR según la hoja).
 3. Las series por entidad del boletín identifican a la entidad por posición en la hoja; no las uní con los códigos SIB.
 4. El SPI comenzó en mayo de 2022; valores anteriores de SIPAP_07 a SIPAP_12 no existen (no son ceros).
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Pagos instantáneos y bancos
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Duarte, A., Frost, J., Gambacorta, L., Koo Wilkens, P. y Shin, H. S. (2022). "Central Banks, the Monetary System and Public Payment Infrastructures: Lessons from Brazil's Pix." BIS Bulletin 52. **[DT]** | Descripción de la adopción de Pix y de sus efectos en competencia e inclusión. Es el **modelo de tablero** (paso 1) y el caso regional más comparable. |
+| Sarkisyan, S. "Instant Payment Systems and Competition for Deposits." SSRN 4176990. **[DT]** | Con variación por municipio en la exposición a Pix, encuentra que los **depósitos de bancos pequeños crecen frente a los grandes**. Respalda la pregunta de competencia (paso 4, HHI de alias frente a cuota de depósitos) y muestra qué datos harían falta para una versión causal. |
+
+### 8.2 Adopción, externalidades de red y efectivo
+
+| Referencia | Qué respalda |
+|---|---|
+| Higgins, S. (2024). "Financial Technology Adoption: Network Externalities of Cashless Payments in Mexico." *American Economic Review*, 114(11), 3469–3512. **[Revista]** | Externalidades de red en la adopción de pagos electrónicos, con un despliegue escalonado como fuente de variación. Muestra el tipo de rollout que la ficha pide para identificar. |
+| Crouzet, N., Gupta, A. y Mezzanotti, F. (2023). "Shocks and Technology Adoption: Evidence from Electronic Payment Systems." *Journal of Political Economy*, 131(11), 3003–3065. **[Revista]** | Complementariedades en la adopción de billeteras tras la desmonetización india. Respalda medir la adopción como fenómeno de red (alias operativos por entidad). |
+| Chodorow-Reich, G., Gopinath, G., Mishra, P. y Narayanan, A. (2020). "Cash and the Economy: Evidence from India's Demonetization." *Quarterly Journal of Economics*, 135(1), 57–103. **[Revista]** | Relación entre efectivo, pagos electrónicos y actividad. Respalda la relación SPI–M0 (paso 3). |
+| Alvarez, F. y Lippi, F. (2009). "Financial Innovation and the Transactions Demand for Cash." *Econometrica*, 77(2), 363–402. **[Revista]** | Modelo de demanda de efectivo con innovación financiera. Respalda la especificación de la demanda de M0/M1 con tasa, actividad y tecnología de pagos. |
+| Jack, W. y Suri, T. (2014). "Risk Sharing and Transactions Costs: Evidence from Kenya's Mobile Money Revolution." *American Economic Review*, 104(1), 183–223. **[Revista]** | Referencia clásica de efectos de una tecnología de pagos con variación geográfica en el acceso. Útil para la brecha "datos cliente-día o por localidad". |
+
+### 8.3 Antecedentes para Paraguay
+
+No encontré evaluaciones académicas del SPI. Según cifras del BCP difundidas por la prensa, el SPI procesó pagos por ≈ 5% del PIB en 2022, 14% en 2023 y 24% en 2024, y concentra más del 97% de las transacciones del SIPAP. El proyecto sería la **primera descripción sistemática**, pero sin variación exógena queda como monitoreo, igual que Duarte et al. (2022) para Pix.

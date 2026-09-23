@@ -105,3 +105,31 @@ La ficha exige no usar turnover como flujo ni ventas brutas como tratamiento net
 3. Las series diarias de FRED (dólar amplio, VIX, BRL, UST 2 años) se unen por fecha calendario sin rellenar.
 4. `wpfxi_*` (FMI) termina en 2024 y usa definiciones propias; es solo comparación.
 5. Montos en millones de USD tal como publica el BCP.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 El problema de identificación y cómo lo resuelve la literatura
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Dominguez, K. M. y Frankel, J. A. (1993). "Does Foreign-Exchange Intervention Matter? The Portfolio Effect." *American Economic Review*, 83(5), 1356–1369. **[Revista]** | Canales de portafolio y de señal de la intervención esterilizada. Es el marco conceptual del estimando. |
+| Fatum, R. y Hutchison, M. M. (2003). "Is Sterilised Foreign Exchange Intervention Effective After All? An Event Study Approach." *Economic Journal*, 113(487), 390–411. **[Revista]** | **Estudios de eventos** de intervención con ventanas cortas (paso 3). |
+| Kearns, J. y Rigobon, R. (2005). "Identifying the Efficacy of Central Bank Interventions: Evidence from Australia and Japan." *Journal of International Economics*, 66(1), 31–48. **[Revista]** | La simultaneidad entre intervención y tipo de cambio sesga el coeficiente, y un cambio de regla permite identificar. Respalda separar por régimen de ventas compensatorias (desde 2015). |
+| Kuersteiner, G. M., Phillips, D. C. y Villamizar-Villegas, M. (2018). "Effective Sterilized Foreign Exchange Intervention? Evidence from a Rule-Based Policy." *Journal of International Economics*, 113, 118–138. **[Revista]** | **Referencia más cercana al diseño ideal**: una regla de intervención (Colombia) genera variación cuasi-aleatoria con datos diarios. Si las ventas compensatorias del BCP siguen una regla o un anuncio, este es el diseño a replicar. |
+| Fratzscher, M., Gloede, O., Menkhoff, L., Sarno, L. y Stöhr, T. (2019). "When Is Foreign Exchange Intervention Effective? Evidence from 33 Countries." *American Economic Journal: Macroeconomics*, 11(1), 132–156. **[Revista]** | Con datos diarios de 33 países, la intervención es más eficaz para **suavizar** y cuando es de mayor tamaño y comunicada. Respalda medir la volatilidad y las colas además del retorno. |
+
+### 8.2 Métodos y datos
+
+| Referencia | Uso |
+|---|---|
+| Angrist, J. D., Jordà, Ò. y Kuersteiner, G. M. (2018). "Semiparametric Estimates of Monetary Policy Effects: String Theory Revisited." *Journal of Business & Economic Statistics*, 36(3), 371–387. **[Revista]** | Proyecciones locales ponderadas por la **probabilidad de intervención** (propensity score). Es la versión formal del matching de "falsos eventos" de los pasos 3 y 4. |
+| Echavarría, J. J., Melo-Velandia, L. F. y Villamizar-Villegas, M. (2018). "The Impact of Pre-announced Day-to-day Interventions on the Colombian Exchange Rate." *Empirical Economics*, 55(3), 1319–1336. **[Revista]** | Función de reacción Tobit con impacto sobre el nivel y la volatilidad (GARCH) con datos diarios. Modelo para el paso 2. |
+| Fuentes, M. et al. (2014). "The Effects of Intraday Foreign Exchange Market Operations in Latin America: Results for Chile, Colombia, Mexico and Peru." BIS Working Paper 462. **[DT]** | Comparación regional: efectos significativos pero transitorios, salvo anuncios de programas. |
+| Chamon, M., Hofman, D., Magud, N. E. y Werner, A. (eds.) (2019). *Foreign Exchange Intervention in Inflation Targeters in Latin America*. Fondo Monetario Internacional. **[Libro]** | Experiencias de bancos centrales con metas de inflación e intervención, incluido el caso dolarizado de Perú. |
+| Adler, G., Chang, K. S., Mano, R. C. y Shao, Y. (2025). "Foreign Exchange Intervention: A Data Set of Official Data and Estimates." *Journal of Money, Credit and Banking*, 57(5), 1241–1273. **[Revista]** | Fuente de los proxies de intervención del FMI (WPFXI) usados como robustez (paso 5). |
+
+### 8.3 Antecedentes para Paraguay
+
+No encontré una evaluación publicada de la eficacia de las ventas del BCP. La prensa y los analistas locales discuten si las ventas "cortan picos" o consolidan tendencias, sin estimaciones formales. Conviene revisar el material interno del BCP sobre el esquema de ventas compensatorias (venta al mercado de las divisas del Tesoro), cuya **regla o anuncio** es la clave para aplicar un diseño como el de Kuersteiner et al. (2018).
