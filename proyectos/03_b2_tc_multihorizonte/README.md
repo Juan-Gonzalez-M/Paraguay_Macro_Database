@@ -142,3 +142,36 @@ Formatos: `series_mensual.csv` y `series_diaria.csv` en formato largo (con unida
 6. **IPC de Argentina** del FMI empieza en 2016-12; no lo empalmé.
 7. Los volúmenes forward y spot del Cuadro 61 son **montos brutos** del mercado local, no precios ni flujo neto firmado.
 8. No incluí vintages ni fechas de publicación (excluidos por tu instrucción); la evaluación fuera de muestra es pseudo-real, con datos finales.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Por qué un marco separado por horizonte
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Meese, R. A. y Rogoff, K. (1983). "Empirical Exchange Rate Models of the Seventies: Do They Fit Out of Sample?" *Journal of International Economics*, 14(1–2), 3–24. **[Revista]** | Origen del **random walk como benchmark** obligatorio. Respalda la exigencia de la ficha de que "no ganarle al random walk" sea un resultado válido. |
+| Engel, C. y West, K. D. (2005). "Exchange Rates and Fundamentals." *Journal of Political Economy*, 113(3), 485–517. **[Revista]** | Explica por qué los fundamentos pueden determinar el tipo de cambio y aun así no predecirlo a corto plazo. Justifica separar el **nivel de equilibrio** (ECM/BEER) del **pronóstico de retornos**. |
+| Rossi, B. (2013). "Exchange Rate Predictability." *Journal of Economic Literature*, 51(4), 1063–1119. **[Revista]** | Revisión de referencia: la predictibilidad depende del horizonte, del modelo, de la métrica y de la muestra, y es inestable en el tiempo. Respalda la evaluación recursiva por horizonte y las pruebas de estabilidad. |
+
+### 8.2 Variables: fundamentos de nivel y factores de alta frecuencia
+
+| Referencia | Variable que respalda |
+|---|---|
+| Clark, P. B. y MacDonald, R. (1999). "Exchange Rates and Economic Fundamentals: A Methodological Comparison of BEERs and FEERs." En MacDonald, R. y Stein, J. L. (eds.), *Equilibrium Exchange Rates*. Kluwer. **[Libro]** | Especificación **BEER** del paso 1: TCR sobre términos de intercambio, productividad relativa y posición externa, con corrección de errores. |
+| Chen, Y.-C. y Rogoff, K. (2003). "Commodity Currencies." *Journal of International Economics*, 60(1), 133–160. **[Revista]** | Precio de las exportaciones básicas como determinante del TCR en economías exportadoras. Respalda `ctot_expo_pry` y el precio de la soja. |
+| Cashin, P., Céspedes, L. F. y Sahay, R. (2004). "Commodity Currencies and the Real Exchange Rate." *Journal of Development Economics*, 75(1), 239–268. **[Revista]** | Encuentra relaciones de largo plazo entre el TCR y los precios de exportación en economías en desarrollo exportadoras de commodities, y es el antecedente más cercano para Paraguay. |
+| Lilley, A., Maggiori, M., Neiman, B. y Schreger, J. (2022). "Exchange Rate Reconnect." *Review of Economics and Statistics*, 104(4), 845–855. **[Revista]** | Desde 2008 los tipos de cambio se mueven con el **ciclo global de riesgo y el dólar**. Respalda el dólar amplio, el VIX y el BRL/USD como factores diarios y mensuales. |
+
+### 8.3 Evaluación de pronósticos
+
+| Referencia | Uso |
+|---|---|
+| Diebold, F. X. y Mariano, R. S. (1995). "Comparing Predictive Accuracy." *Journal of Business & Economic Statistics*, 13(3), 253–263. **[Revista]** | Prueba de igual precisión frente al random walk. |
+| Clark, T. E. y West, K. D. (2007). "Approximately Normal Tests for Equal Predictive Accuracy in Nested Models." *Journal of Econometrics*, 138(1), 291–311. **[Revista]** | Versión correcta para modelos anidados (random walk ⊂ modelo con fundamentos). |
+| Giacomini, R. y Rossi, B. (2010). "Forecast Comparisons in Unstable Environments." *Journal of Applied Econometrics*, 25(4), 595–620. **[Revista]** | Comparación de pronósticos con desempeño relativo cambiante en el tiempo (episodios 2015, 2018, 2020, 2022). |
+
+### 8.4 Antecedentes para Paraguay
+
+- **[PY]** Banco Central del Paraguay, Informe de Política Monetaria, Recuadro I, "Estimación del Tipo de Cambio Real de Equilibrio" ([enlace](https://www.bcp.gov.py/documents/20117/80085/Recuadro+I+_Estimaci%C3%B3n+del+Tipo+de+Cambio+Real+de+Equilibrio.pdf)). Según su descripción pública, aplica el BEER de Clark y MacDonald (1999) estimado por DOLS con fundamentos filtrados. **El paso 1 de este proyecto es, por lo tanto, una actualización de un ejercicio que el BCP ya hizo.** El aporte está en los pasos 2 a 4: pronóstico por horizonte, frecuencia diaria y evaluación fuera de muestra. No pude abrir el PDF, así que conviene confirmar la edición del IPoM y los fundamentos usados.

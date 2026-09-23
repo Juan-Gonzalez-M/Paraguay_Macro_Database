@@ -97,3 +97,29 @@ La inflación promedio no representa las canastas ni la capacidad de sustitució
 4. Los ingresos de la EPHC (`ephc_ingreso_*`) son **no comprobados** (identidad posicional en la base); usarlos solo para caracterizar grupos, tras verificar contra el Excel del INE.
 5. Los pesos del FMI corresponden a la canasta de 2005; los incluyo solo como referencia histórica.
 6. N10 queda sin datos; la carpeta solo sirve a N9.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 N9: inflación por grupos de hogares
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Hobijn, B. y Lagakos, D. (2005). "Inflation Inequality in the United States." *Review of Income and Wealth*, 51(4), 581–606. **[Revista]** | Método del paso 1: **índices Laspeyres por grupo** con los índices oficiales por componente y pesos de gasto de cada grupo. Identifica qué rubros (salud, energía) explican las brechas. Respalda la descomposición del paso 2. |
+| Kaplan, G. y Schulhofer-Wohl, S. (2017). "Inflation at the Household Level." *Journal of Monetary Economics*, 91, 19–38. **[Revista]** | Con datos de escáner, la dispersión de la inflación entre hogares es grande y persistente. Justifica que la inflación promedio no represente a todos los hogares, aunque con datos por componente solo se captura la parte **entre canastas**, no la de precios pagados. |
+| Jaravel, X. (2021). "Inflation Inequality: Measurement, Causes, and Policy Implications." *Annual Review of Economics*, 13, 599–629. **[Revista]** | Revisión de referencia sobre medición y sesgos por agregación de categorías. Respalda el análisis de sensibilidad al nivel de desagregación (divisiones frente a grupos y cortes de carne). |
+| Argente, D. y Lee, M. (2021). "Cost of Living Inequality During the Great Recession." *Journal of the European Economic Association*, 19(2), 913–952. **[Revista]** | La brecha se amplía en episodios de shock. Respalda el análisis por episodios (2007–08, 2021–22). |
+| Easterly, W. y Fischer, S. (2001). "Inflation and the Poor." *Journal of Money, Credit and Banking*, 33(2), 160–178. **[Revista]** | Evidencia internacional de que la inflación afecta más a los pobres. Motiva el foco en quintiles de ingreso. |
+| Goñi, E., López, J. H. y Servén, L. (2006). "Getting Real about Inequality: Evidence from Brazil, Colombia, Mexico, and Peru." World Bank Policy Research Working Paper 3815. **[DT]** | **Antecedente regional directo**: con encuestas de gasto de hogares, encuentran que el IPC suele reflejar la canasta de hogares entre los percentiles 80 y 90 del gasto. Es el mismo diseño propuesto con la EIGH. |
+
+### 8.2 N10: comunicación experimental
+
+| Referencia | Qué respalda |
+|---|---|
+| Coibion, O., Gorodnichenko, Y. y Weber, M. (2022). "Monetary Policy Communications and Their Effects on Household Inflation Expectations." *Journal of Political Economy*, 130(6), 1537–1584. **[Revista]** | Diseño de referencia: ensayo controlado aleatorizado con hogares que reciben distintos mensajes del banco central, con creencias medidas antes y después. Es el diseño que la ficha pide para N10. |
+| Blinder, A. S., Ehrmann, M., de Haan, J. y Jansen, D.-J. (2024). "Central Bank Communication with the General Public: Promise or False Hope?" *Journal of Economic Literature*, 62(2), 425–457. **[Revista]** | Revisión de la evidencia sobre comunicación con el público: efectos reales pero pequeños y poco persistentes. Ayuda a fijar expectativas realistas sobre el tamaño del efecto y el tamaño muestral necesario. |
+
+### 8.3 Nota sobre Paraguay
+
+No encontré estudios publicados de inflación por quintil para Paraguay. Esto hace más valioso el N9, pero depende de acceder a los pesos de la EIGH del INE (ver brechas).

@@ -126,3 +126,35 @@ Series del Anexo, de Indicadores Financieros (hojas 1.2, 2.2, 4, 5, 6 y 7 comple
 5. Los nombres de las series de Indicadores Financieros se generaron automáticamente a partir de la etiqueta publicada (`tef_*` = tasas efectivas; `saldos_*` = saldos); la descripción completa y el `candidate_id` están en `diccionario_series.csv`.
 6. Los paneles son completos (sin filtrar rubros), como acordamos para C2.
 7. La sorpresa de política con EVE supone que la mediana de la expectativa del mes se releva antes de la decisión del COPOM; verificar el calendario de la encuesta.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Diseño: betas de depósito y canal de fondeo
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Drechsler, I., Savov, A. y Schnabl, P. (2017). "The Deposits Channel of Monetary Policy." *Quarterly Journal of Economics*, 132(4), 1819–1876. **[Revista]** | Referencia central. Define la **beta de depósitos** (traspaso de la tasa de política a las tasas pasivas), muestra que depende del poder de mercado de cada banco y que las subas de tasas generan salida de depósitos y menos crédito. Respalda los pasos 1 y 3 y la heterogeneidad por concentración y franquicia. |
+| Kashyap, A. K. y Stein, J. C. (2000). "What Do a Million Observations on Banks Say about the Transmission of Monetary Policy?" *American Economic Review*, 90(3), 407–428. **[Revista]** | Canal de préstamo bancario: la respuesta del crédito depende de la liquidez del banco. Respalda la exposición predeterminada × cambio de TPM. |
+| Kishan, R. P. y Opiela, T. P. (2000). "Bank Size, Bank Capital, and the Bank Lending Channel." *Journal of Money, Credit and Banking*, 32(1), 121–141. **[Revista]** | Heterogeneidad por tamaño y capital. Respalda usar la participación de mercado y el capital del panel EEFF como dimensiones de exposición. |
+
+### 8.2 Identificación: absorber la demanda de crédito
+
+| Referencia | Uso |
+|---|---|
+| Khwaja, A. I. y Mian, A. (2008). "Tracing the Impact of Bank Liquidity Shocks: Evidence from an Emerging Market." *American Economic Review*, 98(4), 1413–1442. **[Revista]** | Efectos fijos que absorben la demanda común para aislar la oferta. Respalda los efectos fijos de tiempo y de sector-tiempo. Su versión ideal requiere datos prestatario-banco, que la base no tiene (ver brechas). |
+| Jiménez, G., Ongena, S., Peydró, J.-L. y Saurina, J. (2012). "Credit Supply and Monetary Policy: Identifying the Bank Balance-Sheet Channel with Loan Applications." *American Economic Review*, 102(5), 2301–2326. **[Revista]** | Canal de balance bancario con política monetaria interactuada con características del banco. Es el estándar al que se acerca el paso 3. |
+
+### 8.3 Sustitución entre intermediarios y dolarización
+
+| Referencia | Qué respalda |
+|---|---|
+| Xiao, K. (2020). "Monetary Transmission through Shadow Banks." *Review of Financial Studies*, 33(6), 2379–2420. **[Revista]** | Ante subas de tasas, los depósitos migran de los bancos a intermediarios no bancarios. Respalda el paso 4 (bancos frente a cooperativas y financieras). |
+| Levy Yeyati, E. (2006). "Financial Dollarization: Evaluating the Consequences." *Economic Policy*, 21(45), 61–118. **[Revista]** | Consecuencias de la dolarización financiera para la política monetaria. Respalda separar las betas y los flujos **por moneda**. |
+| Acosta-Ormaechea, S. y Coble, D. (2011). "Monetary Transmission in Dollarized and Non-Dollarized Economies: The Cases of Chile, New Zealand, Peru and Uruguay." IMF Working Paper 11/87. **[DT]** | En economías dolarizadas (Perú, Uruguay) el canal de tasas es más débil y se fortalece con la desdolarización. Comparación regional directa para Paraguay. |
+
+### 8.4 Antecedentes para Paraguay
+
+- **[PY]** Rojas, E. (2017). *El efecto traspaso de corto y largo plazo de las tasas de política monetaria a las tasas de interés de la economía en Paraguay.* Tesis de Maestría en Finanzas, Universidad de San Andrés. Estima un traspaso de largo plazo promedio de ≈ 0,54 (2004–2015) y prueba asimetrías y el rol de la dolarización. **Es el antecedente directo del paso 1**: este proyecto lo extiende con datos por producto, plazo y moneda hasta 2026, proyecciones locales y panel por entidad.
+- **[PY]** Banco Central del Paraguay (2017). Informe de Política Monetaria, junio 2017, Recuadro I, "Dolarización financiera en Paraguay". Contexto de la dolarización de depósitos y créditos.

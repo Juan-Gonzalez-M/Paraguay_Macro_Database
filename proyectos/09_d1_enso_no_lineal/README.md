@@ -110,3 +110,39 @@ Advertencia de la ficha: pocos episodios independientes (≈ 5–6 El Niño y 6�
 4. ONI fechado en el mes central de la temporada de 3 meses (convención de NOAA). Los índices ENSO se descargan en cada corrida; NOAA revisa retroactivamente los últimos valores cuando actualiza la climatología.
 5. Los volúmenes exportados son un **proxy** de cosecha: incluyen stocks y timing logístico (que a su vez depende del río).
 6. EVE = mediana de la encuesta.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 ENSO como shock macroeconómico
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Brunner, A. D. (2002). "El Niño and World Primary Commodity Prices: Warm Water or Hot Air?" *Review of Economics and Statistics*, 84(1), 176–183. **[Revista]** | ENSO mueve los precios mundiales de commodities y la inflación. Respalda incluir precios de alimentos, soja y petróleo como controles y el IPC de alimentos como resultado. |
+| Cashin, P., Mohaddes, K. y Raissi, M. (2017). "Fair Weather or Foul? The Macroeconomic Effects of El Niño." *Journal of International Economics*, 106, 37–54. **[Revista]** | Referencia central: efectos de El Niño sobre el PIB, la inflación y los precios de commodities por país, **con signos distintos según la región** (en algunos países El Niño es favorable). Respalda estimar el perfil para Paraguay en lugar de suponer un signo. |
+| Smith, S. C. y Ubilava, D. (2017). "The El Niño Southern Oscillation and Economic Growth in the Developing World." *Global Environmental Change*, 45, 151–164. **[Revista]** | Efectos **asimétricos** entre fases y regiones en 69 países en desarrollo. Respalda separar `ONI⁺` y `ONI⁻`. |
+| Generoso, R., Couharde, C., Damette, O. y Mohaddes, K. (2020). "The Growth Effects of El Niño and La Niña: Local Weather Conditions Matter." *Annals of Economics and Statistics*, 140, 83–126. **[Revista]** | Diferencias sustanciales entre El Niño y La Niña, mediadas por el clima local (lluvia, temperatura). Respalda el diseño por fase y la brecha "lluvia local por departamento". |
+| Callahan, C. W. y Mankin, J. S. (2023). "Persistent Effect of El Niño on Global Economic Growth." *Science*, 380(6649), 1064–1069. **[Revista]** | Efectos persistentes durante varios años. Respalda horizontes de hasta 24 meses. |
+| Liu, Y., Cai, W., Lin, X., Li, Z. y Zhang, Y. (2023). "Nonlinear El Niño Impacts on the Global Economy under Climate Change." *Nature Communications*, 14, 5887. **[Revista]** | Pérdidas que crecen de forma **no lineal** con la intensidad. Respalda la base spline sobre la intensidad del ONI con nudos fijados ex ante. |
+
+### 8.2 Canal agrícola y de precios
+
+| Referencia | Variable que respalda |
+|---|---|
+| Iizumi, T. et al. (2014). "Impacts of El Niño Southern Oscillation on the Global Yields of Major Crops." *Nature Communications*, 5, 3712. **[Revista]** | Efectos de ENSO sobre los rendimientos de soja, maíz, trigo y arroz por región. Respalda los volúmenes exportados de soja, maíz y trigo y el PIB agrícola como resultados. |
+| Ubilava, D. (2018). "The Role of El Niño Southern Oscillation in Commodity Price Movement and Predictability." *American Journal of Agricultural Economics*, 100(1), 239–263. **[Revista]** | ENSO predice precios de commodities de forma no lineal. Respalda controlar los precios mundiales para separar el canal local (producción) del global (precios). |
+| Dell, M., Jones, B. F. y Olken, B. A. (2014). "What Do We Learn from the Weather? The New Climate-Economy Literature." *Journal of Economic Literature*, 52(3), 740–798. **[Revista]** | Marco general de identificación con variación climática como cuasi-experimento, y sus límites (pocos eventos, adaptación). |
+
+### 8.3 Métodos econométricos
+
+| Referencia | Uso |
+|---|---|
+| Jordà, Ò. (2005). *American Economic Review*, 95(1), 161–182. **[Revista]** | Proyecciones locales con términos no lineales. |
+| Barnichon, R. y Brownlees, C. (2019). "Impulse Response Estimation by Smooth Local Projections." *Review of Economics and Statistics*, 101(3), 522–530. **[Revista]** | Proyecciones locales suavizadas con B-splines, útiles con muestras cortas y pocos eventos. |
+| Montiel Olea, J. L. y Plagborg-Møller, M. (2019). "Simultaneous Confidence Bands: Theory, Implementation, and an Application to SVARs." *Journal of Applied Econometrics*, 34(1), 1–17. **[Revista]** | Bandas sup-t simultáneas para todo el perfil de respuesta (paso 2). |
+
+### 8.4 Antecedentes para Paraguay
+
+- **[PY]** González, Á. (BCP). "Nonlinear Climate Shocks and Financial Stability: Evidence from El Niño in Paraguay." Presentado en un taller regional sobre adaptación al cambio climático organizado por el BCP ([nota de prensa](https://marketdata.com.py/noticias/fenomenos-climaticos-como-el-nino-bajo-el-analisis-de-los-bancos-centrales-latinoamericanos-151477/)). **Es el antecedente más cercano** (no lineal, El Niño, Paraguay), aunque se enfoca en estabilidad financiera, que es el tema del proyecto 13 (D5). Conviene conseguir el documento para no duplicar y para alinear la medición de ENSO.
+- **[PY]** PNUD Paraguay. "Paraguay: impactos económicos y sociales de la sequía" ([enlace](https://www.undp.org/es/paraguay/publicaciones/paraguay-impactos-economicos-y-sociales-de-la-sequia)). Evaluación descriptiva de la sequía 2021–2022, útil como validación de episodios.

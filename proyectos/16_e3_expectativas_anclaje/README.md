@@ -108,3 +108,33 @@ La dispersión entre modelos, la dispersión de la EVE y el anclaje son objetos 
 3. **Posible cambio de meta en 2025:** la mediana a 24 meses pasa de 4,0% a 3,5% exactamente en 2025-01 y se mantiene; lo registré como meta de 3,5% **no verificada** y sin rango. Si no hubo cambio de meta, hay que eliminar esa fila: el salto sería entonces un desanclaje hacia abajo, un resultado de interés en sí mismo.
 4. La TPM usada es el promedio mensual del Cuadro 19; la sorpresa con la EVE supone que la encuesta se releva antes de la decisión del mes.
 5. `pib_var_anual` (Cuadro 3) figura con unidad no resuelta en la base; los valores son variaciones en % (p. ej. 6,6 en 2025).
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Pruebas de anclaje con expectativas de encuestas
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Levin, A. T., Natalucci, F. M. y Piger, J. M. (2004). "The Macroeconomic Effects of Inflation Targeting." *Federal Reserve Bank of St. Louis Review*, 86(4), 51–80. **[Revista]** | Prueba original de anclaje con encuestas: regresión del **cambio en la expectativa de largo plazo sobre la inflación observada**. Coeficiente ≈ 0 si las expectativas están ancladas. Es exactamente la regresión del paso 3. |
+| Gürkaynak, R. S., Levin, A. T. y Swanson, E. T. (2010). "Does Inflation Targeting Anchor Long-Run Inflation Expectations? Evidence from the U.S., UK, and Sweden." *Journal of the European Economic Association*, 8(6), 1208–1242. **[Revista]** | Sensibilidad de las expectativas de largo plazo a sorpresas macroeconómicas y de política. Respalda usar **sorpresas** (dato − mediana EVE) en lugar de niveles. |
+| De Pooter, M., Robitaille, P., Walker, I. y Zdinak, M. (2014). "Are Long-Term Inflation Expectations Well Anchored in Brazil, Chile, and Mexico?" *International Journal of Central Banking*, 10(2), 337–400. **[Revista]** | **Antecedente regional directo**: pruebas de anclaje con encuestas mensuales en países con metas de inflación de América Latina. Sirve de modelo para la especificación y como punto de comparación de resultados. |
+| Bems, R., Caselli, F., Grigoli, F. y Gruss, B. (2021). "Expectations' Anchoring and Inflation Persistence." *Journal of International Economics*, 132, 103516. **[Revista]** | Índice de anclaje para 45 economías basado en encuestas: desvío respecto de la meta, variabilidad y sensibilidad a sorpresas. Respalda construir un índice comparable para Paraguay con la meta del cuadro manual. |
+| Carvalho, C., Eusepi, S., Moench, E. y Preston, B. (2023). "Anchored Inflation Expectations." *American Economic Journal: Macroeconomics*, 15(1), 1–47. **[Revista]** | Anclaje que varía en el tiempo, con sensibilidad a la inflación observada. Respalda los coeficientes variables (rolling o TVP) para detectar desanclaje en 2022. |
+
+### 8.2 Construcción de variables y eficiencia de pronósticos
+
+| Referencia | Uso |
+|---|---|
+| Dovern, J., Fritsche, U. y Slacalek, J. (2012). "Disagreement Among Forecasters in G7 Countries." *Review of Economics and Statistics*, 94(4), 1081–1096. **[Revista]** | Conversión de pronósticos de **horizonte fijo en el calendario** (diciembre de t y t+1) a horizonte constante de 12 meses con ponderación por meses restantes (paso 1). |
+| Mincer, J. y Zarnowitz, V. (1969). "The Evaluation of Economic Forecasts." En Mincer, J. (ed.), *Economic Forecasts and Expectations*. NBER. **[Libro]** | Prueba de insesgamiento y eficiencia (paso 5). |
+| Coibion, O. y Gorodnichenko, Y. (2015). "Information Rigidity and the Expectations Formation Process: A Simple Framework and New Facts." *American Economic Review*, 105(8), 2644–2678. **[Revista]** | Regresión del error de pronóstico sobre la revisión del pronóstico. Funciona con **la mediana** (no requiere microdatos), así que es aplicable a la EVE publicada. |
+| Capistrán, C. y Ramos-Francia, M. (2010). "Does Inflation Targeting Affect the Dispersion of Inflation Expectations?" *Journal of Money, Credit and Banking*, 42(1), 113–134. **[Revista]** | Referencia para la parte de **desacuerdo**, que queda fuera de alcance mientras la EVE publicada no traiga dispersión. |
+
+### 8.3 Antecedentes para Paraguay
+
+- **[PY]** Alonso, P. (2018). "Creation and Evolution of Inflation Expectations in Paraguay." Banco Interamericano de Desarrollo, doi:10.18235/0001241. **[DT]**
+- **[PY]** Alonso Méndez, P. A. (2020). "Formation and Evolution of Inflation Expectations in Paraguay." En *Inflation Expectations, Their Measurement and the Estimate of Their Degree of Anchoring*, Joint Research Program 2017, CEMLA. **[DT]** Con la EVE, estima determinantes de la expectativa a 12 meses por MCO, FMOLS y GMM, y construye un índice de credibilidad. Encuentra que dominan la expectativa del mes anterior y la inflación reciente, y que el tipo de cambio no es significativo.
+
+**Aporte frente a estos antecedentes:** Alonso estudia la *formación* de la expectativa a 12 meses. Este proyecto prueba el **anclaje en el horizonte de política (24 meses)** con sorpresas, coeficientes variables en el tiempo (2022) y un event study de los cambios de meta, siguiendo a Levin et al. (2004), Gürkaynak et al. (2010) y De Pooter et al. (2014).
