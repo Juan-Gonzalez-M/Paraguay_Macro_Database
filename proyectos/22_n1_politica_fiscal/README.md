@@ -85,3 +85,29 @@ El portafolio estudia la transmisión monetaria, cambiaria, climática y financi
 3. Cuadro 36 del Anexo: las etiquetas están contaminadas con encabezados de otras columnas; asignar por el texto inicial ("Ingresos", "Gastos — …", "Balance…").
 4. Uso el IMAEP sin agricultura ni binacionales como medida principal del ciclo para no mezclar el efecto fiscal con el clima y la hidrología.
 5. Este proyecto no usa vintages ni pronósticos del PIB (coherente con tu instrucción de excluir cortes de cuentas nacionales).
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Identificación y multiplicadores
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Blanchard, O. y Perotti, R. (2002). "An Empirical Characterization of the Dynamic Effects of Changes in Government Spending and Taxes on Output." *Quarterly Journal of Economics*, 117(4), 1329–1368. **[Revista]** | Supuesto de identificación del paso 3: el gasto no responde a la actividad dentro del período por los rezagos de decisión. Con datos **mensuales** el supuesto es más creíble que con trimestrales. |
+| Ramey, V. A. y Zubairy, S. (2018). "Government Spending Multipliers in Good Times and in Bad: Evidence from US Historical Data." *Journal of Political Economy*, 126(2), 850–901. **[Revista]** | Multiplicador acumulado `ΣΔY/ΣΔG` estimado con proyecciones locales. |
+| Ilzetzki, E., Mendoza, E. G. y Végh, C. A. (2013). "How Big (Small?) Are Fiscal Multipliers?" *Journal of Monetary Economics*, 60(2), 239–254. **[Revista]** | Los multiplicadores son **menores en economías abiertas, con tipo de cambio flexible y en desarrollo**, y el de la inversión pública es mayor que el del consumo público. Da la referencia de magnitud esperable para Paraguay y respalda separar el gasto corriente del de capital. |
+
+### 8.2 Ciclicidad y regla fiscal
+
+| Referencia | Qué respalda |
+|---|---|
+| Kaminsky, G. L., Reinhart, C. M. y Végh, C. A. (2004). "When It Rains, It Pours: Procyclical Capital Flows and Macroeconomic Policies." *NBER Macroeconomics Annual*, 19, 11–53. **[Revista]** | La política fiscal de los países en desarrollo tiende a ser **procíclica**. Es la hipótesis del paso 2. |
+| Frankel, J. A., Végh, C. A. y Vuletin, G. (2013). "On Graduation from Fiscal Procyclicality." *Journal of Development Economics*, 100(1), 32–47. **[Revista]** | Algunos países dejaron de ser procíclicos, en parte por mejores instituciones. Respalda la interacción con los períodos de regla fiscal vigente o suspendida. |
+| Alesina, A., Campante, F. R. y Tabellini, G. (2008). "Why Is Fiscal Policy Often Procyclical?" *Journal of the European Economic Association*, 6(5), 1006–1036. **[Revista]** | Explicación de economía política de la prociclicidad. Útil para interpretar los resultados. |
+| Céspedes, L. F. y Velasco, A. (2014). "Was This Time Different?: Fiscal Policy in Commodity Republics." *Journal of Development Economics*, 106, 92–106. **[Revista]** | Respuesta del gasto a ingresos fiscales atados a recursos naturales. Es el análogo de las **regalías de las binacionales** del paso 4. |
+
+### 8.3 Antecedentes para Paraguay
+
+- **[PY]** David, A. C. (2017). "Fiscal Policy Effectiveness in a Small Open Economy: Estimates of Tax and Spending Multipliers in Paraguay." IMF Working Paper 17/63. **[DT]** **Antecedente directo**: encuentra multiplicadores del gasto de capital sustancialmente mayores que los del gasto corriente, y multiplicadores tributarios cercanos a cero con la identificación convencional (mayores con el enfoque narrativo). Este proyecto lo actualiza con datos mensuales hasta 2026, agrega la dimensión de la regla fiscal y el uso de las binacionales como variación externa.
+- **[PY]** Ley N.º 5098/2013 de Responsabilidad Fiscal: déficit de hasta 1,5% del PIB (3% en emergencias) y un tope al crecimiento del gasto corriente primario de inflación + 4%. Estas reglas fechan los regímenes del paso 2.

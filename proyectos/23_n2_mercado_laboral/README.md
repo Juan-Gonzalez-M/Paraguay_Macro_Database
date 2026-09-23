@@ -93,3 +93,34 @@ EPHC completa (15 hojas) más ciclo, precios y salarios.
 3. La tasa de informalidad se calcula solo para ocupados no agropecuarios (definición del cuadro del INE).
 4. El IMAEP mensual se agrega a trimestre por promedio.
 5. Los ingresos de la EPHC terminan en 2026T1; las tasas, en 2026T2.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Okun y márgenes de ajuste
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Okun, A. M. (1962). "Potential GNP: Its Measurement and Significance." *Proceedings of the Business and Economic Statistics Section*, American Statistical Association, 98–104. **[Conferencia]** | Relación original entre producto y desempleo. |
+| Ball, L., Leigh, D. y Loungani, P. (2017). "Okun's Law: Fit at 50?" *Journal of Money, Credit and Banking*, 49(7), 1413–1441. **[Revista]** | Okun en panel de países, con coeficientes que varían entre países. Es la especificación de referencia del paso 2 y una base de comparación. |
+
+### 8.2 Informalidad y ciclo
+
+| Referencia | Qué respalda |
+|---|---|
+| Fernández, A. y Meza, F. (2015). "Informal Employment and Business Cycles in Emerging Economies: The Case of Mexico." *Review of Economic Dynamics*, 18(2), 381–405. **[Revista]** | La informalidad es procíclica o contracíclica según el shock. Respalda el paso 3 (¿amortiguador o no?). |
+| Leyva, G. y Urrutia, C. (2020). "Informality, Labor Regulation, and the Business Cycle." *Journal of International Economics*, 126. **[Revista]** | El sector informal amortigua las fluctuaciones del empleo y el consumo en economías pequeñas abiertas. Es la hipótesis del paso 3. |
+| Bosch, M. y Maloney, W. F. (2010). "Comparative Analysis of Labor Market Dynamics Using Markov Processes: An Application to Informality." *Labour Economics*, 17(4), 621–631. **[Revista]** | Flujos formal ↔ informal en América Latina. Su versión con microdatos de la EPHC sería una extensión natural. |
+
+### 8.3 Curva de Phillips
+
+| Referencia | Qué respalda |
+|---|---|
+| Galí, J. (2011). "The Return of the Wage Phillips Curve." *Journal of the European Economic Association*, 9(3), 436–461. **[Revista]** | Curva de Phillips de **salarios** con desempleo. Respalda usar el índice de salarios como resultado. |
+| Hazell, J., Herreño, J., Nakamura, E. y Steinsson, J. (2022). "The Slope of the Phillips Curve: Evidence from U.S. States." *Quarterly Journal of Economics*, 137(3), 1299–1344. **[Revista]** | La pendiente es pequeña y difícil de identificar con series agregadas. Advierte sobre los límites de 38 trimestres. |
+
+### 8.4 Antecedentes para Paraguay
+
+- **[PY]** MTESS y CADEP publicaron documentos descriptivos sobre la evolución y características del empleo informal en Paraguay (por ejemplo, "El empleo informal en el Paraguay: evolución, características y acciones de…", CADEP). Describen la informalidad a lo largo del ciclo 2003–2014 sin estimar Okun ni Phillips.
+- No encontré estimaciones publicadas de Okun por margen de ajuste para Paraguay; este es el aporte del proyecto.

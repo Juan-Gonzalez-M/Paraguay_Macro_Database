@@ -74,3 +74,30 @@
 1. La cuenta "Medida Excepcional COVID" del panel de carteras corresponde a las reprogramaciones bajo las medidas excepcionales del BCP de 2020; confirmar la definición con la SIB.
 2. Los montos del panel están en millones de Gs. (verificado en C1).
 3. El número de entidades con cartera COVID cae de 23 a 19 entre 2021 y 2024 (salidas o cancelaciones): revisar fusiones.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Reprogramaciones y moratorias
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Önder, Y. K., Villamizar-Villegas, M. y Villegas, J. (2023). "Debt Moratorium: Theory and Evidence." Borradores de Economía 1253, Banco de la República (Colombia). **[DT]** | **Antecedente regional más cercano**: evalúa las moratorias de Colombia (incluida la de COVID) comparando firmas justo por debajo y por encima del criterio de elegibilidad (≤ 60 días de atraso). Las moratorias mejoran el crédito posterior pero elevan el riesgo de default. Muestra el diseño ideal (regresión discontinua) si se accede a datos de deudores. |
+| Burga, C., Cuba, W., Díaz, E. y Sánchez, E. (2023). "Loan Guarantees and Bank Incentives: Evidence from Covid-19 Relief Funds in Peru." Documento de Trabajo 2023-001, BCRP. **[DT]** | Programa peruano de alivio (garantías): efectos sobre la mora y el reparto del crédito entre firmas. Comparación regional. |
+
+### 8.2 El riesgo de "evergreening" (préstamos zombi)
+
+| Referencia | Qué respalda |
+|---|---|
+| Peek, J. y Rosengren, E. S. (2005). "Unnatural Selection: Perverse Incentives and the Misallocation of Credit in Japan." *American Economic Review*, 95(4), 1144–1166. **[Revista]** | Los bancos débiles renuevan créditos a deudores débiles para no reconocer pérdidas. Es la hipótesis alternativa a "puente de liquidez". |
+| Caballero, R. J., Hoshi, T. y Kashyap, A. K. (2008). "Zombie Lending and Depressed Restructuring in Japan." *American Economic Review*, 98(5), 1943–1977. **[Revista]** | Costos agregados de la tolerancia: menos crédito a firmas sanas. Respalda el resultado "crecimiento del crédito vigente". |
+| Blattner, L., Farinha, L. y Rebelo, F. (2023). "When Losses Turn into Loans: The Cost of Weak Banks." *American Economic Review*, 113(6), 1600–1641. **[Revista]** | Bancos con poco capital posponen el reconocimiento de pérdidas. Respalda la heterogeneidad por capital del banco. |
+
+### 8.3 Métodos
+
+- Instrumento de exposición sectorial predeterminada (paso 2): Goldsmith-Pinkham, P., Sorkin, I. y Swift, H. (2020). "Bartik Instruments: What, When, Why, and How." *American Economic Review*, 110(8), 2586–2624; y Borusyak, K., Hull, P. y Jaravel, X. (2022). "Quasi-Experimental Shift-Share Research Designs." *Review of Economic Studies*, 89(1), 181–213. **[Revista]** Condiciones para que la exposición sectorial de 2019 sea un instrumento válido.
+
+### 8.4 Antecedentes para Paraguay
+
+No encontré evaluaciones publicadas de las medidas excepcionales del BCP de 2020. Las resoluciones de la medida (fechas, plazos, condiciones) deben cargarse en `datos_manuales/medidas_alivio.csv`.

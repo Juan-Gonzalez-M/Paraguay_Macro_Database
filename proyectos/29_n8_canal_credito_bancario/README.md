@@ -73,3 +73,27 @@
 1. La sorpresa EVE supone que la encuesta se releva antes de la decisión del mes.
 2. Paneles con bancos y financieras; revisar fusiones antes de usar exposiciones predeterminadas largas.
 3. Las tasas del Cuadro 31 (MN) tienen etiquetas contaminadas; asignadas por texto inicial.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Canal de crédito bancario
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Bernanke, B. S. y Blinder, A. S. (1992). "The Federal Funds Rate and the Channels of Monetary Transmission." *American Economic Review*, 82(4), 901–921. **[Revista]** | Evidencia agregada del canal de crédito. |
+| Bernanke, B. S. y Gertler, M. (1995). "Inside the Black Box: The Credit Channel of Monetary Policy Transmission." *Journal of Economic Perspectives*, 9(4), 27–48. **[Revista]** | Marco conceptual: canal de préstamos bancarios y canal de hoja de balance. |
+| Kashyap, A. K. y Stein, J. C. (2000). *American Economic Review*, 90(3), 407–428. **[Revista]** | **Diseño central**: la respuesta del crédito a la política depende de la liquidez del banco. Es `∂²crédito/∂TPM∂liquidez`. |
+| Kishan, R. P. y Opiela, T. P. (2000). *Journal of Money, Credit and Banking*, 32(1), 121–141. **[Revista]** | Heterogeneidad por tamaño y capital. |
+| Gambacorta, L. (2005). "Inside the Bank Lending Channel." *European Economic Review*, 49(7), 1737–1759. **[Revista]** | Versión para un sistema bancario europeo, con liquidez y capitalización como características predeterminadas. Modelo cercano a la especificación con el panel EEFF. |
+| Jiménez, G., Ongena, S., Peydró, J.-L. y Saurina, J. (2012). *American Economic Review*, 102(5), 2301–2326. **[Revista]** | Efectos fijos de demanda y política × capital del banco. Estándar del paso 3. |
+| Drechsler, I., Savov, A. y Schnabl, P. (2017). *Quarterly Journal of Economics*, 132(4), 1819–1876. **[Revista]** | El canal de depósitos como explicación alternativa de la heterogeneidad (paso 4). |
+
+### 8.2 El tratamiento
+
+- Las sorpresas de alta frecuencia del proyecto 25 (Kuttner, 2001; Nakamura y Steinsson, 2018) hacen **causal la heterogeneidad**. Con la TPM en nivel, el coeficiente de interacción es más creíble que el efecto agregado, porque los efectos fijos absorben la demanda común.
+
+### 8.3 Antecedentes para Paraguay
+
+- **[PY]** Rojas (2017, tesis de la UdeSA; ver carpeta 06) estima el traspaso agregado a tasas. No encontré estudios a nivel banco del canal de crédito en Paraguay.

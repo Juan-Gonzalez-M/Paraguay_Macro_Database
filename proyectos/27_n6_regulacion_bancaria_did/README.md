@@ -95,3 +95,35 @@
 2. Los cambios de encaje posteriores a 2016 (p. ej., medidas de 2020) son los únicos utilizables por banco; confirmar cuántos hubo.
 3. La base encajable se aproxima con depósitos por tipo, no por plazo residual.
 4. Tasas de tarjetas, consumo y sobregiros: promedios, máximos y mínimos del sistema (no por banco).
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Módulo A: encaje legal y oferta de crédito
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Dassatti Camors, C., Peydró, J.-L., Rodriguez-Tous, F. y Vicente, S. (2019). "Macroprudential and Monetary Policy: Loan-Level Evidence from Reserve Requirements." CEPR Discussion Paper 14224. **[DT]** | **Diseño más cercano, en Uruguay** (economía pequeña y dolarizada): diferencias en diferencias entre bancos afectados de forma distinta por un cambio del encaje, con datos préstamo-firma. Encuentra que el endurecimiento reduce la oferta de crédito. |
+| Barroso, J. B. R. B., Gonzalez, R. B. y Van Doornik, B. F. N. (2017). "Credit Supply Responses to Reserve Requirement: Loan-Level Evidence from Macroprudential Policy." BIS Working Paper 674. **[DT]** | Brasil: exposición de cada banco a los cambios de encaje; los bancos más líquidos amortiguan el efecto y las reducciones pesan más que los aumentos. Respalda la medida de "liquidez liberada" y la asimetría. |
+| Tovar, C. E., Garcia-Escribano, M. y Martin, M. V. (2012). "Credit Growth and the Effectiveness of Reserve Requirements and Other Macroprudential Instruments in Latin America." IMF Working Paper 12/142. **[DT]** | Evidencia regional con datos agregados. |
+| Federico, P., Végh, C. A. y Vuletin, G. (2014). "Reserve Requirement Policy over the Business Cycle." NBER Working Paper 20612. **[DT]** | El encaje como instrumento contracíclico en países en desarrollo. Contexto del uso por el BCP. |
+| Khwaja, A. I. y Mian, A. (2008). *American Economic Review*, 98(4), 1413–1442. **[Revista]** | Efectos fijos sector × moneda × mes para absorber la demanda. |
+
+### 8.2 Módulo B: topes a las tasas
+
+| Referencia | Qué respalda |
+|---|---|
+| Agarwal, S., Chomsisengphet, S., Mahoney, N. y Stroebel, J. (2015). "Regulating Consumer Financial Products: Evidence from Credit Cards." *Quarterly Journal of Economics*, 130(1), 111–164. **[Revista]** | Regulación de **tarjetas de crédito** (CARD Act) con comparación entre segmentos. Referencia de diseño para el DiD por banco. |
+| Madeira, C. (2019). "The Impact of Interest Rate Ceilings on Households' Credit Access: Evidence from a 2013 Chilean Legislation." *Journal of Banking & Finance*, 106, 166–179. **[Revista]** | Chile: la reducción del tope excluyó a ≈ 10% de los deudores de consumo bancario. Anticipa el efecto sobre el **acceso**. |
+| Cuesta, J. I. y Sepúlveda, A. "Price Regulation in Credit Markets: A Trade-off between Consumer Protection and Credit Access." SSRN 3282910. **[DT]** | Mismo episodio chileno: tasas −9%, préstamos −19%, pérdida de bienestar mayor para deudores riesgosos. |
+| Maimbo, S. M. y Henriquez Gallegos, C. A. (2014). "Interest Rate Caps around the World: Still Popular, but a Blunt Instrument." World Bank Policy Research Working Paper 7070. **[DT]** | Revisión internacional de los topes y sus efectos. |
+
+### 8.3 Métodos
+
+- Callaway, B. y Sant'Anna, P. H. C. (2021). "Difference-in-Differences with Multiple Time Periods." *Journal of Econometrics*, 225(2), 200–230. **[Revista]** Cambios de encaje escalonados y efectos heterogéneos.
+
+### 8.4 Antecedentes para Paraguay
+
+- **[PY]** **Ley N.º 5476/2015**, "que establece normas de transparencia y defensa al usuario en la utilización de tarjetas de crédito y débito", vigente desde el **25 de septiembre de 2015**. El tope es tres veces la tasa pasiva promedio y el BCP publica el límite mensual. Esto confirma el quiebre de octubre de 2015 observado en los datos.
+- **[PY]** Hay un artículo sobre los "Efectos de la Ley 5476/15 en el comportamiento de compra y uso de la tarjeta de crédito en Asunción y Gran Asunción", en la *Revista Científica Empresarial Mba'apoha* (UEP). No pude abrir el texto; parece un estudio de encuesta a usuarios.

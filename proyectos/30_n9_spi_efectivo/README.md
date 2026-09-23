@@ -86,3 +86,28 @@
 
 1. Inicio del SPI = 2022-05 (primer dato del boletín); confirmar la fecha oficial.
 2. Las series por entidad del boletín de pagos se identifican por posición (ver carpeta 20).
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Pagos digitales y demanda de efectivo
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Alvarez, F. y Lippi, F. (2009). "Financial Innovation and the Transactions Demand for Cash." *Econometrica*, 77(2), 363–402. **[Revista]** | Demanda de efectivo con tecnología de pagos como determinante. Base de la especificación del paso 2. |
+| Chodorow-Reich, G., Gopinath, G., Mishra, P. y Narayanan, A. (2020). "Cash and the Economy: Evidence from India's Demonetization." *Quarterly Journal of Economics*, 135(1), 57–103. **[Revista]** | Sustitución entre efectivo y pagos electrónicos ante un shock. |
+| Crouzet, N., Gupta, A. y Mezzanotti, F. (2023). *Journal of Political Economy*, 131(11), 3003–3065. **[Revista]** | La adopción de pagos electrónicos es **persistente** por complementariedades. Respalda buscar quiebres de tendencia y no solo de nivel. |
+| Duarte, A., Frost, J., Gambacorta, L., Koo Wilkens, P. y Shin, H. S. (2022). BIS Bulletin 52. **[DT]** | Caso Pix: adopción rápida y sustitución de otros rieles (TED, DOC, boletos). Comparación directa para el paso 1. |
+| Sarkisyan, S. SSRN 4176990. **[DT]** | Efecto de Pix en los depósitos por tipo de banco. Referencia para la variación entre entidades del paso 4. |
+
+### 8.2 Métodos para una serie de tiempo interrumpida
+
+| Referencia | Uso |
+|---|---|
+| Brodersen, K. H., Gallusser, F., Koehler, J., Remy, N. y Scott, S. L. (2015). "Inferring Causal Impact Using Bayesian Structural Time-Series Models." *Annals of Applied Statistics*, 9(1), 247–274. **[Revista]** | Contrafactual proyectado con modelo estimado antes del lanzamiento y bandas de incertidumbre. Es exactamente el paso 2. |
+| Bernal, J. L., Cummins, S. y Gasparrini, A. (2017). "Interrupted Time Series Regression for the Evaluation of Public Health Interventions: A Tutorial." *International Journal of Epidemiology*, 46(1), 348–355. **[Revista]** | Buenas prácticas y amenazas a la validez (eventos simultáneos como el ciclo de tasas de 2022). |
+
+### 8.3 Antecedentes para Paraguay
+
+No encontré evaluaciones académicas del SPI (ver carpeta 20). El limitante sigue siendo la falta de un grupo de control; la literatura con identificación creíble (Higgins, 2024; Sarkisyan) usa **variación geográfica** en la exposición, que en Paraguay requeriría datos por localidad.

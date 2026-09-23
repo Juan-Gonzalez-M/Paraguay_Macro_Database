@@ -94,3 +94,27 @@
 2. Las importaciones bajo régimen de turismo (Cuadro 52a) se usan como proxy del comercio de reexportación hacia Argentina y Brasil.
 3. IMTS se lee directamente del CSV del FMI (no está en la base).
 4. El IPC de Argentina del FMI empieza en 2016-12.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Devaluaciones grandes como experimento
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Burstein, A., Eichenbaum, M. y Rebelo, S. (2005). "Large Devaluations and the Real Exchange Rate." *Journal of Political Economy*, 113(4), 742–784. **[Revista]** | Tras grandes devaluaciones los precios de transables y no transables se ajustan de forma muy distinta. Respalda los no transables como placebo y la separación transable/no transable. |
+| Campbell, J. R. y Lapham, B. (2004). "Real Exchange Rate Fluctuations and the Dynamics of Retail Trade Industries on the U.S.-Canada Border." *American Economic Review*, 94(4), 1194–1206. **[Revista]** | El comercio minorista fronterizo responde al tipo de cambio real bilateral. Mecanismo del régimen de turismo. |
+| MacKinlay, A. C. (1997). "Event Studies in Economics and Finance." *Journal of Economic Literature*, 35(1), 13–39. **[Revista]** | Metodología del estudio de eventos (paso 2). |
+
+### 8.2 Tipos de cambio múltiples y remesas
+
+| Referencia | Qué respalda |
+|---|---|
+| Kiguel, M. y O'Connell, S. A. (1995). "Parallel Exchange Rates in Developing Countries." *World Bank Research Observer*, 10(1), 21–52. **[Revista]** | Con controles cambiarios, el relevante para el arbitraje es el **paralelo**, no el oficial. Respalda el paso 5 y la brecha de datos del tipo de cambio paralelo argentino. |
+| Yang, D. (2008). "International Migration, Remittances and Household Investment: Evidence from Philippine Migrants' Exchange Rate Shocks." *Economic Journal*, 118(528), 591–630. **[Revista]** | Shocks cambiarios en el país donde viven los migrantes como variación exógena de las remesas. Respalda el resultado "remesas desde Argentina". |
+
+### 8.3 Antecedentes para Paraguay
+
+- **[PY]** Masi, F. (2006). *Paraguay: los vaivenes de la política comercial externa en una economía abierta.* CADEP. Contexto del régimen de turismo y de la triangulación con Argentina y Brasil.
+- **[PY]** Adler y Sosa (2012), IMF WP 12/145 (ver carpeta 24): vínculos comerciales del Cono Sur. Se enfoca en Brasil; los shocks de **Argentina** sobre Paraguay están menos estudiados, lo que es parte del aporte.

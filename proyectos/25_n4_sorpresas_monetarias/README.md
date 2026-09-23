@@ -115,3 +115,28 @@ En Paraguay la TPM responde a la inflación y a la actividad, por lo que su nive
 2. En 2016 el punto medio del corredor (p. ej. 6,375%) no coincide con la TPM publicada: el corredor no era simétrico en todos los períodos; la TPM oficial debe venir del calendario.
 3. Las decisiones de **mantener** la TPM no aparecen como fechas candidatas (no mueven el corredor), pero pueden contener sorpresas; por eso el calendario completo es indispensable.
 4. Las series del mercado interbancario son "estructura especial (provisional)" en la base.
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Identificación de alta frecuencia
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Kuttner, K. N. (2001). "Monetary Policy Surprises and Interest Rates: Evidence from the Fed Funds Futures Market." *Journal of Monetary Economics*, 47(3), 523–544. **[Revista]** | Separar el componente **esperado** del sorpresivo de cada decisión con precios de mercado. Base del paso 2. |
+| Gürkaynak, R. S., Sack, B. y Swanson, E. T. (2005). "Do Actions Speak Louder Than Words? The Response of Asset Prices to Monetary Policy Actions and Statements." *International Journal of Central Banking*, 1(1), 55–93. **[Revista]** | Sorpresas en ventanas estrechas y su efecto en la curva. Respalda el paso 4. |
+| Nakamura, E. y Steinsson, J. (2018). "High-Frequency Identification of Monetary Non-Neutrality: The Information Effect." *Quarterly Journal of Economics*, 133(3), 1283–1330. **[Revista]** | Justificación de la ventana alrededor del anuncio, y advertencia sobre el **efecto información** (el anuncio revela información del banco central sobre la economía). |
+| Jarociński, M. y Karadi, P. (2020). "Deconstructing Monetary Policy Surprises—The Role of Information Shocks." *American Economic Journal: Macroeconomics*, 12(2), 1–43. **[Revista]** | Separa el shock de política del de información con el co-movimiento de tasas y acciones. En Paraguay podría aproximarse con tasas y tipo de cambio. |
+| Bauer, M. D. y Swanson, E. T. (2023). "A Reassessment of Monetary Policy Surprises and High-Frequency Identification." *NBER Macroeconomics Annual*, 37, 87–155. **[Revista]** | Las sorpresas pueden ser **predecibles** con información pública previa. Respalda la prueba de validación del paso 3. |
+
+### 8.2 Alternativas cuando no hay derivados
+
+| Referencia | Qué respalda |
+|---|---|
+| Romer, C. D. y Romer, D. H. (2004). "A New Measure of Monetary Shocks: Derivation and Implications." *American Economic Review*, 94(4), 1055–1084. **[Revista]** | Shock como el residuo de la decisión respecto de los pronósticos del banco central. Alternativa cuando el mercado interbancario es poco líquido (con los pronósticos internos del BCP). |
+| Bolhuis, M. A., Das, S. y Yao, B. (2024). "A New Dataset of High-Frequency Monetary Policy Shocks." IMF Working Paper 24/224. **[DT]** | Base de datos de sorpresas diarias para 29 bancos centrales, incluidos emergentes, con un método estandarizado. Referencia de procedimiento y de comparación. |
+
+### 8.3 Antecedentes para Paraguay
+
+No encontré una serie publicada de sorpresas monetarias para Paraguay. Al no haber futuros de tasas, la sorpresa debe construirse con el **mercado interbancario** y con la **EVE** (mediana de la TPM esperada). Esa combinación de mercado y encuesta está menos validada en la literatura que los derivados, así que la validación del paso 3 es clave.

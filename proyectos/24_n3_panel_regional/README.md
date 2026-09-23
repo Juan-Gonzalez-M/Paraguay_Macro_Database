@@ -269,3 +269,33 @@ Las series se nombran `<país>_<indicador>` (p. ej. `pry_fsi_mora`, `bra_cuenta_
 3. La tasa de política del FMI para Paraguay termina en 2021-11 y la de Argentina en 2025-06; Bolivia y Ecuador no tienen.
 4. Ecuador está dolarizado: su tipo de cambio es 1 y su "política cambiaria" no es comparable.
 5. Los signos de la balanza de pagos siguen el MBP6 (cuenta financiera = activos − pasivos; un saldo negativo es entrada neta de capital).
+
+## 8. Sustento metodológico y literatura relacionada
+
+> Referencias revisadas en septiembre de 2026 contra RePEc, las editoriales o los repositorios institucionales. **[Revista]** indica un artículo publicado con revisión de pares; **[DT]** indica un documento de trabajo o un capítulo institucional; **[PY]** indica un trabajo sobre Paraguay. Cada referencia explica qué parte del diseño o qué variable respalda.
+
+### 8.1 Shocks globales y flujos de capital
+
+| Referencia | Qué respalda en este proyecto |
+|---|---|
+| Rey, H. (2013). "Dilemma not Trilemma: The Global Financial Cycle and Monetary Policy Independence." *Jackson Hole Economic Policy Symposium*. **[Conferencia]** | Un ciclo financiero global (VIX) mueve flujos y crédito en todos los países. Justifica los shocks globales comunes. |
+| Miranda-Agrippino, S. y Rey, H. (2020). "U.S. Monetary Policy and the Global Financial Cycle." *Review of Economic Studies*, 87(6), 2754–2776. **[Revista]** | La política de la Fed impulsa ese ciclo. Respalda la tasa Fed como shock. |
+| Forbes, K. J. y Warnock, F. E. (2012). "Capital Flow Waves: Surges, Stops, Flight, and Retrenchment." *Journal of International Economics*, 88(2), 235–251. **[Revista]** | Los episodios extremos de flujos responden sobre todo a factores globales. Respalda los resultados de flujos por componente de la balanza de pagos. |
+| Fratzscher, M. (2012). "Capital Flows, Push versus Pull Factors and the Global Financial Crisis." *Journal of International Economics*, 88(2), 341–356. **[Revista]** | Factores globales (push) frente a factores del país (pull). Justifica la heterogeneidad `shock × X_{i,t−1}`. |
+
+### 8.2 Amortiguadores
+
+| Referencia | Qué respalda |
+|---|---|
+| Obstfeld, M., Ostry, J. D. y Qureshi, M. S. (2019). "A Tie That Binds: Revisiting the Trilemma in Emerging Market Economies." *Review of Economics and Statistics*, 101(2), 279–293. **[Revista]** | El régimen cambiario modula la transmisión de shocks globales en emergentes. Es el diseño de las interacciones del paso 2. |
+| Gourinchas, P.-O. y Obstfeld, M. (2012). "Stories of the Twentieth Century for the Twenty-First." *American Economic Journal: Macroeconomics*, 4(1), 226–265. **[Revista]** | Las reservas altas reducen la probabilidad de crisis. Respalda las reservas/PIB como amortiguador. |
+| Adler, G., Chang, K. S., Mano, R. C. y Shao, Y. (2025). *Journal of Money, Credit and Banking*, 57(5), 1241–1273. **[Revista]** | Fuente de los datos de intervención del FMI (paso 3). |
+| Gruss, B. y Kebhaj, S. (2019). "Commodity Terms of Trade: A New Database." IMF Working Paper 19/21. **[DT]** | Fuente y método de los **términos de intercambio de commodities** por país (paso 4). |
+
+### 8.3 Métodos
+
+- Jordà (2005) para las proyecciones locales de panel, y Driscoll, J. C. y Kraay, A. C. (1998), "Consistent Covariance Matrix Estimation with Spatially Dependent Panel Data", *Review of Economics and Statistics*, 80(4), 549–560, para los errores robustos a la dependencia entre países.
+
+### 8.4 Antecedentes para Paraguay
+
+- **[PY]** Adler, G. y Sosa, S. (2012). "Intra-Regional Spillovers in South America: Is Brazil Systemic After All?" IMF Working Paper 12/145. **[DT]** Los países del Cono Sur (incluido Paraguay) son vulnerables a shocks de producto de Brasil, sobre todo por comercio. Respalda incluir el ciclo de Brasil como shock regional.
