@@ -27,7 +27,7 @@ proyectos/_herramientas/construir.sh 25
 proyectos/_herramientas/construir.sh 25 --solo-readme
 
 # Verificar varias carpetas
-cd proyectos && python3 _herramientas/verificar.py 0* 1* 2* 3*
+cd proyectos && python3 _herramientas/verificar.py [0-9][0-9]_*
 ```
 
 Requisitos: R con `DBI` y `duckdb` (el resto es R base); Python 3. La base se busca en `../../database/paraguay_macro_pilot.duckdb` desde cada carpeta, o en la variable de entorno `PARAGUAY_MACRO_DB`. Para no descargar FRED/NOAA y usar la copia ya guardada, usar `DESCARGAR_EXTERNOS=0`.

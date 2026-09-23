@@ -6,6 +6,7 @@ base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 csv.field_size_limit(10**9)
 for d in sorted(sys.argv[1:]):
     P = os.path.join(base, d); D = os.path.join(P, 'datos'); probs = []
+    if not os.path.isdir(D): continue
     man = list(csv.DictReader(open(os.path.join(D, '00_manifiesto.csv'), encoding='utf-8')))
     for m in man:
         f = os.path.join(D, m['archivo'])
