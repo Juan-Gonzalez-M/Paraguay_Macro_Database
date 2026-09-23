@@ -92,7 +92,7 @@ Series del Anexo, de Indicadores Financieros (hojas 1.2, 2.2, 4, 5, 6 y 7 comple
 | `datos/panel_carteras_entidad_mes.csv` | 75.618 | 8 | 2016-01-01 | 2026-07-01 |
 | `datos/panel_credito_sector_entidad_mes.csv` | 66.073 | 9 | 2016-01-01 | 2026-07-01 |
 | `datos/panel_ratios_entidad_mes.csv` | 132.025 | 7 | 2016-01-01 | 2026-07-01 |
-| `datos/entidades.csv` | 29 | 4 |  |  |
+| `datos/entidades.csv` | 29 | 4 | — | — |
 
 ## 4. Cómo se usarían los datos
 
