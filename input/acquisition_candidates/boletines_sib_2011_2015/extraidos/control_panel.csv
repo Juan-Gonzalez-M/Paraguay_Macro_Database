@@ -1,0 +1,241 @@
+tipo,diseno,hoja,celdas,asignadas,sin_entidad
+bancos,clasico,1,520,440,80
+bancos,clasico,10,1708,1504,204
+bancos,clasico,11,140,0,140
+bancos,clasico,12,231,0,231
+bancos,clasico,13,1730,1650,80
+bancos,clasico,14,855,773,82
+bancos,clasico,15,960,880,80
+bancos,clasico,16,2016,1210,806
+bancos,clasico,17,1180,1100,80
+bancos,clasico,18,3247,2605,642
+bancos,clasico,19,1252,1151,101
+bancos,clasico,2,1280,1200,80
+bancos,clasico,20,868,770,98
+bancos,clasico,21,870,770,100
+bancos,clasico,22,1639,1434,205
+bancos,clasico,23,1679,1474,205
+bancos,clasico,24,1679,1474,205
+bancos,clasico,25,1640,1435,205
+bancos,clasico,26,1461,1301,160
+bancos,clasico,27,1461,1301,160
+bancos,clasico,28,130,0,130
+bancos,clasico,29,1562,990,572
+bancos,clasico,3,340,320,20
+bancos,clasico,30,1728,990,738
+bancos,clasico,31,2110,1100,1010
+bancos,clasico,32,1840,1100,740
+bancos,clasico,33,1642,1391,251
+bancos,clasico,34,1747,1493,254
+bancos,clasico,35,1747,1493,254
+bancos,clasico,36,1747,1493,254
+bancos,clasico,37,1668,1391,277
+bancos,clasico,38,52,0,52
+bancos,clasico,39,80,0,80
+bancos,clasico,4,200,0,200
+bancos,clasico,40,80,0,80
+bancos,clasico,5,1730,1650,80
+bancos,clasico,6,960,880,80
+bancos,clasico,7,1755,1650,105
+bancos,clasico,8,852,770,82
+bancos,clasico,9,580,300,280
+bancos,clasico,Auditores Externos,432,0,432
+bancos,clasico,CART-ACTIV,12301,6730,5571
+bancos,clasico,CART-ACTIV Part,12057,6730,5327
+bancos,clasico,CART-CLASIS,9624,5528,4096
+bancos,clasico,CART-CLASIS Part,9662,5535,4127
+bancos,clasico,Calificadoras Bancos,426,0,426
+bancos,clasico,Carátula,1,0,1
+bancos,clasico,DEPOSITOS,3596,1860,1736
+bancos,clasico,DEPOSITOS GRAFICOS,1437,0,1437
+bancos,clasico,Dep. Gráficos,665,0,665
+bancos,clasico,Dep. Gráficos 2,167,0,167
+bancos,clasico,EVOL ACTIV ALGODÓN,9828,8262,1566
+bancos,clasico,EVOL ACTIV CONSTRUCCIONES,10001,8436,1565
+bancos,clasico,EVOL ACTIV SOJA,9983,8418,1565
+bancos,clasico,EVOL ACTIV TRIGO,9737,8175,1562
+bancos,clasico,EVOL ACTIV VIVIENDA,9215,7656,1559
+bancos,clasico,EVOL CRÉD,10590,9235,1355
+bancos,clasico,EVOL CRÉD Venc,10555,9206,1349
+bancos,clasico,EVOL CRÉD Vigen,10522,9245,1277
+bancos,clasico,EVOL DEP,10890,9605,1285
+bancos,clasico,EVOL MORO,10550,9194,1356
+bancos,clasico,Evol Tarj de Credito,2973,2692,281
+bancos,clasico,Evol Tarj de Crédito,2973,2692,281
+bancos,clasico,FICHA,1155,0,1155
+bancos,clasico,GRAFICOS,2040,1948,92
+bancos,clasico,Gráfico Tarjetas ,532,0,532
+bancos,clasico,Gráficos Evol Activ,364,0,364
+bancos,clasico,INDICE,200,0,200
+bancos,clasico,MOROSIDAD,7967,7078,889
+bancos,clasico,MOROSIDAD ME,6165,5237,928
+bancos,clasico,MOROSIDAD MN,6153,5269,884
+bancos,clasico,PAG10,7819,7332,487
+bancos,clasico,PAG12,10582,10095,487
+bancos,clasico,PAG13,5871,5384,487
+bancos,clasico,PAG14,11327,10095,1232
+bancos,clasico,PAG14 (2),5238,4709,529
+bancos,clasico,PAG15,10583,10096,487
+bancos,clasico,PAG16,5229,4742,487
+bancos,clasico,PAG17,5871,5384,487
+bancos,clasico,PAG17 (2),13302,7403,5899
+bancos,clasico,PAG18,7217,6730,487
+bancos,clasico,PAG19,20040,15761,4279
+bancos,clasico,SUC - BAN,3179,2692,487
+bancos,clasico,TORTAS1,1241,0,1241
+bancos,clasico,Tarjetas de Cred,5458,4351,1107
+bancos,nuevo,1,49139,46962,2177
+bancos,nuevo,10,7478,7410,68
+bancos,nuevo,11,7490,7358,132
+bancos,nuevo,12,7490,7358,132
+bancos,nuevo,13,7514,7514,0
+bancos,nuevo,14,7514,7514,0
+bancos,nuevo,15,4733,4511,222
+bancos,nuevo,16,4113,3965,148
+bancos,nuevo,17,3965,3965,0
+bancos,nuevo,18,1086,0,1086
+bancos,nuevo,2,127347,127347,0
+bancos,nuevo,3,87759,87759,0
+bancos,nuevo,4,22186,17698,4488
+bancos,nuevo,5,18567,12441,6126
+bancos,nuevo,6,7514,7514,0
+bancos,nuevo,7,7573,7573,0
+bancos,nuevo,8,7133,7021,112
+bancos,nuevo,9,7093,6913,180
+bancos,nuevo,Carátula,4,0,4
+bancos,nuevo,Carátula Impresa,1,0,1
+bancos,nuevo,Índice,443,0,443
+casas_cambio,clasico,1,1789,1628,161
+casas_cambio,clasico,10,811,652,159
+casas_cambio,clasico,11,702,543,159
+casas_cambio,clasico,2,159,0,159
+casas_cambio,clasico,3,1424,1264,160
+casas_cambio,clasico,4,1014,855,159
+casas_cambio,clasico,5,979,820,159
+casas_cambio,clasico,6,1137,978,159
+casas_cambio,clasico,7,1626,1467,159
+casas_cambio,clasico,8,1795,1632,163
+casas_cambio,clasico,9,960,801,159
+casas_cambio,clasico,Carátula,2,0,2
+casas_cambio,clasico,Gráficos,967,0,967
+casas_cambio,clasico,INDICE,55,0,55
+casas_cambio,clasico,PAG33,11663,10679,984
+casas_cambio,clasico,PAG34,8871,7889,982
+casas_cambio,clasico,PAG35,6318,5336,982
+casas_cambio,clasico,PAG36,6078,5096,982
+casas_cambio,clasico,PAG37,7111,6128,983
+casas_cambio,clasico,PAG38,10098,9116,982
+casas_cambio,clasico,PAG39,11234,10247,987
+casas_cambio,clasico,PAG40,6327,5208,1119
+casas_cambio,clasico,PAG41,5020,4038,982
+casas_cambio,clasico,PAG42,4379,3394,985
+casas_cambio,nuevo,CC,113630,113630,0
+casas_cambio,nuevo,Carátula,3,0,3
+ficha_tecnica,ficha,Bancos,4587,0,4587
+ficha_tecnica,ficha,Comparacion Canc. por año,702,0,702
+ficha_tecnica,ficha,Comparacion Cancelacion,988,0,988
+ficha_tecnica,ficha,Cuentas,2333,0,2333
+ficha_tecnica,ficha,Financieras,4583,0,4583
+ficha_tecnica,ficha,Tasas,4876,0,4876
+ficha_tecnica,ficha,Tasas Falta,160,0,160
+financieras,clasico,1,452,392,60
+financieras,clasico,10,108,0,108
+financieras,clasico,11,1118,1050,68
+financieras,clasico,12,598,538,60
+financieras,clasico,13,620,560,60
+financieras,clasico,14,767,644,123
+financieras,clasico,15,760,700,60
+financieras,clasico,16,2048,1680,368
+financieras,clasico,17,760,700,60
+financieras,clasico,18,550,490,60
+financieras,clasico,19,550,490,60
+financieras,clasico,2,1455,1125,330
+financieras,clasico,20,1109,924,185
+financieras,clasico,21,1109,924,185
+financieras,clasico,22,1109,924,185
+financieras,clasico,23,1109,924,185
+financieras,clasico,24,1030,840,190
+financieras,clasico,25,1030,840,190
+financieras,clasico,26,130,0,130
+financieras,clasico,27,972,630,342
+financieras,clasico,28,720,630,90
+financieras,clasico,29,1240,700,540
+financieras,clasico,3,60,0,60
+financieras,clasico,30,1120,700,420
+financieras,clasico,31,1165,910,255
+financieras,clasico,32,1165,910,255
+financieras,clasico,33,1165,910,255
+financieras,clasico,34,1165,910,255
+financieras,clasico,35,1197,942,255
+financieras,clasico,36,65,0,65
+financieras,clasico,37,60,0,60
+financieras,clasico,38,60,0,60
+financieras,clasico,4,1110,1050,60
+financieras,clasico,5,620,560,60
+financieras,clasico,6,1066,910,156
+financieras,clasico,7,480,420,60
+financieras,clasico,8,175,0,175
+financieras,clasico,9,1123,938,185
+financieras,clasico,Auditores Externos,335,0,335
+financieras,clasico,CART-ACTV,7363,4350,3013
+financieras,clasico,CART-ACTV Part,7483,4350,3133
+financieras,clasico,CART-CLAS Part,4140,3581,559
+financieras,clasico,CART-CLASIS,5988,3581,2407
+financieras,clasico,Calificadoras Financieras,330,0,330
+financieras,clasico,Carátula,3,0,3
+financieras,clasico,DEPOSITOS,980,0,980
+financieras,clasico,Dep Gráficos,105,0,105
+financieras,clasico,Dep Gráficos 2,64,0,64
+financieras,clasico,EVOL ACTIV ALGODÓN,6372,4914,1458
+financieras,clasico,EVOL ACTIV CONSTRUCCIONES,6603,5141,1462
+financieras,clasico,EVOL ACTIV SOJA,6438,4981,1457
+financieras,clasico,EVOL ACTIV TRIGO,6254,4849,1405
+financieras,clasico,EVOL ACTIV VIVIENDA,7097,5638,1459
+financieras,clasico,Evol Créditos,7133,5962,1171
+financieras,clasico,Evol Créditos Vencidos,7105,5823,1282
+financieras,clasico,Evol Créditos Vigentes,7126,5944,1182
+financieras,clasico,Evol Depósitos,6969,5718,1251
+financieras,clasico,Evol Tarj de Credito,2045,1666,379
+financieras,clasico,Evol Tarj de Crédito,2046,1666,380
+financieras,clasico,GRAFICOS,373,0,373
+financieras,clasico,Gráfico Tarjetas,530,0,530
+financieras,clasico,Gráficos Evol Activ,377,0,377
+financieras,clasico,INDICE,190,0,190
+financieras,clasico,MOROSIDAD ME,3418,3045,373
+financieras,clasico,MOROSIDAD MN,3418,3045,373
+financieras,clasico,Morosidad,4723,4350,373
+financieras,clasico,Morosidad sobre Cartera,7088,5864,1224
+financieras,clasico,Nuevo Grafico de Deposito,604,0,604
+financieras,clasico,PAG10,8179,6520,1659
+financieras,clasico,PAG12,6898,6525,373
+financieras,clasico,PAG13,3902,3529,373
+financieras,clasico,PAG14,6617,5655,962
+financieras,clasico,PAG14 (2),3025,2610,415
+financieras,clasico,PAG15,6922,6525,397
+financieras,clasico,PAG16,3503,3130,373
+financieras,clasico,PAG17,3853,3480,373
+financieras,clasico,PAG17 2,4725,4212,513
+financieras,clasico,PAG18,4723,4350,373
+financieras,clasico,PAG19,12657,10249,2408
+financieras,clasico,SUC - FIN,2113,1740,373
+financieras,clasico,Tarjetas de Cred,4251,4213,38
+financieras,clasico,Web,1155,0,1155
+financieras,nuevo,1,32043,29909,2134
+financieras,nuevo,10,5131,5093,38
+financieras,nuevo,11,5138,5092,46
+financieras,nuevo,12,5131,5085,46
+financieras,nuevo,13,5138,5099,39
+financieras,nuevo,14,5137,5137,0
+financieras,nuevo,15,3107,3107,0
+financieras,nuevo,16,2726,2726,0
+financieras,nuevo,17,2721,2721,0
+financieras,nuevo,2,77875,77875,0
+financieras,nuevo,3,52423,52423,0
+financieras,nuevo,4,13326,10411,2915
+financieras,nuevo,5,11148,7518,3630
+financieras,nuevo,6,5124,5121,3
+financieras,nuevo,7,5129,5122,7
+financieras,nuevo,8,4913,4773,140
+financieras,nuevo,9,4944,4836,108
+financieras,nuevo,Carátula,4,0,4
+financieras,nuevo,Índice,427,0,427

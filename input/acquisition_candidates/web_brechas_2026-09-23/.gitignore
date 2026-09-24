@@ -4,8 +4,10 @@
 !README.md
 !acquire.py
 !extraer_tablas.R
+!extraer_cpm.R
 !inventory.csv
 !inventory_ine.csv
 !inventory_aduana.csv
+!inventory_archivo.csv
 !extraidos/
 !extraidos/*.csv

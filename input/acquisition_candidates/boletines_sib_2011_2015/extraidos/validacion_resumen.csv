@@ -1,0 +1,9 @@
+control,casos,fallan,detalle
+A. MN + ME = TOTAL,169666,115,dif. máx. 223133.80 millones
+"B. Σ entidades = sistema (bancos, nuevo)",6905,25,99.6% cierra
+"B. Σ entidades = sistema (bancos, clasico)",8118,709,91.3% cierra
+"B. Σ entidades = sistema (financieras, nuevo)",6916,131,98.1% cierra
+"B. Σ entidades = sistema (financieras, clasico)",8021,640,92.0% cierra
+"B. Σ entidades = sistema (casas_cambio, nuevo)",990,172,82.6% cierra
+C. Total activo: clásico = nuevo (2013-09..11),84,0,dif. rel. máx. 0.0000%
+D. Mismo mes en varios boletines (hojas evolutivas),15569,102,«fallan» = mes revisado entre boletines (no es error: son vintages)

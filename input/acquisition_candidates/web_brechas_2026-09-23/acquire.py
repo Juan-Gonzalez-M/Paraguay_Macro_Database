@@ -6,17 +6,18 @@ Uso (desde esta carpeta):
     python3 acquire.py argentina  # Tipo de cambio argentino: BCRA oficial + paralelo (argentinadatos, bluelytics)
     python3 acquire.py aduana     # DNA: declaraciones a nivel ítem, mensual 1997..hoy (se guardan en gzip)
     python3 acquire.py documentos # Metodología IPC base 2017 y reporte técnico MTESS (ya descargados)
+    python3 acquire.py archivo    # Internet Archive: comunicados del CPM (BCP) y corte de bonos MEF 2025-08
 
 Todo queda en raw/<fuente>/ con inventory.csv (url, hora UTC, bytes, SHA-256 del contenido ORIGINAL y,
 si se comprimió, SHA-256 del .gz). Reanudable: no vuelve a pedir lo que ya está en el inventario.
 No se modifica ningún valor publicado. Pausa de 1 s entre pedidos.
 """
-import csv, datetime, gzip, hashlib, json, os, re, sys, time, urllib.parse, urllib.request
+import csv, datetime, gzip, hashlib, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MODO = sys.argv[1] if len(sys.argv) > 1 else ""
 # Un inventario por fuente para que descargas simultáneas no se pisen (ine, aduana); el resto en inventory.csv.
-INV = os.path.join(ROOT, f"inventory_{MODO}.csv" if MODO in ("ine", "aduana") else "inventory.csv")
+INV = os.path.join(ROOT, f"inventory_{MODO}.csv" if MODO in ("ine", "aduana", "archivo") else "inventory.csv")
 UA = "Mozilla/5.0 (BCP investigacion; descarga lenta)"
 CAMPOS = ["path", "url", "fuente", "retrieved_utc", "bytes", "sha256", "sha256_gz"]
 
@@ -128,5 +129,118 @@ def documentos():
           "raw/mtess_reporte_tecnico_salario_minimo_2026.pdf", "MTESS")
 
 
+# ----------------------------------------------------------------------------------- Internet Archive
+# El sitio del BCP (y el portal de datos del MEF) rechaza clientes automáticos (Cloudflare); NO se sortea.
+# Se usan las copias públicas del Internet Archive (Wayback Machine): se pide cada archivo con el sufijo
+# id_ (bytes tal como los capturó el archivo, sin reescritura) y se registra la URL de la copia, que lleva
+# la marca de tiempo de captura. Pausa de 4 s entre pedidos; ante 429 espera y reintenta.
+WB = "https://web.archive.org"
+PAG_CPM = "https://www.bcp.gov.py/comunicados-del-cpm"
+PAG_CPM_TS = "20260821204752"  # única copia de la página en el archivo (consulta CDX del 2026-09-24)
+UUID = re.compile(r"/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})")
+MAGIC = {".pdf": b"%PDF", ".xlsx": b"PK"}
+
+
+def pedir_wb(url, intentos=6):
+    for k in range(intentos):
+        try:
+            with pedir(url, timeout=300) as r:
+                b = r.read()
+                if r.headers.get("Content-Encoding", "") == "gzip" or b[:2] == b"\x1f\x8b":
+                    b = gzip.decompress(b)
+                return b
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                raise
+            print(f"  HTTP {e.code}; espera {60 * (k + 1)} s", flush=True)
+            time.sleep(60 * (k + 1))
+        except Exception as e:  # noqa: BLE001
+            print(f"  reintento {k + 1}: {e}", flush=True)
+            time.sleep(20 * (k + 1))
+    raise IOError("sin respuesta: " + url)
+
+
+def guardar_wb(url_wb, rel, fuente, url_original):
+    if rel in inventario():
+        return "ya_estaba"
+    b = pedir_wb(url_wb)
+    ext = os.path.splitext(rel)[1].lower()
+    if ext in MAGIC and not b.startswith(MAGIC[ext]):
+        return "no_es_" + ext[1:]  # p. ej., una página de error capturada con estado 200
+    dest = os.path.join(ROOT, rel)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "wb") as f:
+        f.write(b)
+    registrar(dict(path=rel, url=url_wb, fuente=f"{fuente}; original: {url_original}",
+                   retrieved_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                   bytes=len(b), sha256=hashlib.sha256(b).hexdigest(), sha256_gz=""))
+    time.sleep(4)
+    return "ok"
+
+
+def cdx(consulta):
+    txt = pedir_wb(WB + "/cdx/search/cdx?" + consulta).decode("utf-8", "replace")
+    time.sleep(4)
+    return [l.split() for l in txt.splitlines() if l.strip()]
+
+
+def archivo():
+    # 1) La página del CPM archivada: lista de documentos publicados (evidencia de qué existe).
+    rel_pag = f"raw/archivo/bcp_comunicados_del_cpm_{PAG_CPM_TS}.html"
+    guardar_wb(f"{WB}/web/{PAG_CPM_TS}id_/{PAG_CPM}", rel_pag, "Internet Archive (copia de la página del BCP)", PAG_CPM)
+    html = open(os.path.join(ROOT, rel_pag), encoding="utf-8", errors="replace").read()
+    enlaces = []
+    for m in re.finditer(r'href="(/documents/[^"]+)"', html):
+        h = m.group(1).replace("&amp;", "&")
+        if UUID.search(h) and h not in enlaces:
+            enlaces.append(h)
+    # 2) Copias archivadas de esos documentos (dos consultas CDX; se busca por el UUID del documento).
+    filas = cdx("url=bcp.gov.py/documents/20117/2254845/&matchType=prefix&output=text&fl=timestamp,original,statuscode,mimetype&filter=statuscode:200&collapse=urlkey")
+    filas += cdx("url=bcp.gov.py/documents/20117/&matchType=prefix&output=text&fl=timestamp,original,statuscode,mimetype&filter=statuscode:200&filter=original:.*(CEOMA|Ceoma|Comunicado|CPM|COPOM).*&collapse=urlkey")
+    copias = {}
+    for f in filas:
+        u = UUID.search(f[1])
+        if u and f[3] in ("application/pdf", "application/octet-stream"):
+            copias.setdefault(u.group(1), []).append((f[0], f[1]))
+    # 3) Descarga + registro de TODOS los documentos de la página (archivados o no).
+    control = []
+    for h in enlaces:
+        u = UUID.search(h).group(1)
+        nombre = urllib.parse.unquote_plus(h.split("/")[4])
+        idioma = "en" if re.search(r"press|release", nombre, re.I) else "es"
+        est, ts, rel = "no_archivado", "", ""
+        for ts_c, orig in sorted(copias.get(u, []), key=lambda x: x[0]):
+            rel = f"raw/archivo/cpm/{u}_{re.sub(r'[^A-Za-z0-9._-]+', '_', nombre)}"
+            if not rel.lower().endswith(".pdf"):
+                rel += ".pdf"
+            try:
+                est = guardar_wb(f"{WB}/web/{ts_c}id_/{orig}", rel, "Internet Archive (copia del documento del BCP)", "https://www.bcp.gov.py" + h)
+            except Exception as e:  # noqa: BLE001
+                est = f"fallo: {e}"
+            ts = ts_c
+            if est in ("ok", "ya_estaba"):
+                break
+        if est not in ("ok", "ya_estaba"):
+            rel = ""
+        print(est, nombre, flush=True)
+        control.append(dict(uuid=u, nombre_publicado=nombre, idioma=idioma, url_bcp="https://www.bcp.gov.py" + h,
+                            estado=est, wayback_timestamp=ts, path=rel))
+    with open(os.path.join(ROOT, "extraidos/cpm_documentos_control.csv"), "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(control[0]))
+        w.writeheader()
+        w.writerows(control)
+    print({k: sum(c["estado"] == k for c in control) for k in {c["estado"] for c in control}})
+    # 4) MEF: corte de agosto de 2025 de bonos del Tesoro en circulación (los demás cortes ya están).
+    orig = "https://www.mef.gov.py/sites/default/files/2025-09/8.%20Bonos_del_Tesoro_en_circulacion%20-%20agosto%202025.xlsx"
+    # El índice CDX lista capturas (2025-09-20 y 2025-09-27, estado 200), pero al 2026-09-24 la reproducción
+    # responde 404 en ambas (también la versión en inglés): se registra como no recuperable.
+    try:
+        est = guardar_wb(f"{WB}/web/20250920125747id_/{orig}", "raw/archivo/mef_bonos_del_tesoro_en_circulacion_2025-08.xlsx",
+                         "Internet Archive (copia del archivo del MEF)", orig)
+    except urllib.error.HTTPError as e:
+        est = f"no_recuperable (HTTP {e.code} en la reproducción del archivo)"
+    print(est, "MEF bonos 2025-08")
+
+
 if __name__ == "__main__":
-    {"ine": ine, "argentina": argentina, "aduana": aduana, "documentos": documentos}[sys.argv[1]]()
+    {"ine": ine, "argentina": argentina, "aduana": aduana, "documentos": documentos, "archivo": archivo}[sys.argv[1]]()

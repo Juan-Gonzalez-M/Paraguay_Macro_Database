@@ -1,0 +1,9 @@
+clave_publicada,entidad_clave,motivo,estado_revision
+FINANCIERA EL COMERCIO,EL COMERCIO FINANCIERA,mismo nombre con otro orden de palabras,pendiente
+FINANCIER RIO,FINANCIERA RIO,error tipográfico en la fuente («Financier»),pendiente
+INTERFISA,GRUPO INTERNACIONAL DE FINANZAS,nombre corto de la misma razón social (sigla publicada entre paréntesis),pendiente
+BANCO BILBAO VISCAYA ARGENTARIA,BANCO BILBAO VIZCAYA ARGENTARIA,error tipográfico en la fuente («Viscaya»),pendiente
+BANCO BILBAO VISCAYA ARGENTARIA PARAGUAY,BANCO BILBAO VIZCAYA ARGENTARIA,mismo banco; nombre con «Paraguay» (y «Viscaya») en el diseño clásico,pendiente
+BANCO ITAU PARAGUAY,BANCO ITAU PARAGUAY,sin cambio (control),pendiente
+ITAU PARAGUAY,BANCO ITAU PARAGUAY,nombre sin «Banco» en tablas en mayúsculas,pendiente
+FINEXPAR,FINANCIERA EXPORTADORA PARAGUAYA,sigla publicada entre paréntesis junto al nombre completo («… (FINEXPAR)»),pendiente

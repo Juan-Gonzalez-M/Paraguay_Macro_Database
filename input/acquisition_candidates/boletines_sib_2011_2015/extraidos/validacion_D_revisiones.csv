@@ -1,0 +1,103 @@
+tipo,titulo_hoja,entidad_clave,periodo,min,max,vintages,revisado
+bancos,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Vivienda,BANCO NACIONAL DE FOMENTO,2013-04,14409.576166,15981.446586,7,TRUE
+bancos,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Vivienda,TOTAL SISTEMA,2013-04,990695.813336,1009692.914613,7,TRUE
+bancos,Variación -  Cartera de Depósitos,GRUPO INTERNACIONAL DE FINANZAS,2015-03,0,0.0582543762137318,10,TRUE
+bancos,Variación  - Cartera de Créditos,GRUPO INTERNACIONAL DE FINANZAS,2015-03,0,0.0376334171958159,10,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2012-10,0,726.299081,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2012-11,0,917.775609,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2012-12,0,877.348691,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-01,0,910.366523,4,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-02,0,930.952979,5,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-03,0,799.509051,6,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-04,0,897.21395,7,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-05,0,1091.222972,8,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-06,0,1241.980548,9,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-07,0,1234.779266,10,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-08,0,1476.143222,11,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-09,0,1345.413174,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2012-10,0,706.841789,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2012-11,0,677.135915,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2012-12,0,630.757992,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-01,0,592.243119,4,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-02,0,538.262009,5,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-03,0,494.680055,6,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-04,0,632.506316,7,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-05,0,551.689429,8,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-06,0,890.558915,9,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-07,0,854.492308,10,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-08,0,864.834295,11,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-09,0,840.48902,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA INTERNACIONAL SANTA ANA,2013-09,0,1872.810198,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA EXPORTADORA PARAGUAYA,2013-09,0,1872.810198,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2012-10,706.841789,726.299081,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2012-11,677.135915,917.775609,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2012-12,630.757992,877.348691,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-01,592.243119,910.366523,4,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-02,538.262009,930.952979,5,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-03,494.680055,799.509051,6,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-04,632.506316,897.21395,7,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-05,551.689429,1091.222972,8,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-06,890.558915,1241.980548,9,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-07,854.492308,1234.779266,10,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-08,864.834295,1476.143222,11,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-09,840.48902,1345.413174,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA PARAGUAYO JAPONESA,2012-10,0,2.559501,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA PARAGUAYO JAPONESA,2012-11,0,2.630761,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA PARAGUAYO JAPONESA,2012-12,0,2.704397,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA PARAGUAYO JAPONESA,2013-01,0,2.778033,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA PARAGUAYO JAPONESA,2013-02,0,2.844543,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA PARAGUAYO JAPONESA,2013-03,0,2.918179,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2012-10,0,843.393157,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2012-11,0,943.981068,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2012-12,0,1051.704669,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-01,0,1050.763545,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-02,0,1037.745364,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-03,0,972.021821,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-04,0,730.509682,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-05,0,673.812087,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-06,0,615.503523,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-07,0,512.529106,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-08,0,526.529009,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-09,0,524.246911,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA EXPORTADORA PARAGUAYA,2013-05,0,165.615354,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA EXPORTADORA PARAGUAYA,2013-06,0,319.953107,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA EXPORTADORA PARAGUAYA,2013-07,0,114.754027,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA EXPORTADORA PARAGUAYA,2013-08,0,87.417399,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA EXPORTADORA PARAGUAYA,2013-09,0,105.449567,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2012-10,2.559501,843.393157,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2012-11,2.630761,943.981068,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2012-12,2.704397,1051.704669,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-01,2.778033,1050.763545,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-02,2.844543,1037.745364,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-03,2.918179,972.021821,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-04,0,730.509682,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-05,0,673.812087,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-06,0,615.503523,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-07,0,512.529106,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-08,0,526.529009,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-09,0,524.246911,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINLATINA DE FINANZAS,2013-05,0,165.615354,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINLATINA DE FINANZAS,2013-06,0,319.953107,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINLATINA DE FINANZAS,2013-07,0,114.754027,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINLATINA DE FINANZAS,2013-08,0,87.417399,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINLATINA DE FINANZAS,2013-09,0,105.449567,3,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA PARAGUAYO JAPONESA,2013-10,0,1501.099729,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,GRUPO INTERNACIONAL DE FINANZAS,2013-10,0,726.375223,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA INTERNACIONAL SANTA ANA,2013-10,0,1876.445951,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,FINANCIERA EXPORTADORA PARAGUAYA,2013-10,0,1876.445951,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Trigo,CRISOL Y ENCARNACION FINANCIERA,2013-10,726.375223,1501.099729,12,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA PARAGUAYO JAPONESA,2013-10,0,1.327247,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,GRUPO INTERNACIONAL DE FINANZAS,2013-10,0,572.511543,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINANCIERA EXPORTADORA PARAGUAYA,2013-10,0,66.774485,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,CRISOL Y ENCARNACION FINANCIERA,2013-10,1.327247,572.511543,2,TRUE
+financieras,Evolutivo de Créditos Brutos por Actividad Económica (*) / Sector: Algondón,FINLATINA DE FINANZAS,2013-10,0,66.774485,2,TRUE
+financieras,Variación  - Cartera de Depósitos,FIC DE FINANZAS,2014-08,0,18.5793348047761,9,TRUE
+financieras,Variación  - Cartera de Depósitos,FIC DE FINANZAS,2014-09,0,0.165076952738848,10,TRUE
+financieras,Variación  - Cartera de Depósitos,FIC DE FINANZAS,2014-10,0,1.040974217009,11,TRUE
+financieras,Variación  - Cartera de Depósitos,FIC DE FINANZAS,2014-11,0,0.168807923749886,12,TRUE
+financieras,Variación  - Cartera de Créditos,FIC DE FINANZAS,2014-09,0,0.168882369301823,10,TRUE
+financieras,Variación  - Cartera de Créditos,FIC DE FINANZAS,2014-10,0,1.23911261700583,11,TRUE
+financieras,Variación  - Cartera de Créditos,FIC DE FINANZAS,2014-11,0,0.237123638021844,12,TRUE
+financieras,Variación  - Cartera de Créditos,FIC DE FINANZAS,2014-12,0,0.0734741231569031,12,TRUE
+financieras,Variación  - Cartera de Depósitos,GRUPO INTERNACIONAL DE FINANZAS,2015-02,-1,0,11,TRUE
+financieras,Variación  - Cartera de Créditos,GRUPO INTERNACIONAL DE FINANZAS,2015-02,-1,0,11,TRUE

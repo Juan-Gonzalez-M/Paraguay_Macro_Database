@@ -34,12 +34,12 @@ Integridad: los 109 archivos coinciden con el SHA-256 de su inventario y no hay 
 | Clima: IRI desde 2025-05 | IRI Data Library | Pide inicio de sesión (GitHub o Google) | Posibles probabilidades ENSO como dato estructurado. **No verificado.** | Requiere registro. |
 | 1. Combustibles (N10) | Petropar | HTTP 200 | Solo precios **vigentes**, sin historial. | No sirve; pedir la serie a Petropar o usar resoluciones. |
 | 12. PGN histórico | Portal de datos del MEF (`datos.hacienda.gov.py`, `datos.mef.gov.py`) | **HTTP 403** | Presupuesto aprobado, vigente y ejecutado 2011→ (según el catálogo). | Descarga manual desde el navegador. |
-| 1, 3, 4, 6b (BCP) | bcp.gov.py (comunicados del CPM, operaciones cambiarias, boletines 2011–2015) | **HTTP 403 (Cloudflare)** para clientes automáticos, WebFetch incluido | — | Canal interno del BCP, o descarga desde tu navegador. |
+| 1, 3, 4, 6b (BCP) | bcp.gov.py (comunicados del CPM, operaciones cambiarias, boletines 2011–2015) | **HTTP 403 (Cloudflare)** para clientes automáticos, WebFetch incluido | *Corrección 2026-09-24:* el xlsx de operaciones cambiarias **ya está en la base** (`input/current/fx_operations`). El Internet Archive guarda 336 de los 360 documentos que lista la página del CPM (agosto de 2026): **descargados** el 2026-09-24 (§ 4). No guarda los boletines 2011–2015. | Boletines: descarga desde el navegador (en curso, a cargo del usuario). |
 | 15. EMBI | JP Morgan | No público | — | Sin alternativa pública equivalente. |
 
 ## 3. Segunda ronda de descargas (aprobada por el usuario, 2026-09-23)
 
-Script reproducible: `acquire.py` (modos `ine`, `argentina`, `aduana`, `documentos`). Hay un inventario por fuente: `inventory.csv` para documentos y Argentina, `inventory_ine.csv` e `inventory_aduana.csv`. En aduana, el `.gz` es una compresión sin pérdida del CSV publicado: `sha256` corresponde al contenido original y `sha256_gz` al archivo comprimido.
+Script reproducible: `acquire.py` (modos `ine`, `argentina`, `aduana`, `documentos`; el modo `archivo` es de la tercera ronda, § 4). Hay un inventario por fuente: `inventory.csv` para documentos y Argentina, `inventory_ine.csv` e `inventory_aduana.csv`. En aduana, el `.gz` es una compresión sin pérdida del CSV publicado: `sha256` corresponde al contenido original y `sha256_gz` al archivo comprimido.
 
 | Fuente | Contenido | Brecha y proyectos |
 |---|---|---|
@@ -54,3 +54,41 @@ Script reproducible: `acquire.py` (modos `ine`, `argentina`, `aduana`, `document
 
 - `ipc_base2017_canasta_ponderaciones.csv`: Anexo 2 completo, con **12 divisiones, 56 grupos, 155 subgrupos y 465 artículos**, igual a lo que declara la metodología. Los artículos suman 99,984 (redondeo publicado a 3 decimales) y la mayor diferencia entre la suma de los hijos y su padre es 0,003. Las divisiones 10–12 usan códigos de 9 dígitos. Seis filas tienen la descripción partida en dos líneas del PDF (marcadas en `nota`).
 - `salario_minimo_decretos_1989_2025.csv`: Tabla 1 del MTESS, **33 episodios (0–32)** con número y fecha de decreto, porcentaje y vigencia, más las fechas en formato ISO. 2020: decreto sin ajuste (vigencia «-»). El ajuste 2026 (Decreto 6225, 5 %, vigente desde el 1/7/2026) no está en esa tabla: consta en https://www.mtess.gov.py/?p=36166. No se sobrescribió la plantilla manual del proyecto 32.
+
+## 4. Tercera ronda: comunicados del CEOMA/CPM y bonos del MEF desde el Internet Archive (2026-09-24)
+
+Aprobada por el usuario. El sitio del BCP rechaza clientes automáticos (Cloudflare) y **no se sortea**: se usan las copias públicas del Internet Archive. Cada archivo se pide con el sufijo `id_`, que devuelve los bytes capturados sin reescritura. El inventario `inventory_archivo.csv` registra la URL de la copia (con la marca de tiempo de captura), la URL original del BCP y el SHA-256. Se descargó con `python3 acquire.py archivo` y se extrajo con `Rscript extraer_cpm.R` (requiere `pdftotext`, de poppler).
+
+**Qué se bajó** (`raw/archivo/`, 40 MB, local):
+- La página «Comunicados del CPM», en su única copia archivada (2026-08-21), como evidencia de qué documentos existían.
+- **336 de los 360 documentos que lista esa página**: 190 comunicados en español y 146 en inglés. El idioma se decide por el texto, no por el nombre del archivo. Cubren de enero de 2010 a abril de 2026.
+- `extraidos/cpm_documentos_control.csv` lista los 393 enlaces de la página (361 documentos distintos, incluido un ícono) con su estado: `ok`, `ya_estaba` (el mismo documento enlazado dos veces) o `no_archivado`.
+  - **Sin copia archivada:** 20 comunicados en inglés y, en español, noviembre de 2011 y mayo a julio de 2026. Estos se pueden bajar a mano desde https://www.bcp.gov.py/comunicados-del-cpm.
+
+**Calendario extraído** (`extraidos/cpm_calendario_decisiones.csv`): una fila por comunicado en español (190).
+
+Contenido de cada fila:
+- La fecha tal como se publicó y en formato ISO.
+- La **frase de la decisión textual**.
+- Lo que se lee de ella: instrumento, acción, tasa anterior (solo si el texto la dice), tasa nueva, cambio en puntos básicos (solo si el texto lo dice) y votación.
+- Archivo, UUID, URL del BCP, captura del archivo y SHA-256.
+
+Reglas de lectura:
+- **Nada se calcula a partir de otras filas.**
+- Lo que no se puede leer queda NA, con una marca en `revisar`.
+- Los comunicados **no traen la hora del anuncio**, así que la hora no se infiere.
+
+Resultado:
+- **Instrumento.** 167 comunicados hablan de la tasa de política monetaria (`tpm`), desde junio de 2012.
+  - Antes el BCP anunciaba otras tasas y el calendario no las mezcla con la TPM: los IRM a 14 días, curvas de plazos de IRM o la tasa de la FLIR.
+- **A revisar.** 15 filas, todas de 2010–2011 (régimen anterior): textos narrativos, curvas con varias tasas o dos documentos con la misma fecha (enero de 2010).
+- **Coherencia interna de la TPM.** Cada «mantener» repite la tasa anterior, cada «reducir» o «aumentar» va en la dirección correcta, y cada «de X% a Y%» coincide con la fila previa. La única excepción es octubre de 2023, que dice «de 8,00% a 7,75%»: la fila previa (agosto) dejó la tasa en 8,25% y **la página no lista un comunicado de septiembre de 2023**.
+- **Contraste independiente con el corredor** (proyecto 25, `fechas_candidatas_cambio_tpm.csv`, inferido de las tasas diarias FPD y FPL de la base):
+  - Los 38 cambios de TPM posteriores a abril de 2015 coinciden con un desplazamiento del corredor 1 a 3 días después del comunicado (la vigencia empieza al día hábil siguiente).
+  - Los 2 desplazamientos del corredor sin comunicado son el **31 de marzo de 2020 (TPM implícita 2,25%)** y el **21 de septiembre de 2023 (8,00%)**. Son decisiones que la página del CPM no lista, probablemente una reunión extraordinaria y la de septiembre de 2023.
+  - Los cambios previos a abril de 2015 no se pueden contrastar porque el corredor diario empieza después.
+- **Meses sin comunicado en español** (enero de 2011 a abril de 2026): junio y noviembre de 2011 y septiembre de 2023.
+
+**Uso sugerido:** poblar `proyectos/25_n4_sorpresas_monetarias/datos_manuales/calendario_copom.csv` con estas fechas y tasas. Esa plantilla **no se tocó**: su campo `estado_verificacion` requiere revisión humana.
+
+**Bonos del MEF, agosto de 2025:** el índice del Internet Archive lista dos capturas (2025-09-20 y 2025-09-27, estado 200), pero la reproducción responde 404 en ambas, también en la versión en inglés. **No recuperable** por esta vía; queda registrado en `acquire.py`. Las tenencias siguen en 4 cortes: diciembre de 2023, 2024 y 2025, y agosto de 2026.

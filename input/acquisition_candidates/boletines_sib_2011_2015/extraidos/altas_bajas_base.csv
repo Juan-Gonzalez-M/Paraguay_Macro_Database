@@ -1,0 +1,30 @@
+entity_id,entity_name,primer_mes,ultimo_mes,meses
+bank:1002,BNF,2016-01,2026-07,127
+bank:1003,BNA,2016-01,2026-07,127
+bank:1004,GNB,2016-01,2026-07,127
+bank:1005,Do Brasil,2016-01,2026-07,127
+bank:1006,Citibank,2016-01,2026-07,127
+bank:1007,GNB Fusión,2016-01,2022-06,78
+bank:1008,Sudameris,2016-01,2026-07,127
+bank:1017,Itaú,2016-01,2026-07,127
+bank:1020,Continental,2016-01,2026-07,127
+bank:1028,Regional,2016-01,2023-06,90
+bank:1030,Basa,2016-01,2026-07,127
+bank:1039,Visión,2016-01,2024-05,101
+bank:1040,Río,2016-01,2025-07,115
+bank:1041,Familiar,2016-01,2026-07,127
+bank:1042,Atlas,2016-01,2026-07,127
+bank:1043,Bancop,2016-01,2026-07,127
+bank:1044,Interfisa,2016-01,2026-07,127
+bank:1045,Solar,2022-11,2026-07,45
+bank:1046,UENO,2023-12,2026-07,32
+bank:1047,Zeta,2024-03,2026-07,29
+finance_company:2007,UENO,2016-01,2023-11,95
+finance_company:2013,FPJ,2016-01,2026-07,127
+finance_company:2036,Finexpar,2016-01,2024-02,98
+finance_company:2037,Cefisa,2016-01,2022-11,83
+finance_company:2071,Finlatina,2016-01,2026-07,127
+finance_company:2077,Río,2016-01,2019-01,37
+finance_company:2078,Tu Financiera,2016-01,2026-07,127
+finance_company:2080,FIC,2016-01,2026-07,127
+finance_company:2081,Solar,2016-01,2022-10,82

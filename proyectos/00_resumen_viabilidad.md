@@ -157,16 +157,16 @@ Estado de cada brecha del ranking de la § 3.3 después de la adquisición del 2
 
 | Rango | Brecha | Estado | Qué se consiguió / qué falta |
 |---|---|---|---|
-| 1 | Calendario institucional | 🟡 Parcial | ✅ decretos del salario mínimo 1989–2026 (MTESS). ❌ COPOM (fecha y **hora**), corredor, encaje, tope de tarjetas, meta, ventas compensatorias, regla fiscal, medidas de alivio, combustibles (Petropar solo publica precios vigentes), hitos del SPI. El sitio del BCP bloquea el acceso automatizado. |
+| 1 | Calendario institucional | 🟡 Parcial | ✅ decretos del salario mínimo 1989–2026 (MTESS). ✅ **decisiones del CEOMA/CPM 2010–2026-04** (190 comunicados en español del Internet Archive; `web_brechas_2026-09-23/extraidos/cpm_calendario_decisiones.csv`): fecha, tasa y votación. Los cambios de TPM desde 2015 coinciden con el corredor diario. ❌ **hora** del anuncio (los comunicados no la traen), mayo a julio de 2026, dos decisiones que la página no lista (2020-03-31 y 2023-09), encaje, tope de tarjetas, meta, ventas compensatorias, regla fiscal, medidas de alivio, combustibles (Petropar solo publica precios vigentes), hitos del SPI. |
 | 2 | Clima físico y agro | ✅ Casi completo | ✅ ENSO, lluvia, SPI, NDVI, ríos, Itaipú, producción MAG/FAO/USDA, calendario, vintages ENSO 2003–2025-04, EM-DAT. ⏳ ERA5-Land y SPEI en descarga. ❌ Yacyretá mensual, IRI desde 2025-05. |
 | 3 | Tasas y originaciones por entidad | ❌ Pendiente | Dato interno SIB/BCP. |
-| 4 | Operaciones y liquidez diarias del BCP | ❌ Pendiente | Dato interno. La serie pública de operaciones cambiarias existe pero está bloqueada para descarga automatizada. |
+| 4 | Operaciones y liquidez diarias del BCP | ❌ Pendiente | Dato interno: tipo de operación diaria (compensatoria o complementaria), hora de ejecución, reservas bancarias diarias. *Corrección 2026-09-24:* el «Histórico de operaciones cambiarias» (xlsx) **ya está en la base** (`fx_operations`, mensual 1995–2026-07; más `bcp_fx_daily` diario 2013–2026); no era una brecha. |
 | 5 | Ponderadores del IPC | 🟡 Parcial | ✅ ponderación oficial de los 465 artículos (base 2017). ❌ ponderadores por grupo de hogares (EPF 2015/16) y microprecios. |
 | 6 | Registro de crédito | ❌ Pendiente | Convenio de confidencialidad. Incluye la **geografía de la cartera** que necesita D5. |
-| 6b | Boletines SIB 2011–2015 | ❌ Pendiente | Publicados en el sitio del BCP (bloqueado para descarga automatizada). |
+| 6b | Boletines SIB 2011–2015 | ✅ Cerrado | ✅ bancos, financieras y casas de cambio **60/60 meses** (2011-01 → 2015-12), por entidad: 223 archivos bajados a mano por el usuario y 2 meses recuperados del Internet Archive. Extraídos a formato largo (`input/acquisition_candidates/boletines_sib_2011_2015/`, panel de 1,24 millones de celdas, 78 entidades) y controlados (identidades de moneda y de agregación, puente entre diseños, continuidad con la base en 2016-01). ✅ tasas promedio por producto 2011–2013, incluida la de tarjetas (N6). 🟡 vínculo con los códigos de entidad de la base: sugerido, pendiente de revisión. |
 | 7 | Microdatos y dispersión de la EVE | ❌ Pendiente | Dato interno. |
 | 8 | Flujo FX firmado por banco | ❌ Pendiente | Dato interno. |
-| 9 | Subastas del Tesoro, *security master* y tenencias | ✅ Casi completo | ✅ subastas 2006–2026 y condiciones de 194 emisiones. 🟡 tenencias en 4 cortes. ❌ serie mensual de tenencias. |
+| 9 | Subastas del Tesoro, *security master* y tenencias | ✅ Casi completo | ✅ subastas 2006–2026 y condiciones de 194 emisiones. 🟡 tenencias en 4 cortes (la copia de agosto de 2025 figura en el Internet Archive, pero no se puede recuperar). ❌ serie mensual de tenencias (el MEF solo publica cortes). |
 | 10 | Microdatos EPH antes de 2017 | ✅ Cerrado | ✅ anual 1997–2025. ❌ EPHC **trimestral** en microdatos (sin enlace público). |
 | 11 | Río y logística | 🟡 Parcial | ✅ nivel diario 1904–2026 (Asunción, Pilar, Concepción) e Itaipú. ❌ fletes, restricciones de navegación, Yacyretá. |
 | 12 | PGN aprobado y SPNF | ❌ Pendiente | El portal de datos del MEF responde 403 a clientes automatizados. |
@@ -180,8 +180,8 @@ Estado de cada brecha del ranking de la § 3.3 después de la adquisición del 2
 
 | Prioridad | Qué conseguir | Proyectos | Cómo y dónde | Costo |
 |---|---|---|---|---|
-| **1** | **Calendario institucional del BCP**: COPOM (fecha **y hora** del anuncio), cambios del corredor y del encaje, tope de tarjetas (ley y reglamentación), historia de la meta, ventas compensatorias, medidas de alivio (COVID, sequía, inundaciones), hitos del SPI | N4, N8, A1, B1, C2, E3, N6, N7, N9, D5 | Comunicados del CPM, resoluciones SIB, circulares. Interno BCP o descarga manual. | Muy bajo |
-| **2** | **Archivos públicos bloqueados para descarga automatizada**: serie histórica de operaciones cambiarias (xlsx), boletines estadístico-financieros 2011–2015, portal de datos del PGN (MEF) | B1, A1, N6, C1, C2, D5, N7, N8, N1 | Navegador (descarga manual) o canal interno | Muy bajo |
+| **1** | **Calendario institucional del BCP**: **hora** del anuncio del COPOM; fecha y tasa de las decisiones de 2020-03-31 y de septiembre de 2023 (no están en la página del CPM); cambios del corredor y del encaje, tope de tarjetas (ley y reglamentación), historia de la meta, ventas compensatorias, medidas de alivio (COVID, sequía, inundaciones), hitos del SPI. *Fechas y tasas del CPM 2010–2026-04: ya extraídas.* | N4, N8, A1, B1, C2, E3, N6, N7, N9, D5 | Resoluciones del Directorio, circulares, registro interno de comunicaciones del BCP | Muy bajo |
+| **2** | **Archivos públicos bloqueados para descarga automatizada**: comunicados del CPM de noviembre de 2011 y de mayo a julio de 2026, portal de datos del PGN (MEF). *Boletines 2011–2015: ya obtenidos.* | N1, N4 | Descarga manual desde el navegador (a cargo del usuario) | Muy bajo |
 | **3** | **Tasas y originaciones por entidad** (banco × producto × moneda × plazo) | C2, C4, C1, A1, C3 | SIB/BCP (reporte regulatorio) | Bajo |
 | **4** | **Operaciones y liquidez diarias del BCP**: reservas bancarias, operaciones FX con tipo y hora, flujos del Tesoro, SPI entidad-día | A1, B1, F4, B3 | BCP (OMA, Operaciones Internacionales, SIPAP) | Bajo |
 | **5** | **Ponderadores por grupo de hogares**: microdatos de la EPF 2015/16 o su tabulación por quintil y área | F5-N9, D4 | BCP (Estudios Económicos, base del IPC 2017) | Bajo |

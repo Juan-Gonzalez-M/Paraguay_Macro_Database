@@ -1,0 +1,73 @@
+entidad_clave,tipo,primer_mes,ultimo_mes,meses,faltan_en_rango,lectura
+BANCO AMAMBAY,bancos,2011-01,2015-12,60,"",todo el período
+BANCO ATLAS,bancos,2011-01,2015-12,60,"",todo el período
+BANCO BILBAO VIZCAYA ARGENTARIA,bancos,2011-01,2015-12,60,"",todo el período
+BANCO CONTINENTAL,bancos,2011-01,2015-12,60,"",todo el período
+BANCO DE LA NACION ARGENTINA,bancos,2011-01,2015-12,60,"",todo el período
+BANCO DO BRASIL,bancos,2011-01,2015-12,60,"",todo el período
+BANCO FAMILIAR,bancos,2011-01,2015-12,60,"",todo el período
+BANCO GNB PARAGUAY,bancos,2013-12,2015-12,25,"",entra en 2011–2015
+BANCO INTEGRACION,bancos,2011-01,2011-09,9,"",sale en 2011–2015
+BANCO ITAPUA,bancos,2011-01,2015-12,60,"",todo el período
+BANCO ITAU PARAGUAY,bancos,2011-01,2015-12,60,"",todo el período
+BANCO NACIONAL DE FOMENTO,bancos,2011-01,2015-12,60,"",todo el período
+BANCO REGIONAL,bancos,2011-01,2015-12,60,"",todo el período
+BANCOP,bancos,2012-07,2015-12,42,"",entra en 2011–2015
+CITIBANK,bancos,2011-01,2015-12,60,"",todo el período
+HSBC BANK PARAGUAY,bancos,2011-01,2013-11,35,"",sale en 2011–2015
+SUDAMERIS BANK,bancos,2011-01,2015-12,60,"",todo el período
+VISION BANCO,bancos,2011-01,2015-12,60,"",todo el período
+GRUPO INTERNACIONAL DE FINANZAS,"bancos,financieras",2011-01,2015-12,60,"",todo el período
+BONANZA CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+CAMBIOS ALBERDI,casas_cambio,2011-01,2015-12,60,"",todo el período
+CAMBIOS CHACO,casas_cambio,2011-01,2015-12,60,"",todo el período
+CAMBIOS GUAIRA,casas_cambio,2011-01,2015-12,60,"",todo el período
+CAMBIOS RIO PARANA,casas_cambio,2011-01,2015-12,60,"",todo el período
+CAMBIOS TAYI,casas_cambio,2011-01,2014-05,41,"",sale en 2011–2015
+CAMBIOS TRIPLE C,casas_cambio,2011-01,2015-12,60,"",todo el período
+CAMBIOS UNIQUE,casas_cambio,2011-01,2015-12,60,"",todo el período
+CAMBIOS YRENDAGUE,casas_cambio,2011-01,2015-12,60,"",todo el período
+CETEG CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+EURO CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+FE CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+FOREX PARAGUAY,casas_cambio,2011-01,2015-11,59,"",sale en 2011–2015
+FORTUNA CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+GLOBAL EXCHANGE,casas_cambio,2012-08,2015-12,41,"",entra en 2011–2015
+GOLDEN CAMBIOS,casas_cambio,2011-01,2015-12,59,2015-02,todo el período
+LA MONEDA CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+M&D CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+MAS CAMBIOS,casas_cambio,2012-04,2015-12,45,"",entra en 2011–2015
+MASTER EXCHANGE,casas_cambio,2011-01,2013-11,35,"",sale en 2011–2015
+MAXI CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+MERCOSUR CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+MONEY EXCHANGE,casas_cambio,2011-01,2015-12,60,"",todo el período
+MULTI CAMBIOS,casas_cambio,2011-01,2012-02,14,"",sale en 2011–2015
+MUNDIAL CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+NEW EXCHANGE TRANFERS,casas_cambio,2011-01,2011-05,5,"",sale en 2011–2015
+NORTE CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+ORIENTE CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+PANORAMA CAMBIOS,casas_cambio,2014-02,2015-12,23,"",entra en 2011–2015
+PARAGUAY EXPRESS CAMBIOS,casas_cambio,2011-01,2011-05,5,"",sale en 2011–2015
+PRIME CASA CAMBIARIA,casas_cambio,2011-01,2015-12,60,"",todo el período
+SAFIRA CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+SANTA RITA CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+SUDACAM CASA CAMBIARIA,casas_cambio,2013-06,2013-12,7,"",entra y sale en 2011–2015
+SUDAMERICA EXPRESS CASA CAMBIARIA,casas_cambio,2011-01,2015-12,53,2013-06 2013-07 2013-08 2013-09 2013-10 2013-11 2013-12,todo el período
+UNIEXPRESS CASA CAMBIARIA,casas_cambio,2014-06,2015-12,19,"",entra en 2011–2015
+VALOR CASA CAMBIARIA,casas_cambio,2011-01,2015-12,60,"",todo el período
+ZAFRA CAMBIOS,casas_cambio,2011-01,2015-12,60,"",todo el período
+ARA DE FINANZAS,financieras,2012-03,2015-03,37,"",entra y sale en 2011–2015
+BRIOS DE FINANZAS,financieras,2011-01,2012-04,16,"",sale en 2011–2015
+CRISOL Y ENCARNACION FINANCIERA,financieras,2011-01,2015-12,60,"",todo el período
+EL COMERCIO FINANCIERA,financieras,2011-01,2015-12,60,"",todo el período
+FIC DE FINANZAS,financieras,2014-07,2015-12,18,"",entra en 2011–2015
+FINANCIERA EXPORTADORA PARAGUAYA,financieras,2011-01,2015-12,60,"",todo el período
+FINANCIERA INTERNACIONAL SANTA ANA,financieras,2011-01,2015-08,56,"",sale en 2011–2015
+FINANCIERA PARAGUAYO JAPONESA,financieras,2011-01,2015-12,60,"",todo el período
+FINANCIERA RIO,financieras,2011-01,2015-12,60,"",todo el período
+FINLATINA DE FINANZAS,financieras,2011-01,2015-12,60,"",todo el período
+FONDO GANADERO,financieras,2011-01,2015-12,60,"",todo el período
+SOLAR,financieras,2011-01,2013-05,29,"",sale en 2011–2015
+SOLAR AHORRO Y FINANZAS,financieras,2015-02,2015-12,10,2015-03,entra en 2011–2015
+SOLAR DE AHORRO Y PRESTAMO PARA LA VIVIENDA,financieras,2013-06,2015-03,21,2015-02,entra y sale en 2011–2015
+TU FINANCIERA,financieras,2011-02,2015-12,59,"",entra en 2011–2015

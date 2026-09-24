@@ -1,0 +1,19 @@
+id,anio_publicado,entidades_publicado,tipo_evento_publicado,detalle_publicado,claves_boletin_propuestas,codigos_base_propuestos
+H01,2009,Banco Regional / ABN AMRO,Fusión por absorción,Regional absorbe el 100% de las operaciones de ABN AMRO Paraguay.,BANCO REGIONAL;BANCO ABN AMRO PARAGUAY,bank:1028
+H02,2010,Interbanco → Banco Itaú,Cambio de denominación,Interbanco pasa a operar formalmente bajo la marca Banco Itaú.,INTERBANCO;BANCO ITAU PARAGUAY,bank:1017
+H03,2010,Banco Atlas / Banco Integración,Fusión por absorción,Atlas absorbe al Banco Integración.,BANCO ATLAS;BANCO INTEGRACION,bank:1042
+H04,2012–2013,Banco GNB / HSBC Paraguay,Adquisición y rebranding,GNB Sudameris adquiere HSBC Paraguay; culmina con la integración a GNB.,HSBC BANK PARAGUAY;BANCO GNB PARAGUAY,bank:1004
+H05,2015,Ára S.A. de Finanzas,Resolución y liquidación,El BCP interviene y ordena su liquidación por crisis de solvencia.,ARA DE FINANZAS,
+H06,2015,Financiera Santa Ana,Liquidación voluntaria,Accionistas deciden el cierre y disolución ordenada de la financiera.,FINANCIERA INTERNACIONAL SANTA ANA,
+H07,2018,Banco Amambay → Banco BASA,Cambio de denominación,Cambio de nombre y marca comercial (misma personería jurídica).,BANCO AMAMBAY,bank:1030
+H08,2019,Banco Itapúa + Financiera Río,Fusión → Banco Río,Nacimiento formal de Banco Río S.A.E.C.A.,BANCO ITAPUA;FINANCIERA RIO,bank:1040;finance_company:2077
+H09,2021–2022,Banco GNB / BBVA Paraguay,Fusión por absorción,GNB concreta la absorción de BBVA Paraguay (operativa en julio 2022).,BANCO GNB PARAGUAY;BANCO BILBAO VIZCAYA ARGENTARIA,bank:1004;bank:1007
+H10,2021,Financiera El Comercio / CrediCentro,Transformación digital,Grupo Vázquez adquiere el 65% y fusiona bases para lo que sería ueno.,EL COMERCIO FINANCIERA,finance_company:2007
+H11,2022,Solar Ahorro y Finanzas → Solar Banco,Conversión a banco,Solar culmina su transición regulatoria y opera como banco.,SOLAR AHORRO Y FINANZAS,finance_company:2081;bank:1045
+H12,2022,Cefisa,Resolución y disolución,Intervención del BCP; activos/pasivos transferidos a otras entidades (Ley 2334/03).,CRISOL Y ENCARNACION FINANCIERA,finance_company:2037
+H13,2023,Sudameris / Banco Regional,Fusión por absorción,"Sudameris absorbe a Regional, creando un gigante en cartera y depósitos.",SUDAMERIS BANK;BANCO REGIONAL,bank:1008;bank:1028
+H14,2023,Financiera Ueno → ueno bank,Conversión a banco,Obtiene licencia bancaria y arranca como ueno bank.,,finance_company:2007;bank:1046
+H15,2024,Financiera Finexpar → Zeta Banco,Conversión a banco,Finexpar se transforma oficialmente en Zeta Banco.,FINANCIERA EXPORTADORA PARAGUAYA,finance_company:2036;bank:1047
+H16,2024,ueno bank / Visión Banco,Fusión por absorción,"ueno absorbe a Visión Banco, uniendo banca digital y red física masiva.",VISION BANCO,bank:1046;bank:1039
+H17,2024–2025,Banco Atlas / Banco Familiar,Intento de fusión cancelado,"Anuncian fusión por consolidación, pero en diciembre de 2025 se suspende.",BANCO ATLAS;BANCO FAMILIAR,bank:1042;bank:1041
+H18,2025,Banco Continental / Banco Río,Fusión por absorción,"Continental absorbe a Banco Río, reforzando su liderazgo en el mercado.",BANCO CONTINENTAL;BANCO ITAPUA,bank:1020;bank:1040

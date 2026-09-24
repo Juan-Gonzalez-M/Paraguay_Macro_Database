@@ -1,0 +1,14 @@
+# Crudos (247 MB) y salidas regenerables (parquet): locales, fuera de Git. Se versionan scripts, inventario
+# (con SHA-256), registros, alias, vínculo sugerido, diccionario y controles.
+*
+!.gitignore
+!README.md
+!*.R
+!inventory.csv
+!eliminados_2026-09-24.csv
+!alias_entidades.csv
+!vinculo_codigos_sugerido.csv
+!extraidos/
+!extraidos/*.csv
+!hitos_usuario.csv
+!hitos_usuario_2026-09-24.png

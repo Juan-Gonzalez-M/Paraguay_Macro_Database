@@ -1,0 +1,200 @@
+entidad_publicada,entidad_clave,es_agregado,metodo_clave,celdas,meses,primer_mes,ultimo_mes,tipos
+Agrofinanciera Chaco S.A.,AGROFINANCIERA CHACO,FALSE,normalizacion_automatica,49,1,2011-01,2011-01,financieras
+10- Ara S.A. de Finanzas,ARA DE FINANZAS,FALSE,normalizacion_automatica,3875,40,2012-09,2015-12,financieras
+ARA SA DE FINANZAS,ARA DE FINANZAS,FALSE,normalizacion_automatica,102,6,2012-03,2012-11,financieras
+Ara S.A. de Finanzas,ARA DE FINANZAS,FALSE,normalizacion_automatica,15090,37,2012-03,2015-03,financieras
+Ara SA de Finanzas,ARA DE FINANZAS,FALSE,normalizacion_automatica,235,22,2012-03,2013-12,financieras
+Ara s.A. de Finanzas,ARA DE FINANZAS,FALSE,normalizacion_automatica,8,2,2013-10,2013-11,financieras
+Banco ABN AMRO Paraguay S.A.,BANCO ABN AMRO PARAGUAY,FALSE,normalizacion_automatica,9,9,2012-09,2013-11,bancos
+BANCO AMAMBAY S.A.,BANCO AMAMBAY,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,bancos
+Banco Amambay S.A.,BANCO AMAMBAY,FALSE,normalizacion_automatica,29027,60,2011-01,2015-12,"bancos,financieras"
+BANCO ATLAS S.A.,BANCO ATLAS,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,bancos
+Banco  Atlas S.A.,BANCO ATLAS,FALSE,normalizacion_automatica,122,24,2011-03,2013-11,"bancos,financieras"
+Banco Atlas S.A.,BANCO ATLAS,FALSE,normalizacion_automatica,28202,60,2011-01,2015-12,bancos
+Banco Bilbao Viscaya Argentaria Paraguay S.A.,BANCO BILBAO VIZCAYA ARGENTARIA,FALSE,alias_revisable,12600,36,2011-01,2013-12,"bancos,financieras"
+Banco Bilbao Viscaya Argentaria S.A.,BANCO BILBAO VIZCAYA ARGENTARIA,FALSE,alias_revisable,16048,39,2012-09,2015-11,bancos
+Banco Bilbao Vizcaya Argentaria S.A.,BANCO BILBAO VIZCAYA ARGENTARIA,FALSE,normalizacion_automatica,640,13,2014-12,2015-12,bancos
+Banco Continental S.A.E.C.A.,BANCO CONTINENTAL,FALSE,normalizacion_automatica,29079,60,2011-01,2015-12,"bancos,financieras"
+BANCO DE LA NACION ARGENTINA,BANCO DE LA NACION ARGENTINA,FALSE,normalizacion_automatica,124,10,2011-11,2012-11,bancos
+Banco de la Nación Argentina,BANCO DE LA NACION ARGENTINA,FALSE,normalizacion_automatica,28580,60,2011-01,2015-12,"bancos,financieras"
+BANCO DO BRASIL S.A.,BANCO DO BRASIL,FALSE,normalizacion_automatica,124,10,2011-11,2012-11,bancos
+Banco Do Brasil S.A.,BANCO DO BRASIL,FALSE,normalizacion_automatica,28457,60,2011-01,2015-12,"bancos,financieras"
+BANCO FAMILIAR S.A.E.C.A.,BANCO FAMILIAR,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,bancos
+Banco Familiar S.A.E.C.A.,BANCO FAMILIAR,FALSE,normalizacion_automatica,28989,60,2011-01,2015-12,"bancos,financieras"
+Banco GNB Paraguay S.A.,BANCO GNB PARAGUAY,FALSE,normalizacion_automatica,15266,36,2013-01,2015-12,bancos
+BANCO INTEGRACION,BANCO INTEGRACION,FALSE,normalizacion_automatica,80,8,2011-11,2012-06,bancos
+Banco Integración S.A.,BANCO INTEGRACION,FALSE,normalizacion_automatica,3140,28,2011-01,2013-11,"bancos,financieras"
+Banco Integración S.A. (*),BANCO INTEGRACION,FALSE,normalizacion_automatica,975,12,2011-10,2012-09,bancos
+Banco Integración S.A.(*),BANCO INTEGRACION,FALSE,normalizacion_automatica,440,12,2011-10,2012-09,bancos
+BANCO ITAPUA S.A.E.C.A.,BANCO ITAPUA,FALSE,normalizacion_automatica,353,13,2011-11,2012-11,bancos
+Banco Itapúa S.A.E.C.A.,BANCO ITAPUA,FALSE,normalizacion_automatica,28989,60,2011-01,2015-12,"bancos,financieras"
+Banco Itau Paraguay S.A.,BANCO ITAU PARAGUAY,FALSE,alias_revisable,144,36,2011-01,2013-12,bancos
+Banco Itaú Paraguay S.A.,BANCO ITAU PARAGUAY,FALSE,alias_revisable,28735,60,2011-01,2015-12,bancos
+ITAU PARAGUAY S.A.,BANCO ITAU PARAGUAY,FALSE,alias_revisable,358,13,2011-11,2012-11,bancos
+Banco Nacional de Fomento,BANCO NACIONAL DE FOMENTO,FALSE,normalizacion_automatica,29159,60,2011-01,2015-12,"bancos,financieras"
+BANCO REGIONAL,BANCO REGIONAL,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,bancos
+Banco Regional S.A.,BANCO REGIONAL,FALSE,normalizacion_automatica,152,28,2011-01,2013-11,"bancos,financieras"
+Banco Regional S.A.E.C.A,BANCO REGIONAL,FALSE,normalizacion_automatica,12213,36,2011-01,2013-12,bancos
+Banco Regional S.A.E.C.A.,BANCO REGIONAL,FALSE,normalizacion_automatica,16688,40,2012-09,2015-12,bancos
+Banco Sudameris S.A.E.C.A.,BANCO SUDAMERIS,FALSE,normalizacion_automatica,527,17,2011-01,2012-05,bancos
+BANCOP S.A.,BANCOP,FALSE,normalizacion_automatica,90,4,2012-08,2012-11,bancos
+Bancop,BANCOP,FALSE,normalizacion_automatica,8,8,2013-03,2013-11,bancos
+Bancop S.A.,BANCOP,FALSE,normalizacion_automatica,23016,42,2012-07,2015-12,bancos
+Bonanza Cambios S.A.,BONANZA CAMBIOS,FALSE,normalizacion_automatica,5813,60,2011-01,2015-12,casas_cambio
+BRIOS S.A. DE FINANZAS,BRIOS DE FINANZAS,FALSE,normalizacion_automatica,336,13,2011-11,2012-11,financieras
+Brios S.A. de Finanzas,BRIOS DE FINANZAS,FALSE,normalizacion_automatica,4341,17,2011-01,2012-05,financieras
+Bríos S.A. de Finanzas,BRIOS DE FINANZAS,FALSE,normalizacion_automatica,2148,14,2012-03,2013-04,financieras
+Cambios Alberdi S.A.,CAMBIOS ALBERDI,FALSE,normalizacion_automatica,5936,60,2011-01,2015-12,casas_cambio
+Cambios Chaco S.A.,CAMBIOS CHACO,FALSE,normalizacion_automatica,6003,60,2011-01,2015-12,casas_cambio
+Cambios Guairá S.A.,CAMBIOS GUAIRA,FALSE,normalizacion_automatica,5822,60,2011-01,2015-12,casas_cambio
+Cambios Río Paraná S.A.,CAMBIOS RIO PARANA,FALSE,normalizacion_automatica,5851,60,2011-01,2015-12,casas_cambio
+Cambios Tayí S.A.,CAMBIOS TAYI,FALSE,normalizacion_automatica,3543,41,2011-01,2014-05,casas_cambio
+Cambios Triple C S.A.,CAMBIOS TRIPLE C,FALSE,normalizacion_automatica,5742,60,2011-01,2015-12,casas_cambio
+Cambios Unique S.A.,CAMBIOS UNIQUE,FALSE,normalizacion_automatica,5722,60,2011-01,2015-12,casas_cambio
+Cambios Yrendagué S.A.,CAMBIOS YRENDAGUE,FALSE,normalizacion_automatica,5823,60,2011-01,2015-12,casas_cambio
+Ceteg Cambios S.A.,CETEG CAMBIOS,FALSE,normalizacion_automatica,5689,60,2011-01,2015-12,casas_cambio
+CITIBANK,CITIBANK,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,bancos
+Citibank N.A.,CITIBANK,FALSE,normalizacion_automatica,28503,60,2011-01,2015-12,"bancos,financieras"
+6-    Crisol y Encarnación Financiera S.A. (CEFISA),CRISOL Y ENCARNACION FINANCIERA,FALSE,normalizacion_automatica,3875,40,2012-09,2015-12,financieras
+CRISOL Y ENCARNACIÓN FINANCIERA S.A.,CRISOL Y ENCARNACION FINANCIERA,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,financieras
+Crisol y Encarnación Financiera S.A. (CEFISA),CRISOL Y ENCARNACION FINANCIERA,FALSE,normalizacion_automatica,24844,60,2011-01,2015-12,financieras
+1-     El Comercio Financiera S.A.E.C.A.,EL COMERCIO FINANCIERA,FALSE,normalizacion_automatica,3875,40,2012-09,2015-12,financieras
+El Comercio Financiera S.A.E.C.A.,EL COMERCIO FINANCIERA,FALSE,normalizacion_automatica,24850,60,2011-01,2015-12,financieras
+FINANCIERA EL COMERCIO S.A.E.C.A.,EL COMERCIO FINANCIERA,FALSE,alias_revisable,358,13,2011-11,2012-11,financieras
+Euro Cambios S.A.,EURO CAMBIOS,FALSE,normalizacion_automatica,5892,60,2011-01,2015-12,casas_cambio
+Fe Cambios S.A.,FE CAMBIOS,FALSE,normalizacion_automatica,5957,60,2011-01,2015-12,casas_cambio
+11- Fic S.A. de Finanzas,FIC DE FINANZAS,FALSE,normalizacion_automatica,842,27,2013-10,2015-12,financieras
+11- Fic S.A. de Finanzas (*),FIC DE FINANZAS,FALSE,normalizacion_automatica,39,15,2013-07,2014-09,financieras
+11- Fic S.A. de Finanzas (**),FIC DE FINANZAS,FALSE,normalizacion_automatica,75,15,2013-07,2014-09,financieras
+11-Fic S.A. de Finanzas,FIC DE FINANZAS,FALSE,normalizacion_automatica,1327,27,2013-10,2015-12,financieras
+11-Fic S.A. de Finanzas (*),FIC DE FINANZAS,FALSE,normalizacion_automatica,39,15,2013-07,2014-09,financieras
+11-Fic S.A. de Finanzas (**),FIC DE FINANZAS,FALSE,normalizacion_automatica,186,15,2013-07,2014-09,financieras
+Fic S.A. de Finanzas,FIC DE FINANZAS,FALSE,normalizacion_automatica,7180,15,2014-10,2015-12,financieras
+Fic S.A. de Finanzas (*),FIC DE FINANZAS,FALSE,normalizacion_automatica,1418,3,2014-07,2014-09,financieras
+Financiera Atlas S.A.E.C.A.,FINANCIERA ATLAS,FALSE,normalizacion_automatica,53,1,2011-01,2011-01,financieras
+5-     Financiera Exportadora Paraguaya S.A.(FINEXPAR),FINANCIERA EXPORTADORA PARAGUAYA,FALSE,normalizacion_automatica,3563,38,2012-09,2015-10,financieras
+5-     Finexpar S.A.E.C.A.,FINANCIERA EXPORTADORA PARAGUAYA,FALSE,alias_revisable,312,14,2014-11,2015-12,financieras
+FINANCIERA EXPORTADORA PARAGUAYA S.A.,FINANCIERA EXPORTADORA PARAGUAYA,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,financieras
+Financiera Exportadora Paraguaya S.A. (FINEXPAR),FINANCIERA EXPORTADORA PARAGUAYA,FALSE,normalizacion_automatica,11620,25,2013-09,2015-10,financieras
+Financiera Exportadora Paraguaya S.A.(FINEXPAR),FINANCIERA EXPORTADORA PARAGUAYA,FALSE,normalizacion_automatica,11953,36,2011-01,2013-12,financieras
+Finexpar S.A.E.C.A.,FINANCIERA EXPORTADORA PARAGUAYA,FALSE,alias_revisable,1187,3,2015-10,2015-12,financieras
+4-     Financiera Internacional Santa Ana S.A.,FINANCIERA INTERNACIONAL SANTA ANA,FALSE,normalizacion_automatica,3875,40,2012-09,2015-12,financieras
+FINANCIERA INTERNACIONAL SANTA ANA S.A.,FINANCIERA INTERNACIONAL SANTA ANA,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,financieras
+Financiera Internacional Santa Ana S.A.,FINANCIERA INTERNACIONAL SANTA ANA,FALSE,normalizacion_automatica,22814,56,2011-01,2015-08,financieras
+2-     Financiera Paraguayo - Japonesa  S.A.E.C.A.,FINANCIERA PARAGUAYO JAPONESA,FALSE,normalizacion_automatica,3875,40,2012-09,2015-12,financieras
+FINANCIERA PARAGUAYO JAPONESA S.A.E.C.A.,FINANCIERA PARAGUAYO JAPONESA,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,financieras
+Financiera Paraguayo - Japonesa  S.A.E.C.A.,FINANCIERA PARAGUAYO JAPONESA,FALSE,normalizacion_automatica,11973,36,2011-01,2013-12,financieras
+Financiera Paraguayo - Japonesa S.A.E.C.A.,FINANCIERA PARAGUAYO JAPONESA,FALSE,normalizacion_automatica,12808,27,2013-09,2015-12,financieras
+8-    Financiera Río S.A.,FINANCIERA RIO,FALSE,normalizacion_automatica,3407,37,2012-09,2015-09,financieras
+8-    Financiera Río S.A.E.C.A.,FINANCIERA RIO,FALSE,normalizacion_automatica,468,15,2014-10,2015-12,financieras
+FINANCIERA RIO S.A.,FINANCIERA RIO,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,financieras
+Financier Rio S.A.,FINANCIERA RIO,FALSE,alias_revisable,100,14,2011-01,2012-02,financieras
+Financiera Rio S.A.,FINANCIERA RIO,FALSE,normalizacion_automatica,4430,36,2011-01,2013-12,financieras
+Financiera Río S.A.,FINANCIERA RIO,FALSE,normalizacion_automatica,18781,43,2012-03,2015-09,financieras
+Financiera Río S.A.E.C.A.,FINANCIERA RIO,FALSE,normalizacion_automatica,1452,3,2015-10,2015-12,financieras
+7-    Finlatina S.A. de Finanzas,FINLATINA DE FINANZAS,FALSE,normalizacion_automatica,3875,40,2012-09,2015-12,financieras
+FINLATINA S.A. DE FINANZAS,FINLATINA DE FINANZAS,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,financieras
+Finlatina S.A. de Finanzas,FINLATINA DE FINANZAS,FALSE,normalizacion_automatica,24762,60,2011-01,2015-12,financieras
+FONDO GANADERO,FONDO GANADERO,FALSE,normalizacion_automatica,98,10,2011-11,2012-11,financieras
+Fondo Ganadero,FONDO GANADERO,FALSE,normalizacion_automatica,27298,60,2011-01,2015-12,financieras
+Forex Paraguay S.A.,FOREX PARAGUAY,FALSE,normalizacion_automatica,5745,59,2011-01,2015-11,casas_cambio
+Fortuna Cambios S.A.,FORTUNA CAMBIOS,FALSE,normalizacion_automatica,5714,60,2011-01,2015-12,casas_cambio
+Global Exchange S.A.,GLOBAL EXCHANGE,FALSE,normalizacion_automatica,4502,41,2012-08,2015-12,casas_cambio
+Golden Cambios S.A.,GOLDEN CAMBIOS,FALSE,normalizacion_automatica,5849,60,2011-01,2015-12,casas_cambio
+3-     Grupo Internacional de Finanzas S.A.E.C.A. (INTERFISA),GRUPO INTERNACIONAL DE FINANZAS,FALSE,normalizacion_automatica,2159,29,2012-09,2015-01,financieras
+3-     Grupo Internacional de Finanzas S.A.E.C.A. (INTERFISA) (*),GRUPO INTERNACIONAL DE FINANZAS,FALSE,normalizacion_automatica,714,23,2014-02,2015-12,financieras
+3-     Grupo Internacional de Finanzas S.A.E.C.A. (INTERFISA) (**),GRUPO INTERNACIONAL DE FINANZAS,FALSE,normalizacion_automatica,977,23,2014-02,2015-12,financieras
+"Grupo Internacional de Finanzas S.A.E.C.A.
+(INTERFISA BANCO)(*)",GRUPO INTERNACIONAL DE FINANZAS,FALSE,normalizacion_automatica,2190,10,2015-03,2015-12,bancos
+"Grupo Internacional de Finanzas S.A.E.C.A. 
+(INTERFISA BANCO) (*)",GRUPO INTERNACIONAL DE FINANZAS,FALSE,normalizacion_automatica,420,1,2015-02,2015-02,bancos
+Grupo Internacional de Finanzas S.A.E.C.A. (INTERFISA BANCO) (*),GRUPO INTERNACIONAL DE FINANZAS,FALSE,normalizacion_automatica,3381,23,2014-02,2015-12,bancos
+Grupo Internacional de Finanzas S.A.E.C.A. (INTERFISA BANCO) (**),GRUPO INTERNACIONAL DE FINANZAS,FALSE,normalizacion_automatica,1001,23,2014-02,2015-12,bancos
+Grupo Internacional de Finanzas S.A.E.C.A. (INTERFISA),GRUPO INTERNACIONAL DE FINANZAS,FALSE,normalizacion_automatica,19567,49,2011-01,2015-01,financieras
+INTERFISA,GRUPO INTERNACIONAL DE FINANZAS,FALSE,alias_revisable,358,13,2011-11,2012-11,financieras
+HSBC BANK PARAGUAY S.A.,HSBC BANK PARAGUAY,FALSE,normalizacion_automatica,708,35,2011-01,2013-11,bancos
+HSBC Bank Paraguay S.A.,HSBC BANK PARAGUAY,FALSE,normalizacion_automatica,13392,35,2011-01,2013-11,"bancos,financieras"
+Interbanco S.A.,INTERBANCO,FALSE,normalizacion_automatica,404,28,2011-01,2013-11,"bancos,financieras"
+La Moneda Cambios S.A.,LA MONEDA CAMBIOS,FALSE,normalizacion_automatica,5937,60,2011-01,2015-12,casas_cambio
+M&D Cambios S.A.,M&D CAMBIOS,FALSE,normalizacion_automatica,5765,60,2011-01,2015-12,casas_cambio
+Mas Cambios S.A.,MAS CAMBIOS,FALSE,normalizacion_automatica,4753,45,2012-04,2015-12,casas_cambio
+Master Exchange S.A.,MASTER EXCHANGE,FALSE,normalizacion_automatica,2544,34,2011-01,2013-10,casas_cambio
+Master Exchange S.A. (*),MASTER EXCHANGE,FALSE,normalizacion_automatica,114,1,2013-11,2013-11,casas_cambio
+Maxi Cambios S.A.,MAXI CAMBIOS,FALSE,normalizacion_automatica,5886,60,2011-01,2015-12,casas_cambio
+Mercosur Cambios S.A.,MERCOSUR CAMBIOS,FALSE,normalizacion_automatica,5800,60,2011-01,2015-12,casas_cambio
+Money Exchange S.A.,MONEY EXCHANGE,FALSE,normalizacion_automatica,5857,60,2011-01,2015-12,casas_cambio
+Multi Cambios S.A.,MULTI CAMBIOS,FALSE,normalizacion_automatica,1010,14,2011-01,2012-02,casas_cambio
+Mundial Cambios S.A.,MUNDIAL CAMBIOS,FALSE,normalizacion_automatica,5772,60,2011-01,2015-12,casas_cambio
+New Exchange Tranfers S.A.,NEW EXCHANGE TRANFERS,FALSE,normalizacion_automatica,298,5,2011-01,2011-05,casas_cambio
+Norte Cambios S.A.,NORTE CAMBIOS,FALSE,normalizacion_automatica,5838,60,2011-01,2015-12,casas_cambio
+Oriente Cambios S.A.,ORIENTE CAMBIOS,FALSE,normalizacion_automatica,5720,60,2011-01,2015-12,casas_cambio
+Panorama Cambios S.A.,PANORAMA CAMBIOS,FALSE,normalizacion_automatica,2944,23,2014-02,2015-12,casas_cambio
+Paraguay Express Cambios S.A.,PARAGUAY EXPRESS CAMBIOS,FALSE,normalizacion_automatica,365,5,2011-01,2011-05,casas_cambio
+Prime S.A. Casa Cambiaria,PRIME CASA CAMBIARIA,FALSE,normalizacion_automatica,5917,60,2011-01,2015-12,casas_cambio
+Safira Cambios S.A.,SAFIRA CAMBIOS,FALSE,normalizacion_automatica,5729,60,2011-01,2015-12,casas_cambio
+Santa Rita  Cambios S.A.,SANTA RITA CAMBIOS,FALSE,normalizacion_automatica,5752,60,2011-01,2015-12,casas_cambio
+SOLAR S.A.,SOLAR,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,financieras
+Solar S.A.,SOLAR,FALSE,normalizacion_automatica,9492,33,2011-01,2013-10,financieras
+12- Solar  Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,234,21,2014-04,2015-12,financieras
+12- Solar Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,1170,21,2014-04,2015-12,financieras
+12- Solar S.A. Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,156,13,2014-02,2015-02,financieras
+Solar Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,4396,10,2015-02,2015-12,financieras
+Solar S.A. Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,403,2,2015-04,2015-05,financieras
+Solar S.A. de Ahora y Préstamos para la Vivienda,SOLAR DE AHORA Y PRESTAMOS PARA LA VIVIENDA,FALSE,normalizacion_automatica,8,2,2013-10,2013-11,financieras
+11- Solar S.A. de Ahorro y Préstamo para la Vivienda,SOLAR DE AHORRO Y PRESTAMO PARA LA VIVIENDA,FALSE,normalizacion_automatica,1170,22,2012-09,2014-06,financieras
+12- Solar S.A. de Ahorro y Préstamo para la Vivienda,SOLAR DE AHORRO Y PRESTAMO PARA LA VIVIENDA,FALSE,normalizacion_automatica,1145,21,2013-07,2015-03,financieras
+Solar S.A. de Ahorro y Préstamo para la Vivienda,SOLAR DE AHORRO Y PRESTAMO PARA LA VIVIENDA,FALSE,normalizacion_automatica,10507,21,2013-06,2015-03,financieras
+Sudacam S.A. Casa Cambiaria,SUDACAM CASA CAMBIARIA,FALSE,normalizacion_automatica,850,7,2013-06,2013-12,casas_cambio
+Sudamerica Express S.A. Casa Cambiaria,SUDAMERICA EXPRESS CASA CAMBIARIA,FALSE,normalizacion_automatica,3076,24,2014-01,2015-12,casas_cambio
+Sudamérica Express S.A. Casa Cambiaria,SUDAMERICA EXPRESS CASA CAMBIARIA,FALSE,normalizacion_automatica,2023,29,2011-01,2013-05,casas_cambio
+SUDAMERIS BANK S.A.E.C.A.,SUDAMERIS BANK,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,bancos
+Sudameris Bank S.A.E.C.A.,SUDAMERIS BANK,FALSE,normalizacion_automatica,28802,60,2011-01,2015-12,"bancos,financieras"
+9-    Tú Financiera S.A.,TU FINANCIERA,FALSE,normalizacion_automatica,3498,40,2012-09,2015-12,financieras
+TU FINANCIERA S.A.,TU FINANCIERA,FALSE,normalizacion_automatica,98,10,2011-11,2012-11,financieras
+Tu Financiera S.A.,TU FINANCIERA,FALSE,normalizacion_automatica,3748,35,2011-02,2013-12,financieras
+Tú Financiera S.A.,TU FINANCIERA,FALSE,normalizacion_automatica,19911,46,2012-03,2015-12,financieras
+Uniexpress S.A. Casa Cambiaria,UNIEXPRESS CASA CAMBIARIA,FALSE,normalizacion_automatica,2432,19,2014-06,2015-12,casas_cambio
+Valor S.A. Casa Cambiaria,VALOR CASA CAMBIARIA,FALSE,normalizacion_automatica,5803,60,2011-01,2015-12,casas_cambio
+VISION BANCO S.A.E.C.A.,VISION BANCO,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,bancos
+Visión Banco,VISION BANCO,FALSE,normalizacion_automatica,340,17,2011-01,2012-05,bancos
+Visión Banco S.A.E.C.A.,VISION BANCO,FALSE,normalizacion_automatica,28526,60,2011-01,2015-12,"bancos,financieras"
+Zafra Cambios S.A.,ZAFRA CAMBIOS,FALSE,normalizacion_automatica,5813,60,2011-01,2015-12,casas_cambio
+CON PARTICIPACION DE FONDO GANADERO,CON PARTICIPACION DE FONDO GANADERO,TRUE,normalizacion_automatica,11699,36,2011-01,2013-12,financieras
+Con Participación del Fondo Ganadero,CON PARTICIPACION DEL FONDO GANADERO,TRUE,normalizacion_automatica,12943,27,2013-09,2015-12,financieras
+PARTICIPACION ESTATAL,PARTICIPACION ESTATAL,TRUE,normalizacion_automatica,597,36,2011-01,2013-12,"bancos,financieras"
+PARTICIPACIÓN ESTATAL,PARTICIPACION ESTATAL,TRUE,normalizacion_automatica,69,6,2013-07,2013-12,bancos
+Participación Estatal,PARTICIPACION ESTATAL,TRUE,normalizacion_automatica,13094,27,2013-09,2015-12,bancos
+PROPIEDAD EXTRANJ. MAYORITARIA,PROPIEDAD EXTRANJ MAYORITARIA,TRUE,normalizacion_automatica,811,36,2011-01,2013-12,"bancos,financieras"
+Propiedad Extranjera Mayoritarias,PROPIEDAD EXTRANJERA MAYORITARIAS,TRUE,normalizacion_automatica,13742,27,2013-09,2015-12,bancos
+PROPIEDAD LOCAL MAYORITARIA,PROPIEDAD LOCAL MAYORITARIA,TRUE,normalizacion_automatica,559,36,2011-01,2013-12,bancos
+Propiedad Local Mayoritaria,PROPIEDAD LOCAL MAYORITARIA,TRUE,normalizacion_automatica,13070,27,2013-09,2015-12,bancos
+SISTEMA,SISTEMA,TRUE,normalizacion_automatica,17415,60,2011-01,2015-12,"bancos,financieras"
+Sistema,SISTEMA,TRUE,normalizacion_automatica,7525,27,2013-09,2015-12,bancos
+SUB-TOTAL,SUB-TOTAL | BANCO ABN AMRO PARAGUAY,TRUE,normalizacion_automatica,3,1,2011-01,2011-01,bancos
+SUB-TOTAL,SUB-TOTAL | BANCO DE LA NACION ARGENTINA,TRUE,normalizacion_automatica,2,1,2011-01,2011-01,bancos
+SUB-TOTAL,SUB-TOTAL | BANCO INTEGRACION,TRUE,normalizacion_automatica,31,8,2011-10,2012-05,bancos
+SUB-TOTAL,SUB-TOTAL | INTENDENCIA DE ANALISIS FINANCIERO,TRUE,normalizacion_automatica,24,6,2013-03,2013-08,financieras
+SUB-TOTAL,SUB-TOTAL | PARTICIPACION ESTATAL,TRUE,normalizacion_automatica,11374,36,2011-01,2013-12,"bancos,financieras"
+SUB-TOTAL,SUB-TOTAL | PROPIEDAD EXTRANJ MAYORITARIA,TRUE,normalizacion_automatica,11712,36,2011-01,2013-12,bancos
+Sub - Total,SUB-TOTAL | PROPIEDAD EXTRANJERA MAYORITARIA,TRUE,normalizacion_automatica,3874,40,2012-09,2015-12,bancos
+SUB-TOTAL,SUB-TOTAL | PROPIEDAD LOCAL MAYORITARIA,TRUE,normalizacion_automatica,11854,36,2011-01,2013-12,"bancos,financieras"
+Sub - Total,SUB-TOTAL | PROPIEDAD LOCAL MAYORITARIA,TRUE,normalizacion_automatica,3874,40,2012-09,2015-12,bancos
+SUB-TOTAL,SUB-TOTAL | SUCURSALES DIRECTAS EXTRANJ,TRUE,normalizacion_automatica,12909,36,2011-01,2013-12,"bancos,financieras"
+Sub - Total,SUB-TOTAL | SUCURSALES DIRECTAS EXTRANJERAS,TRUE,normalizacion_automatica,3494,40,2012-09,2015-12,bancos
+SUCURSALES DIRECTAS EXTRANJ.,SUCURSALES DIRECTAS EXTRANJ,TRUE,normalizacion_automatica,540,36,2011-01,2013-12,bancos
+Sucursales Directas Extranjeras,SUCURSALES DIRECTAS EXTRANJERAS,TRUE,normalizacion_automatica,12942,27,2013-09,2015-12,bancos
+Total - Banco Privados,TOTAL BANCO PRIVADOS,TRUE,normalizacion_automatica,3874,40,2012-09,2015-12,bancos
+TOTAL BANCOS,TOTAL BANCOS,TRUE,normalizacion_automatica,358,13,2011-11,2012-11,bancos
+TOTAL BANCOS PRIVADOS,TOTAL BANCOS PRIVADOS,TRUE,normalizacion_automatica,11232,36,2011-01,2013-12,"bancos,financieras"
+Total Bancos Privados,TOTAL BANCOS PRIVADOS,TRUE,normalizacion_automatica,13095,27,2013-09,2015-12,bancos
+Total Empresas Financieras,TOTAL EMPRESAS FINANCIERAS,TRUE,normalizacion_automatica,3875,40,2012-09,2015-12,financieras
+TOTAL FINANCIERAS,TOTAL FINANCIERAS,TRUE,normalizacion_automatica,357,13,2011-11,2012-11,financieras
+Total Financieras,TOTAL FINANCIERAS,TRUE,normalizacion_automatica,192,19,2012-06,2013-12,financieras
+TOTAL GENERAL,TOTAL GENERAL,TRUE,normalizacion_automatica,2368,36,2011-01,2013-12,casas_cambio
+Total Sistema,TOTAL SISTEMA,TRUE,normalizacion_automatica,11181,40,2012-09,2015-12,"bancos,casas_cambio,financieras"
+TOTAL SISTEMA FINANCIERAS,TOTAL SISTEMA FINANCIERAS,TRUE,normalizacion_automatica,11699,36,2011-01,2013-12,financieras
+"Total Sistema
+ Financieras",TOTAL SISTEMA FINANCIERAS,TRUE,normalizacion_automatica,32,1,2015-05,2015-05,financieras
+"Total Sistema 
+Financieras",TOTAL SISTEMA FINANCIERAS,TRUE,normalizacion_automatica,160,5,2015-04,2015-12,financieras
+Total Sistema Financieras,TOTAL SISTEMA FINANCIERAS,TRUE,normalizacion_automatica,12630,27,2013-09,2015-12,financieras
