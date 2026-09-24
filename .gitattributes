@@ -4,3 +4,4 @@
 input/current/**/*.csv filter=lfs diff=lfs merge=lfs -text
 proyectos/*/datos/*.csv filter=lfs diff=lfs merge=lfs -text
 database/paraguay_macro_pilot.duckdb.zip filter=lfs diff=lfs merge=lfs -text
+data/clima/*.csv filter=lfs diff=lfs merge=lfs -text

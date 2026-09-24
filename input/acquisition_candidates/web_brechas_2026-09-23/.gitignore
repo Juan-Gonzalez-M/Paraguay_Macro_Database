@@ -1,0 +1,11 @@
+# Descargas crudas y registros de ejecución: locales (evidencia, con hash en los inventarios), fuera de Git.
+*
+!.gitignore
+!README.md
+!acquire.py
+!extraer_tablas.R
+!inventory.csv
+!inventory_ine.csv
+!inventory_aduana.csv
+!extraidos/
+!extraidos/*.csv

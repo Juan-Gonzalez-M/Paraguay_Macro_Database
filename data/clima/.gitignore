@@ -1,0 +1,5 @@
+# EM-DAT (CRED/UCLouvain): licencia de uso no comercial que prohíbe redistribuir la base; el repositorio es
+# público, así que las salidas derivadas de EM-DAT quedan solo locales. Se regeneran con R/clima/12_emdat.R
+# a partir del Excel descargado por el usuario (ver README, § 8.2).
+eventos_emdat_paraguay.csv
+eventos_emdat_mensual.csv

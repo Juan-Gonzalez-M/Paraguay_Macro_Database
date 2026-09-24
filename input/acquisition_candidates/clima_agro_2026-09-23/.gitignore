@@ -1,0 +1,16 @@
+# Raw source downloads remain local in this acquisition workspace.
+/chc/
+/mag/
+/dmh/
+/noaa/
+/iri/
+/usda/
+/ine/
+/copernicus/
+/fao/
+/faostat/
+/nasa_power/
+/bcp/
+/downloads.jsonl
+/failures.jsonl
+/__pycache__/

@@ -1,0 +1,7 @@
+# Descargas crudas de la Fase B: se conservan locales (evidencia), fuera de Git. Se versionan solo el
+# inventario (URL, hora, SHA-256) y el registro de archivos eliminados.
+*
+!.gitignore
+!README.md
+!inventory.csv
+!eliminados_2026-09-23.csv

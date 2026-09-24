@@ -1,0 +1,690 @@
+codigo,descripcion,nivel,ponderacion_publicada,ponderacion,nota,padre,fuente,archivo_origen
+0,TOTAL GENERAL,0,"100,000",100,,,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10000000,ALIMENTOS Y BEBIDAS NO ALCOHÓLICAS,1,"26,865",26.865,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10100000,CEREALES Y DERIVADOS,2,"3,866",3.866,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101000,PRODUCTOS PANIFICADOS,3,"2,694",2.694,,10100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101001,PAN FELIPE,4,"0,355",0.355,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101002,PAN DE SÁNDWICH,4,"0,079",0.079,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101003,PANCITO DE VIENA,4,"0,068",0.068,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101004,PAN FRANCÉS,4,"0,059",0.059,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101005,GALLETA CON GRASA,4,"0,887",0.887,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101006,PALITO,4,"0,046",0.046,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101007,CHIPA DE ALMIDÓN,4,"0,050",0.05,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101008,COQUITO,4,"0,114",0.114,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101009,EMPANADA DE CARNE,4,"0,383",0.383,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101010,GALLETITA INTEGRAL,4,"0,132",0.132,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101011,GALLETITA SIN RELLENO,4,"0,052",0.052,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101012,GALLETITA RELLENA,4,"0,130",0.13,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101013,MASITAS,4,"0,155",0.155,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101014,ROSQUITAS,4,"0,049",0.049,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101015,TORTA ENTERA,4,"0,057",0.057,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101016,DISCOS PARA EMPANADA,4,"0,055",0.055,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10101017,PREPIZZA,4,"0,020",0.02,,10101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10102000,HARINAS,3,"0,279",0.279,,10100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10102018,ALMIDÓN DE MANDIOCA,4,"0,057",0.057,,10102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10102019,HARINA DE MAÍZ,4,"0,088",0.088,,10102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10102020,HARINA DE TRIGO,4,"0,134",0.134,,10102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10103000,PASTAS ALIMENTICIAS Y ARROZ,3,"0,800",0.8,,10100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10103021,FIDEO CORTADO,4,"0,122",0.122,,10103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10103022,FIDEO LAMINADO,4,"0,364",0.364,,10103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10103023,ÑOQUIS,4,"0,034",0.034,,10103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10103024,ARROZ,4,"0,279",0.279,,10103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10104000,OTROS CEREALES,3,"0,093",0.093,,10100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10104025,CEREALES PARA EL DESAYUNO,4,"0,053",0.053,,10104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10104026,GRANOLAS Y AVENAS LISTAS PARA CONSUMIR,4,"0,041",0.041,,10104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10200000,CARNES,2,"9,491",9.491,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201000,CARNE VACUNA,3,"6,228",6.228,,10200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201027,BOLA DE LOMO,4,"0,247",0.247,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201028,CARNAZA DE 2DA.,4,"0,593",0.593,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201029,CARNAZA BLANCA,4,"0,265",0.265,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201030,CARNAZA NEGRA O DE 1RA.,4,"1,536",1.536,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201031,CARNE MOLIDA DE 1RA.,4,"0,216",0.216,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201032,CARNE MOLIDA DE 2DA.,4,"0,059",0.059,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201033,COLITA CUADRIL,4,"0,065",0.065,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201034,COSTILLA DE 1RA. PARA ASADO,4,"1,520",1.52,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201035,COSTILLA DE 2DA.,4,"0,095",0.095,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201036,FALDA,4,"0,056",0.056,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201037,LOMO,4,"0,132",0.132,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201038,PALETA,4,"0,123",0.123,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201039,PECETO,4,"0,065",0.065,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201040,PUCHERO DE 1RA.,4,"0,307",0.307,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201041,PUCHERO DE 2DA.,4,"0,125",0.125,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201042,RABADILLA,4,"0,250",0.25,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201043,TAPA CUADRIL,4,"0,093",0.093,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10201044,VACÍO,4,"0,480",0.48,,10201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10202000,CARNE DE CERDO,3,"0,304",0.304,,10200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10202045,COSTELETA DE CERDO,4,"0,057",0.057,,10202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10202046,COSTILLA DE CERDO,4,"0,134",0.134,,10202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10202047,CUARTO DE CERDO,4,"0,059",0.059,,10202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10202048,PALETA DE CERDO,4,"0,055",0.055,,10202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10203000,CARNE DE AVES,3,"1,399",1.399,,10200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10203049,ALITAS DE POLLO,4,"0,093",0.093,,10203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10203050,POLLO ENTERO INDUSTRALIZADO,4,"0,384",0.384,,10203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10203051,MUSLO DE POLLO,4,"0,406",0.406,,10203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10203052,PECHUGA DE POLLO,4,"0,471",0.471,,10203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10203053,PUCHERO DE POLLO,4,"0,045",0.045,,10203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10204000,MENUDENCIAS VACUNAS,3,"0,116",0.116,,10200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10204054,HÍGADO,4,"0,060",0.06,,10204000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10204055,MONDONGO,4,"0,056",0.056,,10204000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10205000,"EMBUTIDOS, CARNES CONSERVADAS Y OTROS DERIVADOS DE LA CARNE",3,"1,443",1.443,,10200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10205056,CHORIZO,4,"0,636",0.636,,10205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10205057,FIAMBRE,4,"0,151",0.151,,10205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10205058,HAMBURGUESA DE CARNE VACUNA,4,"0,123",0.123,,10205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10205059,JAMÓN COCIDO,4,"0,105",0.105,,10205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10205060,JAMONADA,4,"0,089",0.089,,10205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10205061,MILANESA PARA FREÍR,4,"0,047",0.047,,10205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10205062,PANCHO,4,"0,261",0.261,,10205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10205063,PATÉ DE HÍGADO,4,"0,032",0.032,,10205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10300000,PESCADOS,2,"0,236",0.236,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10301000,CARNE FRESCA DE PESCADO,3,"0,103",0.103,,10300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10301061,PESCADO FRESCO ENTERO,4,"0,052",0.052,,10301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10301062,PESCADO FRESCO EN TROZOS O EN RODAJAS,4,"0,052",0.052,,10301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10302000,PESCADO EN CONSERVA,3,"0,133",0.133,,10300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10302063,ATÚN EN CONSERVA EN AGUA,4,"0,067",0.067,,10302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10302064,ATÚN EN CONSERVA EN ACEITE,4,"0,067",0.067,,10302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10400000,"PRODUCTOS LÁCTEOS, QUESOS Y HUEVOS",2,"4,910",4.91,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10401000,LECHE LÍQUIDA,3,"2,377",2.377,,10400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10401065,LECHE LARGA VIDA O UAT,4,"1,316",1.316,,10401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10401066,LECHE PASTEURIZADA,4,"0,937",0.937,,10401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10401067,LECHE DE SOJA SABORIZADA,4,"0,032",0.032,,10401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10401068,LECHE CHOCOLATADA,4,"0,092",0.092,,10401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10402000,OTRAS LECHES,3,"0,325",0.325,,10400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10402069,LECHE EN POLVO INSTANTÁNEA,4,"0,220",0.22,,10402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10402070,LECHE EN POLVO PARA BEBÉ,4,"0,105",0.105,,10402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10403000,OTROS PRODUCTOS LÁCTEOS,3,"0,855",0.855,,10400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10403071,YOGURT ENTERO,4,"0,580",0.58,,10403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10403072,YOGURT DIETÉTICO,4,"0,054",0.054,,10403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10403073,BEBIDA LÁCTEA A BASE DE LECHE,4,"0,180",0.18,,10403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10403074,CREMA DE LECHE,4,"0,041",0.041,,10403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10404000,QUESOS,3,"0,901",0.901,,10400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10404075,QUESO PARAGUAY O FRESCO,4,"0,446",0.446,,10404000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10404076,QUESO SÁNDWICH,4,"0,340",0.34,,10404000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10404077,QUESO MUZARELLA,4,"0,069",0.069,,10404000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10404078,QUESO RALLADO,4,"0,047",0.047,,10404000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10405000,HUEVOS,3,"0,451",0.451,,10400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10405079,HUEVOS DE GALLINA,4,"0,451",0.451,,10405000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10500000,ACEITES Y MANTECAS,2,"0,437",0.437,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10501000,ACEITES,3,"0,365",0.365,,10500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10501080,ACEITE DE GIRASOL,4,"0,303",0.303,,10501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10501081,ACEITE DE OLIVA,4,"0,021",0.021,,10501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10501082,ACEITE DE SOJA,4,"0,026",0.026,,10501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10501083,ACEITE MEZCLA,4,"0,015",0.015,,10501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10502000,MANTECAS,3,"0,072",0.072,,10500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10502084,MANTECA,4,"0,048",0.048,,10502000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10502085,MARGARINA,4,"0,024",0.024,,10502000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10600000,FRUTAS,2,"1,544",1.544,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10601000,FRUTAS FRESCAS,3,"1,485",1.485,,10600000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10601086,NARANJA,4,"0,238",0.238,,10601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10601087,BANANA,4,"0,586",0.586,,10601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10601088,MANZANA,4,"0,252",0.252,,10601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10601089,PERA,4,"0,103",0.103,,10601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10601090,PIÑA,4,"0,112",0.112,,10601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10601091,LIMÓN,4,"0,033",0.033,,10601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10601092,OTRAS FRUTAS FRESCAS,4,"0,160",0.16,,10601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10602000,FRUTAS EN CONSERVA,3,"0,059",0.059,,10600000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10602093,DURAZNO EN CONSERVA,4,"0,059",0.059,,10602000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10700000,HORTALIZAS Y LEGUMBRES,2,"2,845",2.845,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701000,HORTALIZAS Y TUBÉRCULOS FRESCOS,3,"2,561",2.561,,10700000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701094,ACELGA,4,"0,020",0.02,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701095,AJO,4,"0,052",0.052,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701096,CEBOLLA DE CABEZA,4,"0,374",0.374,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701097,CEBOLLA DE HOJA,4,"0,027",0.027,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701098,LECHUGA,4,"0,065",0.065,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701099,LOCOTE VERDE,4,"0,315",0.315,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701100,MANDIOCA,4,"0,289",0.289,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701101,PAPA,4,"0,365",0.365,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701102,PEREJIL,4,"0,021",0.021,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701103,REPOLLO,4,"0,054",0.054,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701104,TOMATE,4,"0,807",0.807,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701105,ZANAHORIA,4,"0,107",0.107,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10701106,ZAPALLO,4,"0,064",0.064,,10701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10702000,LEGUMBRES SECAS,3,"0,070",0.07,,10700000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10702107,POROTOS SECOS,4,"0,070",0.07,,10702000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10703000,VEGETALES EN CONSERVA,3,"0,214",0.214,,10700000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10703108,ARVEJAS EN CONSERVA,4,"0,042",0.042,,10703000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10703109,CHOCLO EN LATA,4,"0,043",0.043,,10703000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10703110,PAPAS FRITAS PREPARADAS,4,"0,041",0.041,,10703000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10703111,CONSERVA DE TOMATE,4,"0,088",0.088,,10703000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10800000,"AZÚCAR, EDULCORANTES, DULCES Y HELADOS",2,"0,815",0.815,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10801000,AZÚCAR Y EDULCORANTES,3,"0,469",0.469,,10800000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10801112,AZÚCAR,4,"0,415",0.415,,10801000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10801113,EDULCORANTES,4,"0,054",0.054,,10801000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10802000,DULCES Y POSTRES,3,"0,101",0.101,,10800000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10802114,DULCE DE LECHE,4,"0,053",0.053,,10802000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10802115,MERMELADAS DE FRUTAS,4,"0,048",0.048,,10802000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10803000,HELADOS,3,"0,142",0.142,,10800000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10803116,HELADO CREMOSO,4,"0,142",0.142,,10803000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10804000,CARAMELOS,3,"0,104",0.104,,10800000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10804117,CARAMELOS,4,"0,057",0.057,,10804000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10804118,CHOCOLATE,4,"0,047",0.047,,10804000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10900000,CONDIMENTOS Y COMIDAS SEMI PREPARADAS,2,"0,384",0.384,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10901000,SAL Y ESPECIAS,3,"0,103",0.103,,10900000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10901119,SAL FINA,4,"0,036",0.036,,10901000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10901120,CONDIMENTOS NATURALES,4,"0,067",0.067,,10901000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10902000,ADEREZOS,3,"0,220",0.22,,10900000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10902121,KETCHUP,4,"0,051",0.051,,10902000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10902122,MAYONESA,4,"0,131",0.131,,10902000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10902123,SALSA DE SOJA,4,"0,038",0.038,,10902000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10903000,OTRAS COMIDAS SEMI PREPARADAS,3,"0,062",0.062,,10900000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10903124,SOPAS Y CALDOS EN POLVO,4,"0,018",0.018,,10903000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+10903125,POLVOS PARA PREPARAR POSTRES,4,"0,044",0.044,,10903000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11000000,"YERBA, CAFÉ, TÉ Y CHOCOLATE",2,"0,686",0.686,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11001000,CAFÉ,3,"0,212",0.212,,11000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11001126,CAFÉ INSTANTÉNEO,4,"0,176",0.176,,11001000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11001127,CAFÉ TORRADO,4,"0,035",0.035,,11001000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11002000,INFUSIONES DE HIERBAS MEDICINALES,3,"0,041",0.041,,11000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11002128,INFUSIONES DE HIERBAS MEDICINALES PARA MATE,4,"0,029",0.029,,11002000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11002129,INFUSIONES DE HIERBAS MEDICINALES PARA TERERÉ,4,"0,012",0.012,,11002000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11003000,YERBA Y TÉ,3,"0,409",0.409,,11000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11003130,TÉ Y COCIDO,4,"0,027",0.027,,11003000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11003131,YERBA COMPUESTA,4,"0,221",0.221,,11003000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11003132,YERBA MATE,4,"0,160",0.16,,11003000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11004000,CHOCOLATE,3,"0,025",0.025,,11000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11004133,CHOCOLATE EN POLVO INSTANTÁNEO,4,"0,025",0.025,,11004000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11100000,BEBIDAS NO ALCOHÓLICAS,2,"1,649",1.649,,10000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11101000,AGUA MINERAL,3,"0,153",0.153,,11100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11101134,AGUA MINERAL,4,"0,153",0.153,,11101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11102000,BEBIDAS GASEOSAS,3,"1,169",1.169,,11100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11102135,GASEOSAS,4,"1,169",1.169,,11102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11103000,JUGOS ENVASADOS,3,"0,327",0.327,,11100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11103136,JUGO EN POLVO,4,"0,061",0.061,,11103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+11103137,JUGO ENVASADO DE FRUTAS,4,"0,266",0.266,,11103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20000000,BEBIDAS ALCOHÓLICAS Y TABACOS,1,"1,279",1.279,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20100000,BEBIDAS ALCOHÓLICAS,2,"1,053",1.053,,20000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20101000,BEBIDAS ALCOHÓLICAS DESTILADAS,3,"0,059",0.059,,20100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20101001,BEBIDAS DESTILADAS,4,"0,019",0.019,,20101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20101002,WHISKY,4,"0,041",0.041,,20101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20102000,VINOS,3,"0,242",0.242,,20100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20102003,VINO,4,"0,242",0.242,,20102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20103000,CERVEZAS,3,"0,751",0.751,,20100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20103004,CERVEZA,4,"0,751",0.751,,20103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20200000,TABACOS,2,"0,226",0.226,,20000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20201000,CIGARRILLOS,3,"0,226",0.226,,20200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20201005,CIGARRILLO IMPORTADO,4,"0,178",0.178,,20201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+20201006,CIGARRILLO NACIONAL,4,"0,048",0.048,,20201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30000000,VESTIMENTA Y CALZADO,1,"5,185",5.185,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30100000,TELAS Y PRENDAS DE VESTIR,2,"3,447",3.447,,30000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30101000,TELAS,3,"0,037",0.037,,30100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30101001,TELAS PARA PRENDAS DE VESTIR,4,"0,037",0.037,,30101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102000,PRENDAS DE VESTIR PARA CABALLEROS,3,"1,375",1.375,,30100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102002,ANATÓMICO PARA CABALLERO,4,"0,034",0.034,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102003,BÓXER PARA CABALLERO,4,"0,058",0.058,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102004,CAMISA MANGAS LARGAS PARA CABALLERO,4,"0,153",0.153,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102005,CAMISA MANGAS CORTAS PARA CABALLERO,4,"0,085",0.085,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102006,CAMPERA PARA CABALLERO,4,"0,057",0.057,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102007,CONJUNTO DE BUZO PARA CABALLERO,4,"0,042",0.042,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102008,MEDIAS PARA CABALLERO,4,"0,018",0.018,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102009,PANTALÓN PARA CABALLERO,4,"0,085",0.085,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102010,PANTALÓN VAQUERO PARA CABALLERO,4,"0,484",0.484,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102011,REMERA CON CUELLO MANGAS CORTAS PARA CABALLERO,4,"0,168",0.168,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102012,REMERA DE ALGODÓN PARA CABALLERO,4,"0,081",0.081,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102013,SHORT PARA CABALLERO,4,"0,049",0.049,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30102014,TRAJE PARA CABALLERO,4,"0,062",0.062,,30102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103000,PRENDAS DE VESTIR PARA DAMAS,3,"1,322",1.322,,30100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103015,BIKINI PARA DAMA,4,"0,047",0.047,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103016,BOMBACHA PARA DAMA,4,"0,044",0.044,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103017,BLUSA PARA DAMA,4,"0,149",0.149,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103018,CALZA PARA DAMA,4,"0,057",0.057,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103019,CAMISA PARA DAMA,4,"0,058",0.058,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103020,CAMPERA PARA DAMA,4,"0,037",0.037,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103021,CONJUNTO DE BUZO PARA DAMA,4,"0,037",0.037,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103022,CONJUNTO DE VESTIR PARA DAMA,4,"0,048",0.048,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103023,MEDIA DE NYLON PARA DAMA,4,"0,040",0.04,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103024,PANTALÓN DE VESTIR PARA DAMA,4,"0,056",0.056,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103025,PANTALÓN VAQUERO PARA DAMA,4,"0,379",0.379,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103026,REMERA PARA DAMA,4,"0,101",0.101,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103027,SHORT PARA DAMA,4,"0,046",0.046,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103028,SOSTÉN PARA DAMA,4,"0,052",0.052,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30103029,VESTIDO PARA DAMA,4,"0,170",0.17,,30103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104000,PRENDAS DE VESTIR PARA NIÑOS Y NIÑAS,3,"0,567",0.567,,30100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104030,CONJUNTO PARA NIÑAS,4,"0,036",0.036,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104031,PANTALÓN VAQUERO PARA NIÑOS Y NIÑAS,4,"0,034",0.034,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104032,POLLERA DE ALGODÓN PARA NIÑAS,4,"0,029",0.029,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104033,REMERA PARA NIÑAS,4,"0,037",0.037,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104034,ROPA INTERIOR PARA NIÑAS,4,"0,019",0.019,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104035,UNIFORME ESCOLAR PARA NIÑAS,4,"0,035",0.035,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104036,UNIFORME DE GIMNASIA PARA NIÑOS Y NIÑAS,4,"0,031",0.031,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104037,VESTIDO PARA NIÑAS,4,"0,033",0.033,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104038,CAMISA DE VESTIR PARA NIÑOS,4,"0,030",0.03,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104039,CONJUNTO DE BUZO PARA NIÑOS,4,"0,034",0.034,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104040,PANTALÓN VESTIR PARA NIÑOS,4,"0,049",0.049,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104041,REMERA PARA NIÑOS,4,"0,064",0.064,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104042,ROPA INTERIOR PARA NIÑOS,4,"0,019",0.019,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104043,SHORT PARA NIÑOS Y NIÑAS,4,"0,031",0.031,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30104044,UNIFORME ESCOLAR PARA NIÑOS,4,"0,085",0.085,,30104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30105000,PRENDAS DE VESTIR PARA BEBÉ,3,"0,145",0.145,,30100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30105045,CONJUNTO PARA BEBÉ,4,"0,084",0.084,,30105000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30105046,OSITO PARA BEBÉ,4,"0,061",0.061,,30105000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30200000,ACCESORIOS DE VESTIR,2,"0,039",0.039,,30000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30201000,ACCESORIOS,3,"0,039",0.039,,30200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30201047,CINTO PARA CABALLERO,4,"0,021",0.021,,30201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30201048,CORBATAS,4,"0,018",0.018,,30201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30300000,SERVICIOS DE VESTIMENTA,2,"0,128",0.128,,30000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30301000,SERVICIOS DE VESTIMENTA,3,"0,128",0.128,,30300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30301049,CONFECCIÓN DE PRENDAS DE VESTIR,4,"0,041",0.041,,30301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30301050,LAVADO DE PRENDAS DE VESTIR,4,"0,087",0.087,,30301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30400000,CALZADOS,2,"1,570",1.57,,30000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30401000,CALZADOS PARA CABALLEROS,3,"0,688",0.688,,30400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30401051,BOTAS DE CUERO PARA CABALLERO,4,"0,070",0.07,,30401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30401052,ZAPATILLAS PARA CABALLERO,4,"0,036",0.036,,30401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30401053,ZAPATOS DE VESTIR PARA CABALLERO,4,"0,130",0.13,,30401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30401054,ZAPATOS DEPORTIVOS PARA CABALLERO,4,"0,452",0.452,,30401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30402000,CALZADOS PARA DAMAS,3,"0,589",0.589,,30400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30402055,BOTAS DE CUERO PARA DAMA,4,"0,092",0.092,,30402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30402056,CHATITAS PARA DAMA,4,"0,044",0.044,,30402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30402057,SANDALIAS PARA DAMA,4,"0,060",0.06,,30402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30402058,SUECOS PARA DAMA,4,"0,046",0.046,,30402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30402059,ZAPATOS TACÓN ALTO PARA DAMA,4,"0,107",0.107,,30402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30402060,ZAPATOS TACÓN BAJO PARA DAMA,4,"0,075",0.075,,30402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30402061,ZAPATOS DEPORTIVOS PARA DAMA,4,"0,164",0.164,,30402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30403000,CALZADOS PARA NIÑOS Y NIÑAS,3,"0,293",0.293,,30400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30403062,ZAPATOS DEPORTIVOS PARA NIÑAS,4,"0,148",0.148,,30403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30403063,ZAPATO ESCOLAR PARA NIÑOS Y NIÑAS,4,"0,028",0.028,,30403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30403064,ZAPATOS DEPORTIVOS PARA NIÑOS,4,"0,037",0.037,,30403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30403065,ZAPATILLAS PARA NIÑOS Y NIÑAS,4,"0,032",0.032,,30403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+30403066,ZAPATOS DE VESTIR PARA NIÑAS,4,"0,048",0.048,,30403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40000000,"ALOJAMIENTO, MANTENIMIENTO, REPARACIÓN Y SERVICIOS PARA LA VIVIENDA",1,"10,320",10.32,descripcion_armada_de_lineas_vecinas,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40100000,ALOJAMIENTO,2,"3,557",3.557,,40000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40101000,ALQUILERES,3,"3,557",3.557,,40100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40101001,ALQUILER DE VIVIENDA,4,"3,557",3.557,,40101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40200000,MANTENIMIENTO Y REPARACIÓN DE LA VIVIENDA,2,"0,440",0.44,,40000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40201000,MATERIALES PARA LA REPARACIÓN DE LA VIVIENDA,3,"0,440",0.44,,40200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40201002,CEMENTO,4,"0,072",0.072,,40201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40201003,LADRILLOS,4,"0,062",0.062,,40201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40201004,VIDRIO PARA VENTANAS,4,"0,060",0.06,,40201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40201005,PINTURAS AL ACEITE Y AL AGUA,4,"0,078",0.078,,40201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40201006,ACCESORIOS PARA EL BAÑO,4,"0,168",0.168,,40201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40300000,SERVICIOS DE MANTENIMIENTO DE LA VIVIENDA,2,"0,350",0.35,,40000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40301000,SERVICIOS DE MANTENIMIENTO Y REPARACIÓN DE LA VIVIENDA,3,"0,350",0.35,,40300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40301007,SERVICIOS DE ELECTRICISTA,4,"0,093",0.093,,40301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40301008,SERVICIOS DE PINTOR,4,"0,169",0.169,,40301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40301009,SERVICIOS DE PISERO O AZULEJISTA,4,"0,088",0.088,,40301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40400000,SERVICIOS BÁSICOS PARA LA VIVIENDA,2,"1,171",1.171,,40000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40401000,SERVICIOS DE SUMINISTRO DE AGUA Y RECOLECCIÓN DE BASURA,3,"1,171",1.171,,40400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40401010,CONSUMO DE AGUA CORRIENTE,4,"0,871",0.871,,40401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40401011,RECOLECCIÓN DE BASURA,4,"0,250",0.25,,40401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40401012,SERVICIOS DE LIMPIEZA,4,"0,050",0.05,,40401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40500000,SERVICIOS DE SUMINISTRO DE ELECTRICIDAD Y COMBUSTIBLE PARA EL HOGAR,2,"4,802",4.802,descripcion_armada_de_lineas_vecinas,40000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40501000,SERVICIOS DE SUMINISTRO DE ELECTRICIDAD,3,"3,492",3.492,,40500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40501013,CONSUMO DE ENERGÍA ELÉCTRICA,4,"3,492",3.492,,40501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40502000,COMBUSTIBLES LÍQUIDOS PARA EL HOGAR,3,"0,858",0.858,,40500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40502014,GAS LICUADO DE USO DOMÉSTICO,4,"0,858",0.858,,40502000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40503000,COMBUSTIBLES SÓLIDOS PARA EL HOGAR,3,"0,452",0.452,,40500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+40503015,CARBÓN,4,"0,452",0.452,,40503000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50000000,MUEBLES Y ARTÍCULOS PARA EL HOGAR,1,"7,956",7.956,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50100000,MUEBLES PARA EL HOGAR,2,"1,131",1.131,,50000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50101000,MUEBLES DE SALA,3,"0,215",0.215,,50100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50101001,JUEGO DE LIVING,4,"0,176",0.176,,50101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50101002,MODULAR PARA SALA,4,"0,039",0.039,,50101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50102000,MUEBLES DE COMEDOR,3,"0,128",0.128,,50100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50102003,JUEGO DE COMEDOR,4,"0,128",0.128,,50102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50103000,MUEBLES DE DORMITORIO,3,"0,628",0.628,,50100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50103004,CAMA CAMERA,4,"0,093",0.093,,50103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50103005,CAMA TIPO SOMMIER,4,"0,284",0.284,,50103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50103006,CUNA,4,"0,051",0.051,,50103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50103007,COLCHÓN,4,"0,051",0.051,,50103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50103008,CÓMODA,4,"0,047",0.047,,50103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50103009,PLACARD,4,"0,102",0.102,,50103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50104000,MUEBLES DE COCINA,3,"0,084",0.084,,50100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50104010,MUEBLES DE COCINA,4,"0,084",0.084,,50104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50105000,MUEBLES DE JARDÍN O PATIO,3,"0,077",0.077,,50100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50105011,JUEGO DE SILLAS Y MESAS PARA JARDÍN,4,"0,077",0.077,,50105000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50200000,ARTÍCULOS DE DORMITORIO Y BAÑOS,2,"0,170",0.17,,50000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50201000,ARTÍCULOS DE DORMITORIO,3,"0,129",0.129,,50200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50201012,EDREDÓN,4,"0,039",0.039,,50201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50201013,SÁBANAS,4,"0,090",0.09,,50201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50202000,ARTÍCULOS DE BAÑOS,3,"0,041",0.041,,50200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50202014,TOALLA,4,"0,041",0.041,,50202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50300000,EQUIPOS PARA EL HOGAR,2,"1,190",1.19,,50000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50301000,EQUIPOS PARA COCINAR,3,"0,532",0.532,,50300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50301015,COCINA A GAS,4,"0,053",0.053,,50301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50301016,CONGELADOR,4,"0,078",0.078,,50301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50301017,HELADERA,4,"0,311",0.311,,50301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50301018,HORNO ELÉCTRICO,4,"0,053",0.053,,50301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50301019,HORNO MICROONDAS,4,"0,035",0.035,,50301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50302000,EQUIPOS PARA LIMPIEZA DEL HOGAR,3,"0,236",0.236,,50300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50302020,LAVARROPAS AUTOMÁTICA,4,"0,071",0.071,,50302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50302021,LAVARROPAS SEMIAUTOMÁTICA,4,"0,081",0.081,,50302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50302022,SECADORA DE ROPA,4,"0,083",0.083,,50302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50303000,EQUIPOS PARA CLIMATIZACIÓN,3,"0,309",0.309,,50300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50303023,EQUIPO PARA CLIMATIZACIÓN,4,"0,309",0.309,,50303000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50304000,EQUIPOS PEQUEÑOS PARA LA LIMPIEZA,3,"0,029",0.029,,50300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50304024,ASPIRADORA,4,"0,029",0.029,,50304000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50305000,OTROS EQUIPOS PEQUEÑOS PARA EL HOGAR,3,"0,085",0.085,,50300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50305025,LICUADORA,4,"0,057",0.057,,50305000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50305026,PLANCHA ELÉCTRICA,4,"0,028",0.028,,50305000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50400000,REPARACIÓN DE EQUIPOS PARA EL HOGAR,2,"0,119",0.119,,50000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50401000,SERVICIOS DE REPARACIÓN DE EQUIPOS PARA EL HOGAR,3,"0,119",0.119,,50400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50401027,REPARACIÓN DE HELADERA,4,"0,051",0.051,,50401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50401028,REPARACIÓN DE LAVARROPA,4,"0,068",0.068,,50401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50500000,UTENSILIOS PARA EL HOGAR,2,"0,237",0.237,,50000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50501000,UTENSILIOS PARA EL HOGAR,3,"0,183",0.183,,50500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50501029,BOMBILLA,4,"0,025",0.025,,50501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50501030,CACEROLA,4,"0,038",0.038,,50501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50501031,TERMO PARA AGUA CALIENTE,4,"0,025",0.025,,50501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50501032,TERMO PARA AGUA FRÍA,4,"0,037",0.037,,50501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50501033,GUAMPA,4,"0,033",0.033,,50501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50501034,JUEGO DE CUBIERTOS,4,"0,025",0.025,,50501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50502000,VAJILLAS Y OTROS UTENSILIOS PARA EL HOGAR,3,"0,054",0.054,,50500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50502035,PLATO,4,"0,026",0.026,,50502000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50502036,VASO,4,"0,028",0.028,,50502000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50600000,HERRAMIENTAS PARA EL HOGAR,2,"0,310",0.31,,50000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50601000,HERRAMIENTAS PARA EL HOGAR,3,"0,043",0.043,,50600000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50601037,TALADRO ELÉCTRICO,4,"0,043",0.043,,50601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50602000,OTROS ARTÍCULOS PARA EL HOGAR,3,"0,268",0.268,,50600000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50602038,FLUORESCENTE,4,"0,059",0.059,,50602000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50602039,FOCO DE BAJO CONSUMO,4,"0,164",0.164,,50602000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50602040,PILAS ALCALINAS,4,"0,046",0.046,,50602000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50700000,ARTÍCULOS PARA EL CUIDADO DEL HOGAR Y SERVICIO DOMÉSTICO,2,"4,797",4.797,,50000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701000,ARTÍCULOS DE HIGIENE PARA EL HOGAR,3,"1,612",1.612,,50700000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701041,DETERGENTE LÍQUIDO,4,"0,040",0.04,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701042,JABÓN EN BARRA PARA LAVAR ROPA,4,"0,033",0.033,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701043,JABÓN EN POLVO PARA LAVAR ROPA,4,"0,380",0.38,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701044,SUAVIZANTE PARA ROPAS,4,"0,033",0.033,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701045,LAVANDINA,4,"0,278",0.278,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701046,DESODORANTE DE AMBIENTE,4,"0,131",0.131,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701047,INSECTICIDA,4,"0,105",0.105,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701048,ESCOBA,4,"0,104",0.104,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701049,ESPONJA,4,"0,070",0.07,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701050,PALO PARA REPASAR,4,"0,041",0.041,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701051,TRAPO DE PISO,4,"0,083",0.083,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701052,VIRULANA,4,"0,078",0.078,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701053,BOLSA PARA BASURA,4,"0,126",0.126,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701054,FÓSFOROS,4,"0,035",0.035,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701055,SERVILLETAS DE PAPEL,4,"0,036",0.036,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50701056,TOALLAS DE PAPEL PARA COCINA,4,"0,038",0.038,,50701000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50702000,SERVICIO DOMÉSTICO,3,"3,186",3.186,,50700000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+50702057,EMPLEADO DOMÉSTICO,4,"3,186",3.186,,50702000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60000000,GASTOS EN SALUD,1,"4,619",4.619,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60100000,PRODUCTOS MEDICINALES Y OTROS ARTÍCULOS PARA LA SALUD,2,"2,375",2.375,,60000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101000,PRODUCTOS FARMACÉUTICOS,3,"1,984",1.984,,60100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101001,ANTIINFLAMATORIO,4,"0,069",0.069,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101002,ANÁLGESICO Y ANTIPIRÉTICO,4,"0,234",0.234,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101003,ANTIHISTAMÍNICO O ANTIALÉRGENICO,4,"0,092",0.092,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101004,"ANTITUSIVO, EXPECTORANTE, BRONCODILATADOR",4,"0,119",0.119,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101005,"PROTECTOR DÉRMICO, ANTISÉPTICO",4,"0,066",0.066,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101006,ANTIBIÓTICO,4,"0,103",0.103,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101007,ANTIHIPERTENSIVO,4,"0,313",0.313,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101008,ANTIÁCIDO,4,"0,078",0.078,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101009,"ANTIESPASMÓDICO, ANTIDIARRÉICO",4,"0,029",0.029,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101010,ANTIDEPRESIVOS,4,"0,026",0.026,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101011,ANTIARTRÓSICO,4,"0,086",0.086,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101012,ANTIMICROBIANO OFTALMOLÓGICO,4,"0,052",0.052,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101013,"HIPOLIPEMIANTES, HIPOCOLESTEROLEMIANTES",4,"0,054",0.054,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101014,ANSIOLÍTICO,4,"0,055",0.055,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101015,VITAMINAS Y MINERALES,4,"0,170",0.17,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101016,ANTICONCEPTIVO,4,"0,024",0.024,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101017,ANTIDIABÉTICO,4,"0,182",0.182,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101018,INSULINA,4,"0,197",0.197,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60101019,PRODUCTOS MEDICINALES NATURALES,4,"0,033",0.033,,60101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60102000,PRODUCTOS NO FARMACÉUTICOS,3,"0,049",0.049,,60100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60102020,ALCOHOL RECTIFICADO,4,"0,049",0.049,,60102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60103000,OTROS ARTÍCULOS PARA LA SALUD,3,"0,341",0.341,,60100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60103021,ANTEOJOS RECETADOS POR MÉDICOS,4,"0,215",0.215,,60103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60103022,LENTES DE CONTACTO RECETADOS POR MÉDICOS,4,"0,045",0.045,,60103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60103023,APARATO DE TOMA DE PRESIÓN,4,"0,081",0.081,,60103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60200000,"ATENCIÓN MÉDICA, ODONTOLÓGICA, SERVICIOS Y OTROS ARTÍCULOS PARA LA SALUD",2,"2,244",2.244,descripcion_armada_de_lineas_vecinas,60000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60201000,ATENCIÓN MÉDICA,3,"0,213",0.213,,60200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60201024,CONSULTA AL CLÍNICO,4,"0,055",0.055,,60201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60201025,CONSULTA ESPECIALISTA,4,"0,115",0.115,,60201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60201026,CONSULTA AL OCULISTA,4,"0,044",0.044,,60201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60202000,ATENCIÓN ODONTOLÓGICA,3,"0,713",0.713,,60200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60202027,EXTRACCIÓN SIMPLE,4,"0,049",0.049,,60202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60202028,LIMPIEZA DE DIENTES,4,"0,056",0.056,,60202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60202029,OBTURACIÓN,4,"0,081",0.081,,60202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60202030,TRATAMIENTO DE CONDUCTO,4,"0,129",0.129,,60202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60202031,TRATAMIENTO DE ORTODONCIA,4,"0,398",0.398,,60202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60203000,SERVICIOS DE LABORATORIO,3,"0,182",0.182,,60200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60203032,ANÁLISIS LABORATORIALES,4,"0,071",0.071,,60203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60203033,ECOGRAFÍA,4,"0,037",0.037,,60203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60203034,RADIOGRAFÍA SIMPLE,4,"0,039",0.039,,60203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60203035,RESONANCIA MAGNÉTICA,4,"0,036",0.036,,60203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60204000,OTROS SERVICIOS DE SALUD,3,"0,158",0.158,,60200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60204036,FISIOTERAPIA O KINESIOLOGÍA,4,"0,062",0.062,,60204000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60204037,CONTROL CON NUTRICIONISTA,4,"0,096",0.096,,60204000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60205000,SERVICIOS HOSPITALARIOS,3,"0,976",0.976,,60200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60205038,HONORARIOS POR INTERVENCIONES QUIRÚRGICAS,4,"0,820",0.82,,60205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60205039,PARTO EN CESÁREA,4,"0,054",0.054,,60205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+60205040,INTERNACIÓN,4,"0,103",0.103,,60205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70000000,TRANSPORTE,1,"14,800",14.8,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70100000,ADQUISICIÓN DE VEHÍCULOS,2,"4,907",4.907,,70000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70101000,ADQUISICIÓN DE AUTOMÓVIL,3,"3,957",3.957,,70100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70101001,AUTOMÓVIL,4,"3,957",3.957,,70101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70102000,ADQUISICIÓN DE CAMIONETA,3,"0,710",0.71,,70100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70102002,CAMIONETA TIPO FAMILIAR,4,"0,710",0.71,,70102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70103000,ADQUISICIÓN DE MOTOCICLETA,3,"0,209",0.209,,70100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70103003,MOTOCICLETA,4,"0,209",0.209,,70103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70104000,ADQUISICIÓN DE BICICLETA,3,"0,031",0.031,,70100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70104004,BICICLETA,4,"0,031",0.031,,70104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70200000,"COMBUSTIBLES, REPUESTOS Y SERVICIOS DE MANTENIMIENTO Y REPARACIÓN DE EQUIPOS DE TRANSPORTE",2,"7,367",7.367,descripcion_armada_de_lineas_vecinas,70000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70201000,REPUESTOS Y ACCESORIOS PARA VEHÍCULOS,3,"0,487",0.487,,70200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70201005,AMORTIGUADOR,4,"0,048",0.048,,70201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70201006,BATERÍA,4,"0,129",0.129,,70201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70201007,CUBIERTA,4,"0,254",0.254,,70201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70201008,FILTRO DE ACEITE,4,"0,055",0.055,,70201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70202000,COMBUSTIBLES,3,"5,301",5.301,,70200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70202009,GASOIL COMÚN,4,"1,364",1.364,,70202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70202010,NAFTA COMÚN,4,"0,518",0.518,,70202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70202011,NAFTA SÚPER,4,"2,529",2.529,,70202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70202012,GASOIL ADITIVADO,4,"0,890",0.89,,70202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70203000,LUBRICANTES,3,"0,050",0.05,,70200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70203013,ACEITE LUBRICANTE,4,"0,050",0.05,,70203000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70204000,MANTENIMIENTO DE VEHÍCULOS,3,"1,288",1.288,,70200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70204014,MANTENIMIENTO DE COCHE Y CAMIONETA,4,"0,043",0.043,,70204000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70204015,LAVADO DE VEHÍCULO,4,"0,186",0.186,,70204000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70204016,ALINEACIÓN Y BALANCEO,4,"0,105",0.105,,70204000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70204017,CAMBIO DE AMORTIGUADOR,4,"0,954",0.954,,70204000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70205000,OTROS GASTOS DE TRANSPORTE PRIVADO,3,"0,240",0.24,,70200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70205018,ESTACIONAMIENTO,4,"0,058",0.058,,70205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70205019,REGISTRO DE CONDUCTOR,4,"0,025",0.025,,70205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70205020,HABILITACIÓN VEHICULAR,4,"0,157",0.157,,70205000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70300000,"TRANSPORTE PÚBLICO TERRESTRE, AÉREO, TAXIS Y TRANSPORTE ESCOLAR",2,"2,526",2.526,,70000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70301000,TRANSPORTE URBANO DE PASAJEROS POR CARRETERA,3,"1,813",1.813,,70300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70301021,ÓMNIBUS Y MICROS URBANOS,4,"1,497",1.497,,70301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70301022,SERVICIOS DE TAXI,4,"0,181",0.181,,70301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70301023,TRANSPORTE ESCOLAR,4,"0,135",0.135,,70301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70302000,TRANSPORTE INTERURBANO DE PASAJEROS POR CARRETERA,3,"0,412",0.412,,70300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70302024,MICROS INTERNOS DE MUNICIPIOS,4,"0,118",0.118,,70302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70302025,ÓMNIBUS Y MICROS INTERURBANOS,4,"0,266",0.266,,70302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70302026,ÓMNIBUS Y MICROS - INTERNACIONAL,4,"0,028",0.028,,70302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70303000,TRANSPORTE AÉREO DE PASAJEROS,3,"0,238",0.238,,70300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70303027,PASAJE EN AVIÓN,4,"0,238",0.238,,70303000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70304000,OTROS SERVICIOS DE TRANSPORTE,3,"0,063",0.063,,70300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+70304028,SERVICIO DE GRÚA,4,"0,063",0.063,,70304000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80000000,COMUNICACIONES,1,"3,955",3.955,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80100000,SERVICIOS POSTALES,2,"0,049",0.049,,80000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80101000,CORREO Y ENVÍO DE PAQUETES,3,"0,049",0.049,,80100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80101001,CORREO PRIVADO Y ENVÍO DE PAQUETES,4,"0,049",0.049,,80101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80200000,EQUIPOS TELEFÓNICOS,2,"0,519",0.519,,80000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80201000,EQUIPOS TELEFÓNICOS,3,"0,519",0.519,,80200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80201002,COMPRA DE EQUIPO MÓVIL,4,"0,519",0.519,,80201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80300000,SERVICIOS TELEFÓNICOS E INTERNET,2,"3,388",3.388,,80000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80301000,SERVICIOS DE TELÉFONOS FIJOS,3,"0,395",0.395,,80300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80301003,SERVICIO DE TELEFONÍA FIJA,4,"0,395",0.395,,80301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80302000,SERVICIOS DE TELÉFONOS MÓVILES,3,"2,356",2.356,,80300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80302004,SERVICIO DE TELEFONÍA MÓVIL,4,"2,356",2.356,,80302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80303000,SERVICIOS DE INTERNET,3,"0,636",0.636,,80300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80303005,SERVICIO DE INTERNET,4,"0,487",0.487,,80303000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+80303006,SERVICIO DE PAQUETE- INTERNET - CABLE,4,"0,149",0.149,,80303000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90000000,RECREACIÓN Y CULTURA,1,"6,701",6.701,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90100000,"EQUIPOS AUDIOVISUALES, FOTOGRÁFICOS Y DE PROCESAMIENTO DE LA INFORMACIÓN",2,"0,759",0.759,descripcion_armada_de_lineas_vecinas,90000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90101000,EQUIPO DE TELEVISIÓN,3,"0,462",0.462,,90100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90101001,TELEVISOR,4,"0,462",0.462,,90101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90102000,EQUIPO DE SONIDO,3,"0,066",0.066,,90100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90102002,EQUIPO DE SONIDO (FIJO),4,"0,036",0.036,,90102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90102003,EQUIPO DE SONIDO (PORTÁTIL),4,"0,030",0.03,,90102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90103000,EQUIPOS INFORMÁTICOS,3,"0,153",0.153,,90100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90103004,"COMPUTADOR PERSONAL, NOTEBOOK",4,"0,123",0.123,,90103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90103005,TABLET,4,"0,030",0.03,,90103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90104000,MEDIOS PARA GRABACIÓN,3,"0,053",0.053,,90100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90104006,"MEMORIA USB, PENDRIVE, DISCO DURO EXTERNO",4,"0,053",0.053,,90104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90105000,SERVICIOS DE REPARACIÓN DE EQUIPOS,3,"0,025",0.025,,90100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90105007,"REPARACIÓN DE CELULARES, PC DE ESCRITORIO Y TV",4,"0,025",0.025,,90105000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90200000,INSTRUMENTOS MUSICALES,2,"0,046",0.046,,90000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90201000,INSTRUMENTOS MUSICALES,3,"0,046",0.046,,90200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90201008,GUITARRA,4,"0,046",0.046,,90201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90300000,"JUGUETES, FLORES Y GASTO DE MASCOTAS",2,"1,521",1.521,,90000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90301000,JUGUETES,3,"0,260",0.26,,90300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90301009,"AUTITOS, COCHECITOS",4,"0,064",0.064,,90301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90301010,MUÑECAS,4,"0,056",0.056,,90301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90301011,BICICLETA PARA NIÑOS,4,"0,079",0.079,,90301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90301012,CONSOLA DE VIDEOJUEGOS,4,"0,061",0.061,,90301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90302000,ARTÍCULOS PARA DEPORTE,3,"0,127",0.127,,90300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90302013,PELOTA DE FÚTBOL,4,"0,040",0.04,,90302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90302014,BOTINES DE FÚTBOL,4,"0,087",0.087,,90302000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90303000,FLORES,3,"0,073",0.073,,90300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90303015,FLORES NATURALES,4,"0,073",0.073,,90303000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90304000,GASTOS DE MASCOTAS,3,"0,706",0.706,,90300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90304016,ALIMENTO PARA GATOS,4,"0,080",0.08,,90304000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90304017,ALIMENTO PARA PERROS,4,"0,626",0.626,,90304000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90305000,SERVICIOS VETERINARIOS,3,"0,356",0.356,,90300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90305018,"SERVICIO DE CUIDADO PARA MASCOTAS (BAÑO, CORTE)",4,"0,227",0.227,,90305000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90305019,SERVICIO DE VETERINARIOS,4,"0,128",0.128,,90305000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90400000,"ENTRADAS A ESPECTÁCULOS Y CUOTAS A OTROS DEPORTES , CUOTAS DE TV CABLES Y AIRES",2,"2,495",2.495,descripcion_armada_de_lineas_vecinas,90000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90401000,ENTRADAS A ACTIVIDADES DEPORTIVAS,3,"0,396",0.396,,90400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90401020,ENTRADA A ENCUENTROS DE FUTBOL,4,"0,137",0.137,,90401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90401021,GIMNASIO,4,"0,259",0.259,,90401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90402000,ENTRADAS A ACTIVIDADES DE RECREACIÓN Y CULTURALES,3,"0,440",0.44,,90400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90402022,ENTRADA A CINE,4,"0,218",0.218,,90402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90402023,ENTRADA A DISCOTECA,4,"0,222",0.222,,90402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90403000,SERVICIOS DE TELEVISIÓN PAGADA,3,"1,618",1.618,,90400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90403024,SERVICIOS DE TELEVISIÓN PAGADA,4,"1,618",1.618,,90403000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90404000,SERVICIOS FOTOGRÁFICOS,3,"0,041",0.041,,90400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90404025,SERVICIOS FOTOGRÁFICOS,4,"0,041",0.041,,90404000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90500000,MATERIALES DE LECTURA Y ÚTILES ESCOLARES,2,"0,847",0.847,,90000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90501000,"LIBROS, ENCICLOPEDIAS Y NOVELAS",3,"0,337",0.337,,90500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90501026,LIBROS DE TEXTO,4,"0,141",0.141,,90501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90501027,LIBROS UNIVERSITARIOS,4,"0,080",0.08,,90501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90501028,"ENCICLOPEDIA, DICCIONARIO",4,"0,041",0.041,,90501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90501029,"LIBROS COMPLEMENTARIOS, NOVELAS, CUENTOS",4,"0,075",0.075,,90501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90502000,REVISTAS Y PERIÓDICOS,3,"0,258",0.258,,90500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90502030,PERIÓDICOS,4,"0,258",0.258,,90502000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90503000,ÚTILES ESCOLARES,3,"0,252",0.252,,90500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90503031,CUADERNO CORRIENTE,4,"0,061",0.061,,90503000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90503032,CUADERNO UNIVERSITARIO,4,"0,049",0.049,,90503000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90503033,BOLÍGRAFO,4,"0,049",0.049,,90503000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90503034,"LÁPIZ DE PAPEL, LÁPICES DE COLORES",4,"0,044",0.044,,90503000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90503035,"HOJAS BLANCAS TAMAÑO CARTA, OFICIO, A4",4,"0,044",0.044,,90503000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90503036,PEGAMENTO,4,"0,004",0.004,,90503000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90600000,VACACIONES Y TURISMO,2,"1,033",1.033,,90000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90601000,VACACIONES Y TURISMO,3,"1,033",1.033,,90600000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90601037,PAQUETE TURÍSTICO AL EXTERIOR TODO INCLUÍDO,4,"0,998",0.998,,90601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+90601038,PAQUETE TURÍSTICO AL INTERIOR TODO INCLUÍDO,4,"0,035",0.035,,90601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100000000,EDUCACIÓN,1,"4,772",4.772,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100100000,GASTOS EN EDUCACIÓN PREESCOLAR Y PRIMARIA,2,"1,385",1.385,,100000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100101000,NIVEL PREESCOLAR,3,"0,245",0.245,,100100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100101001,EDUCACIÓN PREESCOLAR,4,"0,245",0.245,,100101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100102000,NIVEL PRIMARIO,3,"1,140",1.14,,100100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100102002,EDUCACIÓN PRIMARIA,4,"1,140",1.14,,100102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100200000,GASTOS EN EDUCACIÓN SECUNDARIA,2,"0,486",0.486,,100000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100201000,NIVEL MEDIO O SECUNDARIO,3,"0,486",0.486,,100200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100201003,EDUCACIÓN SECUNDARIA,4,"0,486",0.486,,100201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100300000,GASTOS EN EDUCACIÓN POST SECUNDARIA,2,"0,147",0.147,,100000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100301000,NIVEL POST SECUNDARIO,3,"0,147",0.147,,100300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100301004,"CURSILLO DE INGRESO, PROBATORIO DE ADMISIÓN UNIVERSITARIA",4,"0,147",0.147,,100301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100400000,GASTOS EN EDUCACIÓN TERCIARIA,2,"2,409",2.409,,100000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100401000,NIVEL UNIVERISTARIO PREGRADO,3,"2,248",2.248,,100400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100401005,EDUCACIÓN UNIVERSITARIA - PREGRADO,4,"2,248",2.248,,100401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100402000,NIVEL UNIVERISTARIO POSTGRADO,3,"0,161",0.161,,100400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100402006,EDUCACIÓN UNIVERSITARIA - POSTGRADO,4,"0,161",0.161,,100402000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100500000,GASTOS EN OTROS CURSOS Y ESTUDIOS,2,"0,345",0.345,,100000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100501000,CURSOS DE IDIOMAS,3,"0,256",0.256,,100500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100501007,CURSO DE IDIOMAS,4,"0,256",0.256,,100501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100502000,OTROS CURSOS COMPLEMENTARIOS,3,"0,088",0.088,,100500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+100502008,CURSO DE DANZA,4,"0,088",0.088,,100502000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110000000,RESTAURANTES Y HOTELES,1,"5,989",5.989,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110100000,RESTAURANTES,2,"5,860",5.86,,110000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110101000,POSTRES CONSUMIDOS FUERA DEL HOGAR,3,"0,023",0.023,,110100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110101001,POSTRE CONSUMIDO FUERA DEL HOGAR,4,"0,023",0.023,,110101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110102000,BEBIDAS CONSUMIDAS FUERA DEL HOGAR,3,"0,519",0.519,,110100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110102002,CAFÉ SERVIDO FUERA DEL HOGAR,4,"0,121",0.121,,110102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110102003,COCIDO SERVIDO FUERA DEL HOGAR,4,"0,039",0.039,,110102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110102004,GASEOSAS SERVIDAS FUERA DEL HOGAR,4,"0,227",0.227,,110102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110102005,JUGO SERVIDO FUERA DEL HOGAR,4,"0,115",0.115,,110102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110102006,CERVEZAS CONSUMIDAS FUERA DEL HOGAR,4,"0,017",0.017,,110102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110103000,COMIDAS PREPARADAS PARA LLEVAR,3,"0,756",0.756,,110100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110103007,HAMBURGUESA CONSUMIDA FUERA DEL HOGAR,4,"0,088",0.088,,110103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110103008,PIZZA CONSUMIDA FUERA DEL HOGAR,4,"0,151",0.151,,110103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110103009,POLLO ROSTIZADO,4,"0,056",0.056,,110103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110103010,SÁNDWICH CONSUMIDO FUERA DEL HOGAR,4,"0,407",0.407,,110103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110103011,TARTA PARA LLEVAR,4,"0,055",0.055,,110103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110104000,COMIDAS CONSUMIDAS FUERA DEL HOGAR,3,"3,843",3.843,,110100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110104012,CALDO CONSUMIDO FUERA DEL HOGAR,4,"0,281",0.281,,110104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110104013,PLATO PREPARADO: ASADO A LA PARRILLA O A LA OLLA,4,"0,741",0.741,,110104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110104014,PLATO PREPARADO: GUISO DE CARNE O POLLO,4,"0,970",0.97,,110104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110104015,PLATO PREPARADO: MILANESA CON AGREGADO,4,"0,553",0.553,,110104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110104016,PLATO PREPARADO: PASTAS CON CARNE O POLLO,4,"0,942",0.942,,110104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110104017,PLATO PREPARADO: PUCHERO,4,"0,259",0.259,,110104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110104018,ALMUERZO O CENA CONSUMIDOS FUERA DEL HOGAR,4,"0,097",0.097,,110104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110105000,SERVICIOS DE COMIDA POR CONTRATO,3,"0,719",0.719,,110100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110105019,SERVICIO COMPLETO PARA EVENTOS CON COMIDA INCLUÍDA,4,"0,719",0.719,,110105000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110200000,HOTELES,2,"0,128",0.128,,110000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110201000,SERVICIOS DE ALOJAMIENTO,3,"0,128",0.128,,110200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+110201020,ALOJAMIENTO EN HOTEL,4,"0,128",0.128,,110201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120000000,BIENES Y SERVICIOS DIVERSOS,1,"7,561",7.561,,0,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120100000,CUIDADO PERSONAL,2,"4,530",4.53,,120000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120101000,SERVICIOS DE PELUQUERÍA PARA CABALLEROS,3,"0,477",0.477,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120101001,CORTE DE PELO PARA CABALLEROS,4,"0,477",0.477,,120101000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120102000,SERVICIOS DE PELUQUERÍA PARA DAMAS,3,"0,881",0.881,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120102002,ALISADO CON PLANCHITA,4,"0,304",0.304,,120102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120102003,CORTE PARA DAMA,4,"0,197",0.197,,120102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120102004,PEINADO PARA DAMA,4,"0,082",0.082,,120102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120102005,TEÑIDO DE PELO PARA DAMA,4,"0,297",0.297,,120102000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120103000,OTROS SERVICIOS DE CUIDADOS PERSONALES,3,"0,336",0.336,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120103006,MANICURA,4,"0,167",0.167,,120103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120103007,PEDICURO,4,"0,169",0.169,,120103000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120104000,ARTÍCULOS DE CUIDADOS DENTALES,3,"0,291",0.291,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120104008,CEPILLO DE DIENTES,4,"0,166",0.166,,120104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120104009,PASTA DENTAL,4,"0,125",0.125,,120104000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120105000,ARTÍCULOS DE CUIDADOS CAPILARES,3,"0,274",0.274,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120105010,ACONDICIONADOR,4,"0,103",0.103,,120105000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120105011,SHAMPOO,4,"0,172",0.172,,120105000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120106000,ARTÍCULOS PARA AFEITAR,3,"0,247",0.247,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120106012,MÁQUINA DE AFEITAR DESECHABLE,4,"0,247",0.247,,120106000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120107000,ARTÍCULOS DE TOCADOR,3,"0,213",0.213,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120107013,JABÓN DE TOCADOR,4,"0,213",0.213,,120107000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120108000,COSMÉTICOS,3,"0,047",0.047,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120108014,BASE PARA LA CARA,4,"0,008",0.008,,120108000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120108015,LÁPIZ LABIAL,4,"0,024",0.024,,120108000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120108016,MÁSCARA PARA PESTAÑA O RÍMEL,4,"0,014",0.014,,120108000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120109000,DESODORANTES,3,"0,614",0.614,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120109017,DESODORANTE PERSONAL PARA HOMBRE,4,"0,411",0.411,,120109000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120109018,DESODORANTE PERSONAL PARA MUJER,4,"0,203",0.203,,120109000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120110000,PAPEL HIGIÉNICO,3,"0,263",0.263,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120110019,PAPEL HIGIÉNICO,4,"0,263",0.263,,120110000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120111000,PAÑALES Y TOALLAS SANITARIAS,3,"0,554",0.554,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120111020,PAÑAL DESECHABLE,4,"0,516",0.516,,120111000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120111021,TOALLA SANITARIA,4,"0,039",0.039,,120111000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120112000,CREMAS PARA CUIDADO PERSONAL,3,"0,093",0.093,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120112022,CREMA HUMECTANTE,4,"0,093",0.093,,120112000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120113000,PERFUMES,3,"0,238",0.238,,120100000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120113023,PERFUME Y COLONIA PARA CABALLEROS,4,"0,104",0.104,,120113000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120113024,PERFUME Y COLONIA PARA DAMA,4,"0,134",0.134,,120113000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120200000,"RELOJES, JOYAS Y OTROS UTENSILIOS PERSONALES",2,"0,255",0.255,,120000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120201000,JOYAS,3,"0,075",0.075,,120200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120201025,ANILLO DE ORO O PLATA,4,"0,036",0.036,,120201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120201026,CADENA DE ORO O PLATA,4,"0,038",0.038,,120201000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120202000,OTROS UTENSILIOS PERSONALES,3,"0,180",0.18,,120200000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120202027,CARTERA DE CUERO PARA DAMA,4,"0,060",0.06,,120202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120202028,MOCHILA,4,"0,038",0.038,,120202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120202029,BIBERÓN,4,"0,056",0.056,,120202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120202030,ANTEOJOS DE SOL,4,"0,026",0.026,,120202000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120300000,PROTECCIÓN SOCIAL,2,"0,123",0.123,,120000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120301000,SERVICIO MATERNAL,3,"0,123",0.123,,120300000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120301031,SERVICIO MATERNAL,4,"0,123",0.123,,120301000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120400000,SEGUROS,2,"0,979",0.979,,120000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120401000,SEGUROS,3,"0,979",0.979,,120400000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120401032,SEGURO DE ACCIDENTES PERSONALES,4,"0,060",0.06,,120401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120401033,SEGURO DE VEHÍCULO,4,"0,919",0.919,,120401000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120500000,SERVICIOS FINANCIEROS,2,"0,031",0.031,,120000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120501000,SERVICIOS FINANCIEROS,3,"0,031",0.031,,120500000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120501034,COSTO DE RENOVACIÓN DE TARJETAS DE CRÉDITO,4,"0,031",0.031,,120501000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120600000,"GASTOS FUNERARIOS, DOCUMENTACIONES Y CUOTAS A CLUBES PRIVADOS Y DEPORTIVOS",2,"1,643",1.643,descripcion_armada_de_lineas_vecinas,120000000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120601000,"SERVICIOS FUNERARIOS, RENOVACIÓN DE DOCUMENTOS Y OTROS SERVICIOS DIVERSOS",3,"1,643",1.643,descripcion_armada_de_lineas_vecinas,120600000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120601035,RENOVACIÓN DE CÉDULA DE IDENTIDAD,4,"0,121",0.121,,120601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120601036,PASAPORTE,4,"0,054",0.054,,120601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120601037,PAGO POR EL SERVICIO DE ESCRIBANOS,4,"0,040",0.04,,120601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120601038,FOTOCOPIAS,4,"0,123",0.123,,120601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120601039,CUOTAS DE CLUBES SOCIALES Y DEPORTIVOS,4,"0,776",0.776,,120601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120601040,SERVICIOS FÚNEBRES,4,"0,405",0.405,,120601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf
+120601041,ALQUILER DE SILLAS Y MESAS,4,"0,124",0.124,,120601000,"BCP, Metodología IPC base dic-2017, Anexo 2",raw/bcp_metodologia_ipc_base_dic2017.pdf

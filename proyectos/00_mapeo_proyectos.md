@@ -2,6 +2,8 @@
 
 *Fase 1 — reconocimiento, 2026-09-22. Base: `paraguay_macro_pilot.duckdb`, esquema 49, SHA-256 `c902c77f…4f50`.*
 
+> **Actualización 2026-09-24.** La base no cambió (mismo SHA-256). Se marcan con **⊕** las variables que antes faltaban y hoy existen **fuera de la base**: el bloque clima/agro en `data/clima/` y las adquisiciones en `input/acquisition_candidates/`. Ver `00_inventario_base.md` § 6. Son datos externos, sin revisión de un economista, y no están integrados a DuckDB. En la tabla resumen, la viabilidad nueva va en negrita después de «→»; los proyectos N1–N12 están en `00_resumen_viabilidad.md`.
+
 Cómo leer este documento:
 
 - **Variables necesarias** salen de la pregunta, el estimando y la "escalera de datos" de cada ficha (niveles *mínimo* y *suficiente*; los niveles *ideal* y *óptimo* casi nunca están en la base y se mencionan solo cuando algo existe).
@@ -18,22 +20,22 @@ Cómo leer este documento:
 | 03 | B2 Marco multi-horizonte PYG/USD | `03_b2_tc_multihorizonte` | A | **Alta** | Falta dólar amplio (DXY) e IPC de EE.UU. |
 | 04 | B3 Flujo de órdenes y microestructura | `04_b3_flujo_ordenes_fx` | C | **Baja** | No existe flujo firmado por agente |
 | 05 | C1 Liquidez USD, dolarización y descalce | `05_c1_liquidez_usd_descalce` | B | **Media** | Sin plazo residual, fondeo externo validado ni cobertura del prestatario |
-| 06 | C2 Depósitos, crédito y sustitución | `06_c2_depositos_credito` | A | **Media-alta** (bancos) / **Baja** (cooperativas) | Tasas solo a nivel sistema; cooperativas solo agregadas |
-| 07 | C3 Bonos corporativos, banca y deuda pública | `07_c3_bonos_deuda_publica` | B | **Media** | Sin resultados de subastas del Tesoro ni security master |
+| 06 | C2 Depósitos, crédito y sustitución | `06_c2_depositos_credito` | A | **Media-alta** (bancos) / Baja → **Media-baja** (cooperativas) | Tasas solo a nivel sistema; cooperativas ⊕ panel anual INCOOP 2017–2025 |
+| 07 | C3 Bonos corporativos, banca y deuda pública | `07_c3_bonos_deuda_publica` | B | Media → **Media-alta** | ⊕ subastas del Tesoro 2006–2026 y *security master*; tenencias solo en 4 cortes |
 | 08 | C4 Riesgo bancario y repricing | `08_c4_repricing_riesgo` | B | **Baja** | Sin tasa fija/variable ni fechas de reajuste |
-| 09 | D1 ENSO no lineal | `09_d1_enso_no_lineal` | A | **Media** (alta si se agrega ONI) | ONI no está en la base (fuente externa trivial) |
-| 10 | D2 Clima por calendario agrícola | `10_d2_clima_calendario_agricola` | B | **Baja** | Sin clima ni producción de cultivos |
-| 11 | D3 Pronósticos ENSO y sorpresas | `11_d3_pronosticos_enso` | B | **Baja** | Sin vintages de pronósticos ENSO |
-| 12 | D4 Inflación climática y riesgo de cola | `12_d4_inflacion_climatica` | B | **Media** | ONI externo; jerarquía del IPC con identidad posicional |
-| 13 | D5 Clima y riesgo de crédito | `13_d5_clima_riesgo_credito` | B | **Media** (stress test descriptivo) / **Baja** (causal) | Clima externo; panel solo desde 2016 |
+| 09 | D1 ENSO no lineal | `09_d1_enso_no_lineal` | A | Media → **Alta** | ⊕ ONI/RONI/MEI/SOI y clima local; límite: pocos episodios ENSO |
+| 10 | D2 Clima por calendario agrícola | `10_d2_clima_calendario_agricola` | B | Baja → **Media-alta** | ⊕ lluvia, SPI y NDVI por departamento, producción MAG por departamento y calendario; temperatura y SPEI en descarga |
+| 11 | D3 Pronósticos ENSO y sorpresas | `11_d3_pronosticos_enso` | B | Baja → **Media** | ⊕ vintages 2003–2025-04 (dos productos distintos); sin datos desde 2025-05 |
+| 12 | D4 Inflación climática y riesgo de cola | `12_d4_inflacion_climatica` | B | Media → **Media-alta** | ⊕ ponderaciones oficiales del IPC (465 artículos), clima y precios mayoristas; faltan microprecios |
+| 13 | D5 Clima y riesgo de crédito | `13_d5_clima_riesgo_credito` | B | **Media** (stress test descriptivo) / **Baja** (causal) | ⊕ clima por departamento, pero falta la geografía de la cartera; panel solo desde 2016 |
 | 14 | E1 Combinación y reconciliación del PIB | `14_e1_combinacion_pib` | A | **Media** | No hay archivo de pronósticos; hay que generarlos |
 | 15 | E2 Vintages, nowcasting y juicio | `15_e2_vintages_nowcasting` | A | **Baja** | La base tiene un único vintage por fuente |
 | 16 | E3 Desacuerdo y anclaje de expectativas | `16_e3_expectativas_anclaje` | A | **Media** (agregado) | EVE sin dispersión ni n; historia de la meta no está en la base |
 | 17 | F1 Facturación electrónica y pagos | `17_f1_facturacion_electronica` | C | **Baja** | Ningún dato SIFEN ni de firma |
-| 18 | F2 Precios de importación y frontera | `18_f2_pass_through_frontera` | B | **Media** (agregado) / **Baja** (frontera) | IMTS fuera de la base; sin aduanas ni precios regionales |
-| 19 | F3 Río, logística e hidroelectricidad | `19_f3_rio_logistica` | B | **Baja** (logística) / **Media** (módulo energía) | Sin niveles del río ni fletes |
+| 18 | F2 Precios de importación y frontera | `18_f2_pass_through_frontera` | B | **Media** (agregado) / Baja → **Media** (frontera) | ⊕ aduanas a nivel ítem 1997–2026 por aduana y origen; sin moneda de factura ni precios regionales |
+| 19 | F3 Río, logística e hidroelectricidad | `19_f3_rio_logistica` | B | Baja → **Media** (logística) / Media → **Media-alta** (energía) | ⊕ nivel del río diario 1904–2026 e Itaipú; faltan fletes, restricciones de navegación y Yacyretá |
 | 20 | F4 Pagos instantáneos (SPI) | `20_f4_pagos_instantaneos` | C | **Media** (monitoreo) / **Baja** (causal) | Datos mensuales por entidad, no cliente-día |
-| 21 | F5 Inflación desigual y comunicación | `21_f5_inflacion_desigual` | A (N9) / C (N10) | **Media** (N9) / **Baja** (N10) | Faltan ponderadores de gasto por grupo de hogares |
+| 21 | F5 Inflación desigual y comunicación | `21_f5_inflacion_desigual` | A (N9) / C (N10) | **Media** (N9) / **Baja** (N10) | ⊕ ponderaciones oficiales por artículo; faltan ponderadores por grupo de hogares (EPF 2015/16) |
 
 ---
 
@@ -144,7 +146,7 @@ Cómo leer este documento:
 | Tasa de política | ✅ | Cuadro 19 | M 2011 → 2026-07 | Prelim. |
 | Crédito por tipo de entidad | 🟡 | bancos, financieras (paneles); cooperativas Tipo A (Cuadros 23b/24b, agregado) | Coop.: M 2017-12 → 2025-11 | Prelim. |
 | Tasas por banco | ❌ | solo máximo/mínimo/promedio del sistema | — | — |
-| Panel de cooperativas por entidad (INCOOP) | ❌ | — | — | — |
+| Panel de cooperativas por entidad (INCOOP) | ⊕ 🟡 | fuera de la base: balances por cooperativa tipo A (`web_no_clima_2026-09-23/raw/incoop`) | A 2017–2024; T 2025 | Externa (INCOOP: «referencial, no validado») |
 
 **Viabilidad preliminar: Media-alta** para la versión bancaria (betas por producto-moneda y flujos banco-mes); **baja** para la sustitución banca-cooperativas.
 
@@ -159,9 +161,9 @@ Cómo leer este documento:
 | Tasas bancarias por plazo | ✅ | `financial_indicators` 2.1/2.2 | M 2011 → 2026-06 | Prelim. |
 | Transacciones secundarias con emisor e ISIN | ✅ | `securities_trades` (bonos corporativos, subordinados, financieros, Tesoro desde 2023) | 2010 → 2026-08 | **Validada (estructural)** |
 | Subastas de LRM (BCP) | ✅ | `lrm_auctions` | 2013 → 2026-07 | Especial |
-| Resultados de subastas de bonos del Tesoro (ofertas, adjudicación, rendimiento) | ❌ | — | — | — |
+| Resultados de subastas de bonos del Tesoro (ofertas, adjudicación, rendimiento) | ⊕ ✅ | fuera de la base: MEF, resultado de subastas por subasta (`web_no_clima_2026-09-23/raw/mef/bonos`) | eventos 2006–2026 (sin subastas en 2011) | Externa |
 | Deuda pública | 🟡 | Cuadro 59 (deuda externa); MEF: incurrimiento neto de pasivos | M 1994/2003 → 2026 | Prelim. |
-| Security master (emisor, vencimiento, cupón), holdings bancarios | ❌ | parcialmente reconstruible desde transacciones | — | — |
+| Security master (emisor, vencimiento, cupón), holdings bancarios | ⊕ 🟡 | fuera de la base: condiciones financieras de 194 emisiones del Tesoro; tenencias por tenedor (dic-2023, dic-2024, dic-2025, ago-2026) | cortes | Externa |
 
 **Viabilidad preliminar: Media** — el módulo bonos-banca tiene curvas y transacciones; el módulo deuda pública no tiene subastas del Tesoro.
 
@@ -191,7 +193,7 @@ Cómo leer este documento:
 | Exportaciones agrícolas en volumen (soja, maíz, trigo) | ✅ | Cuadro 44b | M 1994 → 2026-07 | Prelim. |
 | Precios internacionales de alimentos | ✅ | Cuadro 49; `imf_pcps` | M 1994 → 2026-08 | Prelim. |
 | Tipo de cambio, EVE | ✅ | `exchange_rates`; `eve` | M | Validada / Prelim. |
-| ONI u otro índice ENSO | ❌ | — (externo: NOAA CPC) | — | — |
+| ONI u otro índice ENSO | ⊕ ✅ | fuera de la base: `data/clima/enso_indices.csv` (ONI, RONI, MEI.v2, SOI, Niño 3.4) | M 1950 → 2026-08 | Externa |
 
 **Viabilidad preliminar: Media** (Alta en cuanto se incorpore ONI, que es una serie pública y estable). Riesgo principal: el IMAEP largo (Cuadro 9) y el de 2014 (9 a) pueden tener cambio de base.
 
@@ -199,23 +201,23 @@ Cómo leer este documento:
 
 | Variable necesaria | Estado | Serie / tabla | Frec. y rango | Nivel |
 |---|---|---|---|---|
-| Clima mensual/diario nacional (lluvia, temperatura) | ❌ | — (externo: DMH, CHIRPS, ERA5-Land) | — | — |
-| Producción anual de cultivos (soja, maíz, trigo) | 🟡 proxy | exportaciones en volumen (Cuadro 44b, 46b); PIB agrícola (Cuadros 1, 6) | M/A | Prelim. |
+| Clima mensual/diario nacional (lluvia, temperatura) | ⊕ ✅/🟡 | fuera de la base: CHIRPS, SPI y NDVI por departamento; temperatura y SPEI de ERA5-Land **en descarga** | M 1981 → 2026-08 | Externa |
+| Producción anual de cultivos (soja, maíz, trigo) | ⊕ ✅ | fuera de la base: MAG por departamento y campaña (16–22 cultivos), FAOSTAT y USDA PSD nacionales; en la base, exportaciones en volumen (Cuadros 44b, 46b) y PIB agrícola (Cuadros 1, 6) como proxy | campaña 2007/08 → 2024/25; A 1961 → 2024 | Externa / Prelim. |
 | Actividad agrícola | ✅ | IMAEP primario (9 a); PIB agricultura | M/T | Validada / Prelim. |
 | IPC alimentos | ✅ | Cuadros 14 b, 15, 16 | M 1994 → 2026-07 | Prelim. |
-| Calendarios de cultivo | ❌ | — (externo: MAG, FAO) | — | — |
+| Calendarios de cultivo | ⊕ ✅ | fuera de la base: `data/clima/calendario_cultivos.csv` (soja y maíz zafra y zafriña, trigo, arroz; citas USDA verificadas) | estático | Externa |
 
-**Viabilidad preliminar: Baja** — la variable física central no existe en la base.
+**Viabilidad preliminar: Baja** — la variable física central no existe en la base. **Actualización 2026-09-24: Media-alta**, con los datos externos de `data/clima` (falta ERA5-Land, en descarga).
 
 ## 11 · D3 — Pronósticos ENSO, sorpresas y adaptación
 
 | Variable necesaria | Estado | Serie / tabla | Nivel |
 |---|---|---|---|
-| Vintages de probabilidades ENSO (IRI/CPC) | ❌ | — | — |
+| Vintages de probabilidades ENSO (IRI/CPC) | ⊕ 🟡 | fuera de la base: `data/clima/enso_iri_pronosticos.csv` (IRI probabilístico 2003–2013; CPC/IRI oficial 2014–2025-04) | Externa |
 | Outcomes macro/agro | ✅ | ver D1 | Validada / Prelim. |
 | Crédito agrícola (proxy de adaptación) | ✅ | Credito Sector (agricultura, ganadería) banco-mes 2016– | Especial |
 
-**Viabilidad preliminar: Baja** — la ficha exige vintages genuinos, que no existen en la base (sí existen públicamente en IRI desde 2002).
+**Viabilidad preliminar: Baja** — la ficha exige vintages genuinos, que no existen en la base (sí existen públicamente en IRI desde 2002). **Actualización 2026-09-24: Media**, con 259 meses de vintages extraídos. Hay dos productos que no se pueden empalmar y faltan los datos desde 2025-05.
 
 ## 12 · D4 — Inflación climática, precios relativos y riesgo de cola
 
@@ -224,11 +226,11 @@ Cómo leer este documento:
 | IPC headline, alimentos, subyacente | ✅ | Cuadro 15 (total y subyacente validados) | M 1993 → 2026-07 | **Validada** / Prelim. |
 | Componentes: transables/no transables, servicios, renta, bienes libres/administrados, sin alimentos, IPCSAE | ✅ índices | Cuadros 14 a, 14 b, 14 c | M 1995/2003 → 2026-07 | Prelim. (las variaciones % son posicionales: No compr.) |
 | Grupos de alimentos, carne (cortes) | ✅ | Cuadros 16, 16 a | M 1994 → 2026-07 | Prelim. |
-| Ponderadores COICOP del IPC | 🟡 | `imf_cpi` Paraguay (pesos por división) | M | Prelim. |
+| Ponderadores COICOP del IPC | ⊕ ✅ | fuera de la base: Anexo 2 de la metodología IPC base dic-2017, 465 artículos con jerarquía completa (`web_brechas_2026-09-23/extraidos/`); en la base, `imf_cpi` (pesos por división) | estático | Externa / Prelim. |
 | Precios al productor | ✅ | Cuadro 17 (base marzo 2025) | M 1995-12 → 2026-06 | Prelim. |
 | Precios mundiales de alimentos, FX, EVE, TPM | ✅ | Cuadro 49, `imf_pcps`, Cuadro 60a, `eve`, Cuadro 19 | M | Prelim. |
-| ONI, clima | ❌ | — | — | — |
-| Precios mayoristas, microprecios | ❌ | — | — | — |
+| ONI, clima | ⊕ ✅ | fuera de la base: `data/clima` (ENSO, lluvia, SPI; temperatura en descarga) | M | Externa |
+| Precios mayoristas, microprecios | ⊕ 🟡 | fuera de la base: Mercado de Abasto, 6 rubros diarios por origen (`data/clima/abasto_*`); faltan los microprecios | D 2021 → 2026-06 | Externa |
 
 **Viabilidad preliminar: Media** — el lado de precios es rico; depende de ONI externo y de auditar la jerarquía del IPC.
 
@@ -241,7 +243,7 @@ Cómo leer este documento:
 | Crédito, provisiones, capital, liquidez por banco | ✅ | EEFF, Ratios | M 2016 → 2026-07 | Especial |
 | Seguros agropecuarios (primas y siniestros) | 🟡 anual | `insurance_annex` 1.1, 1.8 (rama Agropecuario) | A 2009 → 2025 | Prelim. |
 | Encuesta de crédito por sector (agricultura, ganadería) | ✅ | `credit_survey` | T 2013/2015 → 2026-06 | Prelim. |
-| ENSO/clima y geografía de la cartera | ❌ | — | — | — |
+| ENSO/clima y geografía de la cartera | ⊕ 🟡 | fuera de la base: ENSO y clima por departamento (`data/clima`); la **geografía de la cartera sigue faltando** | M | Externa |
 
 **Viabilidad preliminar: Media** para un stress test descriptivo banco-sector; **Baja** para inferencia causal (pocos episodios ENSO desde 2016 y sin geografía).
 
@@ -301,7 +303,7 @@ Cómo leer este documento:
 | Tipos de cambio bilaterales y TCR | ✅ | Cuadros 60a–60c | M | Validada / Prelim. |
 | Comercio por país socio | 🟡 fuera de la base | IMTS.csv del FMI (no incorporado) | M/T | — |
 | IPC de países vecinos | ✅ | `imf_cpi` (ARG, BRA) | M | Prelim. |
-| Aduanas por transacción, moneda de factura, precios regionales o de frontera | ❌ | — | — | — |
+| Aduanas por transacción, moneda de factura, precios regionales o de frontera | ⊕ 🟡 | fuera de la base: DNA a nivel ítem (despacho cifrado, NCM, origen, aduana, FOB, impuestos); **sin** moneda de factura ni precios regionales | M 1997 → 2026-08 | Externa (sin procesar) |
 
 **Viabilidad preliminar: Media** para pass-through agregado por tipo de bien; **Baja** para el mecanismo fronterizo.
 
@@ -309,7 +311,7 @@ Cómo leer este documento:
 
 | Variable necesaria | Estado | Serie / tabla | Frec. y rango | Nivel |
 |---|---|---|---|---|
-| Nivel del río, restricciones de navegación, fletes | ❌ | — (externo: DMH/ANNP, Prefectura) | — | — |
+| Nivel del río, restricciones de navegación, fletes | ⊕ 🟡 | fuera de la base: nivel diario del río Paraguay en Asunción, Pilar y Concepción (`data/clima/rios_dmh_*`); hidrología y generación de Itaipú (`data/clima/hidro_itaipu_*`); **faltan** fletes y restricciones | D 1904 → 2026-09 | Externa |
 | Comercio agregado y por producto | ✅ | Cuadros 43–54 | M 1994 → 2026-07 | Prelim. |
 | Exportación de energía eléctrica (USD y kWh) | ✅ | Cuadros 44a, 44b | M 1994 → 2026-07 | Prelim. |
 | Ingreso de divisas de binacionales | ✅ | Cuadro 55 | M 1994 → 2026-06 | Prelim. |
@@ -338,7 +340,7 @@ Cómo leer este documento:
 | Variable necesaria | Estado | Serie / tabla | Frec. y rango | Nivel |
 |---|---|---|---|---|
 | IPC por componentes (divisiones, grupos) | 🟡 | Cuadros 14 b, 16; `imf_cpi` Paraguay por división COICOP (índices y pesos) | M 1994 → 2026-07 | Prelim. |
-| Ponderadores de gasto por grupo de hogares (quintil, área) | ❌ | — (externo: INE EIGH 2011/12, EPH) | — | — |
+| Ponderadores de gasto por grupo de hogares (quintil, área) | ❌ | Sigue faltando. La canasta oficial (base 2017) viene de la EPF 2015/16, sin microdatos públicos. Fuera de la base hay ponderadores por artículo para el hogar promedio. La EIGyCV 2011/12 se descartó. | — | — |
 | Ingresos por grupo (para caracterizar grupos) | 🟡 | `ine_ephc` ingresos por categoría, ocupación y sector | T 2017 → 2026-T1 | No compr. |
 | N10: aleatorización, creencias pre/post | ❌ | requiere diseño prospectivo | — | — |
 

@@ -2,6 +2,12 @@
 
 *Fase 2 · 2026-09-22 · Base `paraguay_macro_pilot.duckdb`, esquema 49, build `481cb2d5`, SHA-256 `c902c77f…4f50` (sin modificar).*
 
+> **Actualización 2026-09-24.** La base sigue igual (mismo SHA-256). Con los datos adquiridos **fuera de la base** (bloque clima/agro en `data/clima/`; fuentes públicas en `input/acquisition_candidates/`; ver `00_inventario_base.md` § 6), cambian estas viabilidades:
+> - **Suben:** C3, D2, D3, F3, N2 y F2 (módulo frontera).
+> - **Se refuerzan** sin cambiar de nivel: D4, D5, F5, N1, N5 y N11.
+>
+> Las celdas actualizadas llevan «→» o la marca **2026-09-24**. La **§ 3.5** tiene el estado de cada brecha y la lista priorizada de lo que falta conseguir.
+
 Este documento compara todos los proyectos del portafolio y los doce proyectos nuevos que propongo (N1–N3 en una primera ronda; N4–N12, con foco en identificación causal, en una segunda). Luego prioriza los datos que faltan según cuánto cambiarían la viabilidad y a cuántos proyectos beneficiarían. Cada carpeta tiene su propio `README.md` con el detalle; aquí solo se resume.
 
 **Cómo leer la viabilidad.** Se refiere al *ejercicio inicial* de cada ficha con los datos que existen hoy (base + NOAA/FRED + IMTS), no a la versión causal "óptima".
@@ -22,26 +28,26 @@ Este documento compara todos los proyectos del portafolio y los doce proyectos n
 | 02 | B1 Intervención cambiaria | **Media** | Cronología diaria de operaciones del BCP desde 2013; sin timing ni reglas del programa | Clasificación diaria compensatoria/complementaria; hora de ejecución; reglas del programa | 42 (1 / 35 / 0 / 4) + 2 especiales | 18 MB |
 | 03 | B2 Marco multi-horizonte PYG/USD | **Alta** | Núcleo mensual completo (parte validado) + controles globales de FRED | DXY propiamente dicho; precios forward; flujo por tipo de cliente | 70 (12 / 46 / 0 / 12) | 11 MB |
 | 05 | C1 Liquidez USD y descalce | **Media** | Panel banco × moneda × sector desde 2016; sin plazo residual ni prestatario | Registro de crédito; plazo residual; moneda de ingreso del prestatario | 64 (6 / 54 / 0 / 4) + 6 paneles | 99 MB |
-| 06 | C2 Depósitos, crédito y sustitución | **Media-alta** (bancos) / **Baja** (cooperativas) | Tasas por producto-plazo-moneda y paneles completos; tasas solo a nivel sistema | Tasas por entidad; panel de cooperativas (INCOOP) | 401 (5 / 391 / 5 / 0) + CDA + 4 paneles | 114 MB |
-| 07 | C3 Bonos, banca y deuda pública | **Media** | Curvas NSS y 286 mil transacciones; sin subastas del Tesoro | Subastas del Tesoro; *security master*; tenencias | 83 (4 / 77 / 0 / 2) + curvas, transacciones, eventos | 91 MB |
+| 06 | C2 Depósitos, crédito y sustitución | **Media-alta** (bancos) / Baja → **Media-baja** (cooperativas) | Tasas por producto-plazo-moneda y paneles completos; tasas solo a nivel sistema | Tasas por entidad; panel de cooperativas (INCOOP). **2026-09-24:** ⊕ balances por cooperativa (INCOOP), anuales 2017–2024 y trimestrales 2025, fuera de la base | 401 (5 / 391 / 5 / 0) + CDA + 4 paneles | 114 MB |
+| 07 | C3 Bonos, banca y deuda pública | Media → **Media-alta** | Curvas NSS y 286 mil transacciones; sin subastas del Tesoro | Subastas del Tesoro; *security master*; tenencias. **2026-09-24:** ⊕ subastas del Tesoro 2006–2026 y *security master* de 194 emisiones; tenencias solo en 4 cortes | 83 (4 / 77 / 0 / 2) + curvas, transacciones, eventos | 91 MB |
 | 09 | D1 ENSO no lineal | **Alta** ↑ | Con el ONI de NOAA el mínimo de la ficha está completo desde 1994 | Clima físico; producción agrícola | 47 (12 / 30 / 0 / 5) | 3 MB |
-| 12 | D4 Inflación climática y colas | **Media-alta** | Componentes del IPC, IPP, EVE, ENSO y precios mundiales | Clima físico; ponderaciones del IPC; densidades de expectativas | 89 (5 / 78 / 0 / 6) | 7 MB |
-| 13 | D5 Clima y riesgo de crédito | **Media** (descriptivo) / **Baja** (causal) | Panel banco-sector-cultivo-moneda + ENSO; pocos episodios y sin geografía | Geografía de la cartera; registro de crédito; clima geográfico | 46 (2 / 40 / 0 / 4) + 5 paneles | 23 MB |
+| 12 | D4 Inflación climática y colas | **Media-alta** | Componentes del IPC, IPP, EVE, ENSO y precios mundiales | Clima físico; ponderaciones del IPC; densidades de expectativas. **2026-09-24:** ⊕ clima físico, ponderaciones oficiales del IPC por artículo y precios mayoristas; temperatura en descarga | 89 (5 / 78 / 0 / 6) | 7 MB |
+| 13 | D5 Clima y riesgo de crédito | **Media** (descriptivo) / **Baja** (causal) | Panel banco-sector-cultivo-moneda + ENSO; pocos episodios y sin geografía | Geografía de la cartera; registro de crédito; clima geográfico. **2026-09-24:** ⊕ clima por departamento; **sigue faltando la geografía de la cartera** | 46 (2 / 40 / 0 / 4) + 5 paneles | 23 MB |
 | 16 | E3 Anclaje de expectativas | **Media** (agregado) | EVE (mediana) desde 2006/2014 con realizaciones; sin dispersión | Dispersión y microdatos de la EVE; historia oficial de la meta | 35 (6 / 29 / 0 / 0) + meta manual | 2 MB |
-| 18 | F2 Pass-through e importaciones | **Media** (agregado) / **Baja** (frontera) | Valores unitarios de importación desde 1994 + IMTS por socio | Aduanas por transacción; IPC regional y precios de frontera | 854 (4 / 824 / 24 / 2) + IMTS | 86 MB |
+| 18 | F2 Pass-through e importaciones | **Media** (agregado) / Baja → **Media** (frontera) | Valores unitarios de importación desde 1994 + IMTS por socio | Aduanas por transacción; IPC regional y precios de frontera. **2026-09-24:** ⊕ aduanas a nivel ítem 1997–2026 por aduana y origen (sin procesar) | 854 (4 / 824 / 24 / 2) + IMTS | 86 MB |
 | 20 | F4 Pagos instantáneos (SPI) | **Media** (monitoreo) / **Baja** (causal) | Boletín completo con SPI desde 2022-05 y paneles por entidad | SPI entidad-día y cliente; fechas de adopción | 634 (0 / 556 / 78 / 0) + 3 paneles | 18 MB |
-| 21 | F5 Inflación desigual (N9) | **Media** (N9) / **Baja** (N10) | Índices por división, grupo y producto; faltan pesos por grupo de hogares | Ponderadores EIGH por grupo; IPC por producto | 183 (3 / 90 / 90 / 0) | 8 MB |
-| 22 | **N1 Política fiscal** (nuevo) | **Media-alta** | 23 años de datos fiscales mensuales (MEF) + binacionales como fuente externa al ciclo | Presupuesto aprobado; SPNF consolidado; cronología de la regla fiscal | 121 (5 / 88 / 28 / 0) | 7 MB |
-| 23 | **N2 Mercado laboral e informalidad** (nuevo) | **Media** | EPHC completa pero corta (38 trimestres) | Microdatos EPHC; series pre-2017; cotizantes IPS | 1.101 (3 / 390 / 708 / 0) | 8 MB |
+| 21 | F5 Inflación desigual (N9) | **Media** (N9) / **Baja** (N10) | Índices por división, grupo y producto; faltan pesos por grupo de hogares | Ponderadores EIGH por grupo; IPC por producto. **2026-09-24:** ⊕ ponderaciones oficiales por artículo; faltan las ponderaciones por grupo de hogares (EPF 2015/16) | 183 (3 / 90 / 90 / 0) | 8 MB |
+| 22 | **N1 Política fiscal** (nuevo) | **Media-alta** | 23 años de datos fiscales mensuales (MEF) + binacionales como fuente externa al ciclo | Presupuesto aprobado; SPNF consolidado; cronología de la regla fiscal. **2026-09-24:** ⊕ generación de Itaipú 2000–2026 (ONS) para contrastar la exogeneidad de los ingresos | 121 (5 / 88 / 28 / 0) | 7 MB |
+| 23 | **N2 Mercado laboral e informalidad** (nuevo) | Media → **Media-alta** | EPHC completa pero corta (38 trimestres) | Microdatos EPHC; series pre-2017; cotizantes IPS. **2026-09-24:** ⊕ microdatos EPH/EPHC anuales 1997–2025 (INE) y anuarios del IPS | 1.101 (3 / 390 / 708 / 0) | 8 MB |
 | 24 | **N3 Panel regional FMI** (nuevo) | **Media-alta** | 9 países × 22 indicadores (192 de 198 disponibles) + shocks globales | Datos del FMI actualizados; EMBI; intervención oficial de pares | 197 (0 / 192 / 0 / 5) + panel largo | 16 MB |
 | 25 | **N4 Sorpresas monetarias de alta frecuencia** (nuevo) | **Media-alta** | Interbancario diario desde 2011; 40 fechas de cambio de TPM reconstruidas del corredor | Calendario del COPOM con hora de anuncio | 42 (0 / 7 / 0 / 3) + 32 especiales; LRM, curvas | 31 MB |
-| 26 | **N5 Shocks cambiarios de Argentina** (nuevo) | **Media-alta** | Shocks grandes y externos; comercio bilateral, régimen de turismo, precios y remesas | Tipo de cambio paralelo; IPC regional; fechas oficiales de eventos | 228 (3 / 216 / 9 / 0) + IMTS bilateral | 15 MB |
+| 26 | **N5 Shocks cambiarios de Argentina** (nuevo) | **Media-alta** | Shocks grandes y externos; comercio bilateral, régimen de turismo, precios y remesas | Tipo de cambio paralelo; IPC regional; fechas oficiales de eventos. **2026-09-24:** ⊕ dólar paralelo argentino diario (blue 2011–, CCL 2013–, MEP 2018–) y aduanas por aduana de frontera | 228 (3 / 216 / 9 / 0) + IMTS bilateral | 15 MB |
 | 27 | **N6 Regulación bancaria (DiD)** (nuevo) | **Media-alta** (encaje) / **Media-baja** (tope de tarjetas) | Encaje por banco desde 2016; tope de tarjetas visible en oct-2015, pero sin panel previo por banco | Fechas de cambios de encaje; boletines SIB 2013–2015 | 219 (0 / 219 / 0 / 0) + 5 paneles | 55 MB |
 | 28 | **N7 Alivio COVID y mora** (nuevo) | **Media** | Cartera COVID por banco 2020–2026 con período previo desde 2016; selección de bancos | Resoluciones de alivio; registro de crédito | 6 (2 / 4 / 0 / 0) + 5 paneles | 45 MB |
 | 29 | **N8 Canal de crédito bancario** (nuevo) | **Media** (→ media-alta con N4) | Panel de balance completo; tratamiento creíble depende de N4 | Sorpresas de N4; originaciones por banco | 8 (2 / 6 / 0 / 0) + 3 paneles | 46 MB |
 | 30 | **N9 SPI y efectivo** (nuevo) | **Media** (descriptivo) / **Baja** (causal) | Una sola fecha nacional sin control; coincide con el ciclo de 2022 | Hitos del SPI; SPI entidad-día | 225 (1 / 214 / 10 / 0) + canales | 7 MB |
 | 31 | **N10 Combustibles y expectativas** (nuevo) | **Media** | 41 ajustes del gasoil > 3% desde 2015; ajustes endógenos al petróleo | Fechas y precios de Petropar | 24 (3 / 20 / 0 / 1) | 3 MB |
-| 32 | **N11 Salario mínimo** (nuevo) | **Media** | 12 ajustes fechados desde 2010 (julio desde 2017); en parte anticipados por fórmula | Decretos; exposición sectorial | 205 (2 / 71 / 132 / 0) + tramos de vigencia | 2 MB |
+| 32 | **N11 Salario mínimo** (nuevo) | **Media** | 12 ajustes fechados desde 2010 (julio desde 2017); en parte anticipados por fórmula | Decretos; exposición sectorial. **2026-09-24:** ⊕ tabla oficial de los 33 decretos 1989–2025 (MTESS), extraída a CSV | 205 (2 / 71 / 132 / 0) + tramos de vigencia | 2 MB |
 | 33 | **N12 Remesas** (nuevo) | **Media-baja** | Remesas por origen 2008–2026 y shocks de origen; peso macro pequeño | Remesas por departamento | 27 (1 / 23 / 0 / 3) | 2 MB |
 
 ↑ = viabilidad mejorada respecto de la Fase 1 al incorporar datos externos (ONI).
@@ -54,18 +60,20 @@ Este documento compara todos los proyectos del portafolio y los doce proyectos n
 | E2 Vintages, nowcasting y juicio | Omitido por tu instrucción | — | Idem; la base tiene un solo vintage por fuente |
 | B3 Flujo de órdenes FX | Bloque 3 omitido | **Baja** | No existe flujo firmado por agente (la ficha dice que no hay sustituto) |
 | C4 Repricing y toma de riesgo | Bloque 3 omitido | **Baja** | Sin tasa fija/variable ni fechas de reajuste; requiere registro de crédito |
-| D2 Clima por calendario agrícola | Bloque 3 omitido | **Baja → Media** con datos públicos | Clima en grilla y producción por cultivo: ambos públicos y baratos (ver rango 2 de la sección 3.3) |
-| D3 Pronósticos ENSO y sorpresas | Bloque 3 omitido | **Baja → Media** con datos públicos | Vintages de pronósticos ENSO del IRI (públicos; ver rango 2 de la sección 3.3) |
+| D2 Clima por calendario agrícola | Bloque 3 omitido | Baja → **Media-alta** (datos ya adquiridos) | Clima en grilla y producción por cultivo: ambos públicos y baratos (ver rango 2 de la sección 3.3) |. **2026-09-24:** ⊕ lluvia, SPI y NDVI por departamento, producción MAG por departamento y calendario; ERA5-Land en descarga
+| D3 Pronósticos ENSO y sorpresas | Bloque 3 omitido | Baja → **Media** | Vintages de pronósticos ENSO del IRI (públicos; ver rango 2 de la sección 3.3) |. **2026-09-24:** ⊕ 259 meses de vintages (2003–2025-04, dos productos no empalmables)
 | F1 Facturación electrónica | Bloque 3 omitido | **Baja** | Sin datos SIFEN; requiere convenio con la DNIT |
-| F3 Río, logística e hidroelectricidad | Bloque 3 omitido | **Baja** (logística) / **Media** (energía) | Sin niveles del río ni fletes; el módulo de energía se cubre en parte con N1 (binacionales) |
+| F3 Río, logística e hidroelectricidad | Bloque 3 omitido | Baja → **Media** (logística) / Media → **Media-alta** (energía) | Sin niveles del río ni fletes; el módulo de energía se cubre en parte con N1 (binacionales) |. **2026-09-24:** ⊕ nivel diario del río Paraguay 1904–2026 e Itaipú; faltan fletes, restricciones de navegación y Yacyretá
 
 **Balance** (31 proyectos evaluables: 25 construidos y 6 del bloque 3; E1 y E2 omitidos por instrucción). Tomando la viabilidad del ejercicio principal de cada uno:
 
 - **Alta:** 2 (B2, D1).
-- **Media-alta:** 7 (C2 bancario, D4, N1, N3, N4, N5, N6-encaje).
-- **Media:** 15 (A1, B1, C1, C3, D5, E3, F2, F4, F5-N9, N2, N7, N8, N9, N10, N11).
+- **Media-alta:** 7 → **10** (C2 bancario, **C3**, **D2**, D4, N1, **N2**, N3, N4, N5, N6-encaje).
+- **Media:** 15 (A1, B1, C1, **D3**, D5, E3, F2, **F3**, F4, F5-N9, N7, N8, N9, N10, N11).
 - **Media-baja:** 1 (N12).
-- **Baja:** 6 (B3, C4, D2, D3, F1, F3).
+- **Baja:** 6 → **3** (B3, C4, F1).
+
+*(Balance actualizado el 2026-09-24. Antes: Media-alta 7, Media 15 con C3 y N2, Baja 6 con D2, D3 y F3.)*
 
 **Proyectos con identificación causal defendible con los datos actuales + los datos que conseguirás mañana:** N4 (sorpresas de alta frecuencia), N5 (shocks argentinos), N6 módulo A (encaje × exposición bancaria), N1 (binacionales) y, con más reservas, N7, N10 y N11. N8 hereda la identificación de N4.
 
@@ -143,6 +151,51 @@ Antes de buscar datos nuevos conviene validar las series que ya usa casi todo el
 | **16** | **SIFEN / facturación electrónica** | F1, N1 | 2 | F1: 3; N1: 1 | 4 | Alto (convenio y privacidad) | **1,6** | DNIT |
 | — | **Vintages de cuentas nacionales e indicadores** (en construcción por ti) | E1, E2, D3, E3, B2, D4 | 6 | E1, E2: 3; resto: 1–2 | 12 | En curso | — | BCP |
 
+### 3.5 Estado de la priorización al 2026-09-24 y lista de lo que falta conseguir
+
+Estado de cada brecha del ranking de la § 3.3 después de la adquisición del 23 y 24 de septiembre (todo **fuera de la base**):
+
+| Rango | Brecha | Estado | Qué se consiguió / qué falta |
+|---|---|---|---|
+| 1 | Calendario institucional | 🟡 Parcial | ✅ decretos del salario mínimo 1989–2026 (MTESS). ❌ COPOM (fecha y **hora**), corredor, encaje, tope de tarjetas, meta, ventas compensatorias, regla fiscal, medidas de alivio, combustibles (Petropar solo publica precios vigentes), hitos del SPI. El sitio del BCP bloquea el acceso automatizado. |
+| 2 | Clima físico y agro | ✅ Casi completo | ✅ ENSO, lluvia, SPI, NDVI, ríos, Itaipú, producción MAG/FAO/USDA, calendario, vintages ENSO 2003–2025-04, EM-DAT. ⏳ ERA5-Land y SPEI en descarga. ❌ Yacyretá mensual, IRI desde 2025-05. |
+| 3 | Tasas y originaciones por entidad | ❌ Pendiente | Dato interno SIB/BCP. |
+| 4 | Operaciones y liquidez diarias del BCP | ❌ Pendiente | Dato interno. La serie pública de operaciones cambiarias existe pero está bloqueada para descarga automatizada. |
+| 5 | Ponderadores del IPC | 🟡 Parcial | ✅ ponderación oficial de los 465 artículos (base 2017). ❌ ponderadores por grupo de hogares (EPF 2015/16) y microprecios. |
+| 6 | Registro de crédito | ❌ Pendiente | Convenio de confidencialidad. Incluye la **geografía de la cartera** que necesita D5. |
+| 6b | Boletines SIB 2011–2015 | ❌ Pendiente | Publicados en el sitio del BCP (bloqueado para descarga automatizada). |
+| 7 | Microdatos y dispersión de la EVE | ❌ Pendiente | Dato interno. |
+| 8 | Flujo FX firmado por banco | ❌ Pendiente | Dato interno. |
+| 9 | Subastas del Tesoro, *security master* y tenencias | ✅ Casi completo | ✅ subastas 2006–2026 y condiciones de 194 emisiones. 🟡 tenencias en 4 cortes. ❌ serie mensual de tenencias. |
+| 10 | Microdatos EPH antes de 2017 | ✅ Cerrado | ✅ anual 1997–2025. ❌ EPHC **trimestral** en microdatos (sin enlace público). |
+| 11 | Río y logística | 🟡 Parcial | ✅ nivel diario 1904–2026 (Asunción, Pilar, Concepción) e Itaipú. ❌ fletes, restricciones de navegación, Yacyretá. |
+| 12 | PGN aprobado y SPNF | ❌ Pendiente | El portal de datos del MEF responde 403 a clientes automatizados. |
+| 13 | Aduanas por transacción | ✅ Mayormente | ✅ nivel ítem 1997–2026 (sin procesar todavía). ❌ importador identificado y moneda de factura. |
+| 13b | Tipo de cambio paralelo argentino | ✅ Cerrado | ✅ blue, CCL, MEP (agregadores) y oficial BCRA. |
+| 14 | Cooperativas por entidad | 🟡 Parcial | ✅ tipo A: anual 2017–2024 y trimestral 2025. ❌ frecuencia mensual y tipos B/C. |
+| 15 | EMBI y pares | ❌ Pendiente | Comercial. |
+| 16 | SIFEN | ❌ Pendiente | Convenio. |
+
+**Lista priorizada de lo que falta conseguir.** Se ordena por beneficio sobre costo, sin contar lo ya cubierto:
+
+| Prioridad | Qué conseguir | Proyectos | Cómo y dónde | Costo |
+|---|---|---|---|---|
+| **1** | **Calendario institucional del BCP**: COPOM (fecha **y hora** del anuncio), cambios del corredor y del encaje, tope de tarjetas (ley y reglamentación), historia de la meta, ventas compensatorias, medidas de alivio (COVID, sequía, inundaciones), hitos del SPI | N4, N8, A1, B1, C2, E3, N6, N7, N9, D5 | Comunicados del CPM, resoluciones SIB, circulares. Interno BCP o descarga manual. | Muy bajo |
+| **2** | **Archivos públicos bloqueados para descarga automatizada**: serie histórica de operaciones cambiarias (xlsx), boletines estadístico-financieros 2011–2015, portal de datos del PGN (MEF) | B1, A1, N6, C1, C2, D5, N7, N8, N1 | Navegador (descarga manual) o canal interno | Muy bajo |
+| **3** | **Tasas y originaciones por entidad** (banco × producto × moneda × plazo) | C2, C4, C1, A1, C3 | SIB/BCP (reporte regulatorio) | Bajo |
+| **4** | **Operaciones y liquidez diarias del BCP**: reservas bancarias, operaciones FX con tipo y hora, flujos del Tesoro, SPI entidad-día | A1, B1, F4, B3 | BCP (OMA, Operaciones Internacionales, SIPAP) | Bajo |
+| **5** | **Ponderadores por grupo de hogares**: microdatos de la EPF 2015/16 o su tabulación por quintil y área | F5-N9, D4 | BCP (Estudios Económicos, base del IPC 2017) | Bajo |
+| **6** | **Microdatos y dispersión de la EVE** (con fecha de levantamiento) | E3, D4, B2 | BCP interno | Bajo |
+| **7** | **Flujo FX firmado y posiciones por banco** (diario) | B3, B1, B2, C1 | BCP interno | Bajo–medio |
+| **8** | **Fletes y restricciones de navegación**; **generación mensual de Yacyretá** | F3, D1, D2, N1 | ANNP, Prefectura, CAFYM; EBY o ANDE (solicitud) | Bajo–medio |
+| **9** | **Precios históricos de combustibles** con fecha de cada ajuste | N10, D4 | Petropar (solicitud) o resoluciones | Bajo |
+| **10** | **Cooperativas mensuales por entidad** (tipos A, B y C) | C2, D5, C1 | INCOOP (solicitud) | Medio |
+| **11** | **Tenencias mensuales de bonos del Tesoro** | C3, N1 | MEF, BVA, CAVAPY | Bajo |
+| **12** | **EPHC trimestral en microdatos** | N2 | INE (solicitud) | Bajo |
+| **13** | **Registro de crédito** con geografía, colateral y reprogramación | D5 (causal), C1, C4, C2 | Central de Riesgos (convenio) | Alto |
+| **14** | Pronósticos ENSO del IRI desde 2025-05 | D3 | IRI Data Library (registro gratuito) | Muy bajo |
+| **15** | Aduanas con moneda de factura e importador; SIFEN; EMBI | F2, F1, N3 | DNA y DNIT (convenios); proveedor comercial | Alto |
+
 ### 3.4 Recomendación de secuencia
 
 1. **Inmediato (días a semanas; costo muy bajo):**
@@ -211,7 +264,7 @@ Cada carpeta que necesita información institucional tiene una plantilla en `dat
 | 2 | **Cambios de encaje legal** (fecha de vigencia y de anuncio, moneda, plazo, tasa anterior y nueva, resolución) y **tope de tasas de tarjetas** (ley, reglamentación, fórmula, fecha) | `27_n6_…/datos_manuales/cambios_regulatorios.csv` | N6, C2, C1, A1 | El tope debería caer en oct-2015 (quiebre en las tasas del sistema) |
 | 3 | **Medidas de alivio crediticio** (COVID 2020 y posteriores por sequía/inundación) | `28_n7_…/datos_manuales/medidas_alivio.csv` | N7, D5, C1 | La cartera COVID aparece en el panel desde 2020-03/04 |
 | 4 | **Ajustes de precios de combustibles** (Petropar y privados) | `31_n10_…/datos_manuales/ajustes_combustibles.csv` | N10, D4 | `ajustes_gasoil_inferidos.csv` |
-| 5 | **Decretos de salario mínimo** (fecha de decreto y vigencia, monto, criterio) | `32_n11_…/datos_manuales/decretos_salario_minimo.csv` | N11, N2 | `salario_minimo_tramos_vigencia.csv` (de la base) |
+| 5 | **Decretos de salario mínimo** (fecha de decreto y vigencia, monto, criterio). **2026-09-24: ya disponible** la tabla oficial 1989–2025 en `input/acquisition_candidates/web_brechas_2026-09-23/extraidos/salario_minimo_decretos_1989_2025.csv`, más el ajuste de 2026 (Decreto 6225). Falta el monto por decreto. | `32_n11_…/datos_manuales/decretos_salario_minimo.csv` | N11, N2 | `salario_minimo_tramos_vigencia.csv` (de la base) |
 | 6 | **Hitos del SPI** (entrada de entidades, QR, alias, límites, iniciadores de pago) | `30_n9_…/datos_manuales/hitos_spi.csv` | N9, F4 | Primer dato del boletín: 2022-05 |
 | 7 | **Eventos cambiarios argentinos** (verificar los 9 candidatos y agregar magnitudes) | `26_n5_…/datos_manuales/eventos_argentina.csv` | N5, F2 | `episodios_devaluacion_argentina_inferidos.csv` |
 | 8 | Historia oficial de la **meta de inflación** (y si hubo cambio a 3,5% en 2025) | `16_e3_…/R/01_extraer_datos.R` (tabla `meta` dentro del script) | E3, D4 | La mediana EVE a 24 meses pasa de 4,0% a 3,5% en 2025-01 |

@@ -12,6 +12,12 @@
 | Paneles entidad-mes (bancos y financieras) | 17 tablas, 2016-01 a 2026-07 |
 | Detalle serie por serie | [`00_inventario_series.csv`](00_inventario_series.csv) (una fila por serie, con `candidate_id`) |
 
+> **Actualización 2026-09-24.** La base **no cambió**: se verificó el mismo SHA-256 (`c902c77f…4f50`), así que las secciones 1 a 4 siguen vigentes. Lo que cambió es lo que existe **fuera** de la base:
+> - se construyó el bloque clima/agro en `data/clima/` (scripts en `R/clima/`);
+> - se adquirieron fuentes públicas en `input/acquisition_candidates/`.
+>
+> La sección 5 indica qué brechas quedaron cubiertas por fuera y la **sección 6** lista esos datos. El inventario de series incluye ahora 948 series externas de `data/clima`, identificables por `interfaz = data/clima/…` y `nivel_verificacion = Externa (fuera de la base; no revisada)`. **Nada de esto está integrado a DuckDB ni revisado por un economista.**
+
 ## Cómo leer el nivel de verificación
 
 La base no tiene ninguna serie revisada por un economista (`human_verified` = 0). Traduzco sus categorías internas a cuatro niveles:
@@ -687,10 +693,44 @@ Todas las demás hojas con datos de los 26 libros Excel y los 2 CSV de mercado e
 
 ## 5. Qué no hay en la base (transversal)
 
-- Clima y ENSO: ONI, precipitación, temperatura, nivel de ríos, restricciones de navegación.
+*Entre corchetes: qué parte está disponible **fuera** de la base desde el 2026-09-24 (ver § 6).*
+
+- Clima y ENSO: ONI, precipitación, temperatura, nivel de ríos, restricciones de navegación. **[Fuera de la base: ENSO, lluvia, SPI, niveles del río Paraguay, Itaipú, vegetación; temperatura y SPEI en descarga. Siguen faltando las restricciones de navegación y los fletes.]**
 - Variables de EE.UU. y globales financieras: índice dólar amplio (DXY), VIX, IPC de EE.UU., rendimientos del Tesoro de EE.UU.
-- Vintages o fechas reales de publicación; pronósticos archivados; microdatos de encuestas (EVE, ICC, EPHC); datos de préstamo a préstamo o de prestatario.
+- Vintages o fechas reales de publicación; pronósticos archivados; microdatos de encuestas (EVE, ICC, EPHC); datos de préstamo a préstamo o de prestatario. **[Fuera de la base: microdatos EPH/EPHC 1997–2025 y vintages de pronósticos ENSO 2003–2025-04.]**
 - Reservas bancarias diarias en el BCP (encaje, cuenta corriente); saldos diarios de liquidez; flujos diarios del Tesoro.
 - Flujo de órdenes FX firmado por agente, cotizaciones intradía, posiciones cambiarias por banco.
-- Cooperativas por entidad (solo el agregado Tipo A del Anexo, 2017-12 a 2025-11); facturación electrónica (SIFEN); aduanas a nivel de transacción; microprecios del IPC; ponderadores por grupo de hogares.
-- Resultados de subastas de bonos del Tesoro (solo aparecen sus negociaciones bursátiles desde 2023).
+- Cooperativas por entidad (solo el agregado Tipo A del Anexo, 2017-12 a 2025-11); facturación electrónica (SIFEN); aduanas a nivel de transacción; microprecios del IPC; ponderadores por grupo de hogares. **[Fuera de la base: balances por cooperativa tipo A 2017–2025 (INCOOP), aduanas a nivel ítem 1997–2026 (DNA) y ponderadores oficiales del IPC por artículo (465). Siguen faltando los ponderadores por grupo de hogares, los microprecios y SIFEN.]**
+- Resultados de subastas de bonos del Tesoro (solo aparecen sus negociaciones bursátiles desde 2023). **[Fuera de la base: subastas 2006–2026, *security master* de 194 emisiones y tenencias por tenedor en 4 cortes (MEF).]**
+
+## 6. Datos disponibles fuera de la base (2026-09-24)
+
+Estos archivos **no pasan por el pipeline de la base**: no hay parser, registro de fuentes ni releases. Integrarlos exigiría el flujo de `docs/ARCHITECTURE.md`. Las descargas crudas se conservan localmente con hash y están excluidas de Git.
+
+### 6.1 Bloque clima/agro — `data/clima/` (procesado, formato largo)
+
+Catálogo completo con rangos calculados de los datos: [`data/clima/README.md`](../data/clima/README.md) y `data/clima/00_catalogo_variables.csv`.
+
+| Archivo | Contenido | Cobertura |
+|---|---|---|
+| `enso_indices.csv` | ONI, RONI, MEI.v2, SOI, Niño 3.4 | 1950 → 2026-08 |
+| `enso_iri_pronosticos.csv` | Vintages de probabilidades ENSO: IRI probabilístico y CPC/IRI oficial (dos productos, no empalmados) | 2003-06 → 2025-04 |
+| `clima_chirps_precipitacion.csv`, `clima_spi.csv` | Lluvia CHIRPS y SPI 1/3/6/12, por departamento, nacional y nacional agrícola | 1981 → 2026-08 |
+| `clima_era5land.csv`, `clima_spei.csv` | Temperatura media, máxima y mínima; días ≥ 35 °C y ≤ 0 °C; humedad del suelo; SPEI | **en descarga** (ERA5-Land horario 1981 → 2026-08) |
+| `clima_modis_vegetacion.csv` | NDVI y EVI MODIS, por departamento y nacional | 2000-02 → 2026-08 |
+| `rios_dmh_diario.csv`, `rios_dmh_mensual.csv` | Nivel del río Paraguay: Asunción, Pilar, Concepción | 1904/1909/1932 → 2026-09 |
+| `hidro_itaipu_diario.csv`, `hidro_itaipu_mensual.csv` | Itaipú: caudales, nivel, volumen útil, generación (total, 50/60 Hz, Brasil) | 2000 → 2026-09 |
+| `agro_mag_departamental.csv` | MAG: superficie, producción y rendimiento de 16–22 cultivos por departamento (versiones en conflicto conservadas) | 2007/08 → 2024/25 |
+| `agro_faostat_nacional.csv`, `agro_usda_psd_nacional.csv` | Producción nacional FAOSTAT y oferta y uso USDA PSD | 1961 → 2024; 1960 → 2026 |
+| `abasto_*.csv` | Mercado de Abasto: precios mayoristas diarios por origen PY/AR/BR; ingresos mensuales | 2021 → 2026-06; 1991 → 2023 |
+| `eventos_emdat_*.csv` | EM-DAT: 61 desastres en Paraguay | 1963 → 2025 |
+| `calendario_cultivos.csv` | Ventanas de siembra y cosecha (citas USDA verificadas) | estático |
+
+### 6.2 Adquisiciones no climáticas — `input/acquisition_candidates/`
+
+| Carpeta | Contenido verificado | Brecha |
+|---|---|---|
+| `web_no_clima_2026-09-23/` | MEF: subastas del Tesoro 2006–2026, *security master* y tenencias (4 cortes); INCOOP: balances por cooperativa 2017–2025; INE: EPH 2008–2016; IPS: anuarios 2014–2025; SITUFIN anual | C3, C2, N2, N1 |
+| `web_brechas_2026-09-23/` | INE: EPH/EPHC 1997–2007 y 2017–2025; DNA: aduanas a nivel ítem 1997-01 → 2026-08 (4,1 GB en gzip); BCRA y paralelo argentino diario; **extraídos** a CSV: ponderaciones del IPC base 2017 (465 artículos) y decretos de salario mínimo 1989–2025 | N2, F5, F2, N5, D4, N11 |
+
+Detalle, verificaciones y limitaciones: el `README.md` de cada carpeta.
