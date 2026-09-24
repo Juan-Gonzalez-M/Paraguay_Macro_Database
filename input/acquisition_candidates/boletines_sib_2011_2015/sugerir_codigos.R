@@ -41,6 +41,16 @@ out <- rbindlist(lapply(c("bancos", "financieras"), function(t) {
 }))
 out[, marca := fifelse(pmax(abs(variacion_mn), abs(variacion_me)) > 0.15, "revisar: variación MN o ME > 15%", "")]
 out[, `:=`(metodo = "continuidad del activo en MN y ME, 2015-12 -> 2016-01", estado_revision = "pendiente")]
+# Decisiones del revisor (decisiones_revision.csv, objeto «vinculo_codigo»): un vínculo queda «aprobado» solo si la
+# sugerencia regenerada coincide con el código aprobado; si difiere, queda pendiente y lo dice.
+if (file.exists("decisiones_revision.csv")) {
+  dec <- fread("decisiones_revision.csv", encoding = "UTF-8")[objeto == "vinculo_codigo", .(entidad_clave = clave, cod_aprob = valor, dec_id = id)]
+  out <- merge(out, dec, by = "entidad_clave", all.x = TRUE, sort = FALSE)
+  out[!is.na(cod_aprob), estado_revision := fifelse(entity_id == cod_aprob, paste0("aprobado (", dec_id, ")"),
+                                                    paste0("pendiente: difiere de lo aprobado en ", dec_id, " (", cod_aprob, ")"))]
+  out[, c("cod_aprob", "dec_id") := NULL]
+  setcolorder(out, c("tipo", "entidad_clave"))
+}
 setorder(out, tipo, -activo_boletin_2015_12)
 fwrite(out, "vinculo_codigos_sugerido.csv")
 print(out[, .(tipo, entidad_clave, entity_id, entity_name_base, var_total = round(100 * variacion, 1),

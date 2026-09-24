@@ -91,4 +91,29 @@ Resultado:
 
 **Uso sugerido:** poblar `proyectos/25_n4_sorpresas_monetarias/datos_manuales/calendario_copom.csv` con estas fechas y tasas. Esa plantilla **no se tocó**: su campo `estado_verificacion` requiere revisión humana.
 
+### 4.1 Decisiones que faltaban y evidencia para la revisión (2026-09-24, tarde)
+
+Se bajaron con `python3 acquire.py archivo_faltantes`: copias `id_` ya existentes en el Internet Archive, registradas en `inventory_archivo.csv`. No se usó «Save Page Now», porque eso haría que el archivo le pidiera las páginas al BCP en nuestro lugar. Las capturas se eligieron en el índice CDX. El sitio viejo del BCP (`/userfiles/files/`, `/attachments/article/`, `getFile.php`) tiene documentos que la página nueva ya no lista.
+
+**`extraidos/cpm_decisiones_encontradas.csv`** (4 filas, transcritas; **no** se agregaron al calendario):
+
+| Fecha | Qué dice el documento | Documento |
+|---|---|---|
+| 2011-11-03 | IRM a 14 días: −50 pb, «pasar de 8,5% a 8,0%» (decisión del Directorio) | comunicado **escaneado** (sin texto: transcripción manual de la imagen); la copia del sitio de 2012 tiene el mismo SHA-256 |
+| 2020-03-16 | reunión extraordinaria: TPM −50 pb, a 3,25%, por unanimidad | comunicado + press release + acta (27/03/2020) |
+| 2020-03-30 | segunda reunión extraordinaria de marzo: TPM −100 pb, a 2,25%, por unanimidad | comunicado + página HTML + press release + acta (13/04/2020) + comunicado general del BCP |
+| 2023-09-20 | TPM −25 pb (el acta no da el nivel resultante) | **solo el acta** (fechada 28/09/2023) y su página; no se encontró el comunicado |
+
+- Con esto se explican los dos desplazamientos del corredor sin comunicado: 2020-03-31 (2,25%) y 2023-09-21 (8,00%).
+- **Marzo de 2020, resuelto con la convención que informó el usuario** (anuncio desde las 15 h, vigencia el día hábil siguiente). Cada reunión se ve en el corredor al día hábil siguiente: 13/03 (viernes) → 16/03, 16/03 → 17/03, 30/03 → 31/03.
+  - El «3,875%» salía de `proyectos/25_…/R/01_extraer_datos.R`, que toma la TPM implícita como el punto medio del corredor. En marzo de 2020 el corredor era asimétrico (TPM −0,25 / +0,50).
+  - Ese script además descarta los días en que FPD y FPL se mueven distinto: el 17/03 fue −50 / −75.
+  - La FPD sube 50 pb el 23/03/2020 y baja 50 pb el 24/03, sin decisión asociada. Queda sin explicar.
+- **Decisiones del usuario:** `extraidos/decisiones_revision_cpm.csv`. C01: TPM = 8,00% tras la reunión del 20/09/2023. C02: la convención del anuncio.
+- **Sin copia archivada:** los comunicados en español de mayo, junio y julio de 2026 (se bajan a mano) y cualquier documento de junio de 2011.
+- Nombre engañoso en la fuente: `Minuta_CPM_marzo_2020_2_extra.pdf` es el press release en inglés del 30/03/2020, no un acta. `CPM_marzo_2020.pdf` (13/03) es idéntico, byte a byte, al que ya estaba en el calendario.
+- El comunicado de noviembre de 2011 quedó en `raw/archivo/cpm/` con su UUID. `cpm_documentos_control.csv` no se regeneró: sigue diciendo `no_archivado`, y `extraer_cpm.R` no lo lee (no tiene texto).
+
+**`extraidos/cpm_filas_a_revisar.csv`** (`Rscript evidencia_revision_cpm.R`): las 15 filas marcadas del calendario (2010–2011), con el texto completo de cada comunicado, para decidir sin abrir el PDF.
+
 **Bonos del MEF, agosto de 2025:** el índice del Internet Archive lista dos capturas (2025-09-20 y 2025-09-27, estado 200), pero la reproducción responde 404 en ambas, también en la versión en inglés. **No recuperable** por esta vía; queda registrado en `acquire.py`. Las tenencias siguen en 4 cortes: diciembre de 2023, 2024 y 2025, y agosto de 2026.

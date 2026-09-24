@@ -7,6 +7,7 @@ Uso (desde esta carpeta):
     python3 acquire.py aduana     # DNA: declaraciones a nivel ítem, mensual 1997..hoy (se guardan en gzip)
     python3 acquire.py documentos # Metodología IPC base 2017 y reporte técnico MTESS (ya descargados)
     python3 acquire.py archivo    # Internet Archive: comunicados del CPM (BCP) y corte de bonos MEF 2025-08
+    python3 acquire.py archivo_faltantes  # Internet Archive: evidencia de decisiones del CPM que la página no lista
 
 Todo queda en raw/<fuente>/ con inventory.csv (url, hora UTC, bytes, SHA-256 del contenido ORIGINAL y,
 si se comprimió, SHA-256 del .gz). Reanudable: no vuelve a pedir lo que ya está en el inventario.
@@ -17,7 +18,8 @@ import csv, datetime, gzip, hashlib, json, os, re, sys, time, urllib.error, urll
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MODO = sys.argv[1] if len(sys.argv) > 1 else ""
 # Un inventario por fuente para que descargas simultáneas no se pisen (ine, aduana); el resto en inventory.csv.
-INV = os.path.join(ROOT, f"inventory_{MODO}.csv" if MODO in ("ine", "aduana", "archivo") else "inventory.csv")
+INV_MODO = {"archivo_faltantes": "archivo"}.get(MODO, MODO)
+INV = os.path.join(ROOT, f"inventory_{INV_MODO}.csv" if INV_MODO in ("ine", "aduana", "archivo") else "inventory.csv")
 UA = "Mozilla/5.0 (BCP investigacion; descarga lenta)"
 CAMPOS = ["path", "url", "fuente", "retrieved_utc", "bytes", "sha256", "sha256_gz"]
 
@@ -242,5 +244,45 @@ def archivo():
     print(est, "MEF bonos 2025-08")
 
 
+# Evidencia de decisiones del CPM que la página «Comunicados del CPM» (copia 2026-08-21) no lista o cuyo documento
+# no se había encontrado. Capturas elegidas a mano en el índice CDX (consultas del 2026-09-24); cada fila es
+# (marca de tiempo de la captura, URL original, destino, motivo). Solo copias ya existentes en el archivo: no se usa
+# «Save Page Now» (eso haría que el archivo pidiera las páginas al BCP por nosotros). Mayo a julio de 2026 no tienen
+# copia archivada: se bajan a mano desde el sitio del BCP.
+FALTANTES_CPM = [
+    # noviembre de 2011: el documento que lista la página (mismo UUID) y la copia contemporánea del sitio de 2012
+    ("20260506035933", "https://www.bcp.gov.py/documents/20117/0/Reunion_de_Politica_Monetaria_03_nov_11.pdf/958842e0-5b6b-9927-563e-8254503148b8",
+     "raw/archivo/cpm/958842e0-5b6b-9927-563e-8254503148b8_Reunion_de_Politica_Monetaria_03_nov_11.pdf", "comunicado 2011-11 (listado en la página)"),
+    ("20120522121315", "http://www.bcp.gov.py/attachments/article/1051/Reunion_de_Politica_Monetaria_03_11_11.pdf",
+     "raw/archivo/cpm_faltantes/2012_attachments_1051_Reunion_de_Politica_Monetaria_03_11_11.pdf", "comunicado 2011-11 (sitio de 2012)"),
+    # marzo-abril de 2020: reuniones extraordinarias. Capturas alternativas donde la primera falló el 2026-09-24:
+    # «CPM marzo 2020» 20220308081847 no devolvía un PDF; «05Comunicado…30_03_20.pdf» 20230608231913 daba 404. (el corredor se desplaza el 2020-03-31 sin comunicado listado)
+    ("20230204000447", "https://www.bcp.gov.py/userfiles/files/CPM%20marzo%202020.pdf", "raw/archivo/cpm_faltantes/CPM_marzo_2020.pdf", "comunicado CPM marzo 2020"),
+    ("20220308081936", "https://www.bcp.gov.py/userfiles/files/CPM%20marzo%202020_2.pdf", "raw/archivo/cpm_faltantes/CPM_marzo_2020_2.pdf", "comunicado CPM marzo 2020 (2)"),
+    ("20220308081655", "https://www.bcp.gov.py/userfiles/files/CPM_marzo_2_2020(1).pdf", "raw/archivo/cpm_faltantes/CPM_marzo_2_2020_1_.pdf", "comunicado CPM marzo 2020 (2), otra copia"),
+    ("20220308081620", "https://www.bcp.gov.py/userfiles/files/CPM_segunda%20extraordinaria_marzo_2020.pdf", "raw/archivo/cpm_faltantes/CPM_segunda_extraordinaria_marzo_2020.pdf", "comunicado segunda reunión extraordinaria marzo 2020"),
+    ("20220308081752", "https://www.bcp.gov.py/comunicado-de-prensa-de-cpm-segunda-reunion-extraordinaria-n1304", "raw/archivo/cpm_faltantes/comunicado-de-prensa-de-cpm-segunda-reunion-extraordinaria-n1304.html", "página del comunicado de la segunda extraordinaria"),
+    ("20220308081935", "https://www.bcp.gov.py/userfiles/files/Press_release_CPM_March_2020_special.pdf", "raw/archivo/cpm_faltantes/Press_release_CPM_March_2020_special.pdf", "press release (inglés) especial marzo 2020"),
+    ("20220619225234", "https://bcp.gov.py/userfiles/files/Minuta_CPM_marzo_2020%281%29.pdf", "raw/archivo/cpm_faltantes/Minuta_CPM_marzo_2020_1_.pdf", "minuta marzo 2020"),
+    ("20220619225241", "https://bcp.gov.py/userfiles/files/Minuta_CPM_marzo_2020_extra%282%29.pdf", "raw/archivo/cpm_faltantes/Minuta_CPM_marzo_2020_extra_2_.pdf", "minuta extraordinaria marzo 2020"),
+    ("20220308081626", "https://www.bcp.gov.py/userfiles/files/Minuta_CPM_marzo_2020_2_extra.pdf", "raw/archivo/cpm_faltantes/Minuta_CPM_marzo_2020_2_extra.pdf", "minuta segunda extraordinaria marzo 2020"),
+    ("20201104103346", "https://www.bcp.gov.py/userfiles/files/Minuta_CPM_marzo_extraordinaria3_13_04_2020%282%29.pdf", "raw/archivo/cpm_faltantes/Minuta_CPM_marzo_extraordinaria3_13_04_2020_2_.pdf", "minuta tercera extraordinaria (13-04-2020)"),
+    ("20230204000724", "https://www.bcp.gov.py/userfiles/files/05Comunicado_Medidas_adicionales_30_03_20(1).pdf", "raw/archivo/cpm_faltantes/05Comunicado_Medidas_adicionales_30_03_20.pdf", "comunicado BCP medidas adicionales 30-03-2020"),
+    # septiembre de 2023: la página no lista comunicado; se conservan la minuta y su página
+    ("20231014000407", "https://www.bcp.gov.py/userfiles/getFile.php?file=userfiles/files/Minuta%20del%20CPM%20septiembre%202023.pdf", "raw/archivo/cpm_faltantes/Minuta_del_CPM_septiembre_2023.pdf", "minuta CPM septiembre 2023"),
+    ("20231014031748", "https://www.bcp.gov.py/minuta-de-la-reunion-del-cpm-de-septiembre-n1964", "raw/archivo/cpm_faltantes/minuta-de-la-reunion-del-cpm-de-septiembre-n1964.html", "página de la minuta CPM septiembre 2023"),
+]
+
+
+def archivo_faltantes():
+    for ts, orig, rel, motivo in FALTANTES_CPM:
+        try:
+            est = guardar_wb(f"{WB}/web/{ts}id_/{orig}", rel, f"Internet Archive (copia del BCP; {motivo})", orig)
+        except Exception as e:  # noqa: BLE001
+            est = f"fallo: {e}"
+        print(est, rel, flush=True)
+
+
 if __name__ == "__main__":
-    {"ine": ine, "argentina": argentina, "aduana": aduana, "documentos": documentos, "archivo": archivo}[sys.argv[1]]()
+    {"ine": ine, "argentina": argentina, "aduana": aduana, "documentos": documentos, "archivo": archivo,
+     "archivo_faltantes": archivo_faltantes}[sys.argv[1]]()

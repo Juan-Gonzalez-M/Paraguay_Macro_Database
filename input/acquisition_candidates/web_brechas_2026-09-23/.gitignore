@@ -5,6 +5,7 @@
 !acquire.py
 !extraer_tablas.R
 !extraer_cpm.R
+!evidencia_revision_cpm.R
 !inventory.csv
 !inventory_ine.csv
 !inventory_aduana.csv

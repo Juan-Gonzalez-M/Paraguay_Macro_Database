@@ -36,7 +36,6 @@ BANCO REGIONAL,BANCO REGIONAL,FALSE,normalizacion_automatica,358,13,2011-11,2012
 Banco Regional S.A.,BANCO REGIONAL,FALSE,normalizacion_automatica,152,28,2011-01,2013-11,"bancos,financieras"
 Banco Regional S.A.E.C.A,BANCO REGIONAL,FALSE,normalizacion_automatica,12213,36,2011-01,2013-12,bancos
 Banco Regional S.A.E.C.A.,BANCO REGIONAL,FALSE,normalizacion_automatica,16688,40,2012-09,2015-12,bancos
-Banco Sudameris S.A.E.C.A.,BANCO SUDAMERIS,FALSE,normalizacion_automatica,527,17,2011-01,2012-05,bancos
 BANCOP S.A.,BANCOP,FALSE,normalizacion_automatica,90,4,2012-08,2012-11,bancos
 Bancop,BANCOP,FALSE,normalizacion_automatica,8,8,2013-03,2013-11,bancos
 Bancop S.A.,BANCOP,FALSE,normalizacion_automatica,23016,42,2012-07,2015-12,bancos
@@ -133,20 +132,21 @@ Paraguay Express Cambios S.A.,PARAGUAY EXPRESS CAMBIOS,FALSE,normalizacion_autom
 Prime S.A. Casa Cambiaria,PRIME CASA CAMBIARIA,FALSE,normalizacion_automatica,5917,60,2011-01,2015-12,casas_cambio
 Safira Cambios S.A.,SAFIRA CAMBIOS,FALSE,normalizacion_automatica,5729,60,2011-01,2015-12,casas_cambio
 Santa Rita  Cambios S.A.,SANTA RITA CAMBIOS,FALSE,normalizacion_automatica,5752,60,2011-01,2015-12,casas_cambio
-SOLAR S.A.,SOLAR,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,financieras
-Solar S.A.,SOLAR,FALSE,normalizacion_automatica,9492,33,2011-01,2013-10,financieras
+11- Solar S.A. de Ahorro y Préstamo para la Vivienda,SOLAR AHORRO Y FINANZAS,FALSE,alias_revisable,1170,22,2012-09,2014-06,financieras
 12- Solar  Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,234,21,2014-04,2015-12,financieras
 12- Solar Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,1170,21,2014-04,2015-12,financieras
 12- Solar S.A. Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,156,13,2014-02,2015-02,financieras
+12- Solar S.A. de Ahorro y Préstamo para la Vivienda,SOLAR AHORRO Y FINANZAS,FALSE,alias_revisable,1145,21,2013-07,2015-03,financieras
+SOLAR S.A.,SOLAR AHORRO Y FINANZAS,FALSE,alias_revisable,358,13,2011-11,2012-11,financieras
 Solar Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,4396,10,2015-02,2015-12,financieras
+Solar S.A.,SOLAR AHORRO Y FINANZAS,FALSE,alias_revisable,9492,33,2011-01,2013-10,financieras
 Solar S.A. Ahorro y Finanzas S.A.E.C.A.,SOLAR AHORRO Y FINANZAS,FALSE,normalizacion_automatica,403,2,2015-04,2015-05,financieras
-Solar S.A. de Ahora y Préstamos para la Vivienda,SOLAR DE AHORA Y PRESTAMOS PARA LA VIVIENDA,FALSE,normalizacion_automatica,8,2,2013-10,2013-11,financieras
-11- Solar S.A. de Ahorro y Préstamo para la Vivienda,SOLAR DE AHORRO Y PRESTAMO PARA LA VIVIENDA,FALSE,normalizacion_automatica,1170,22,2012-09,2014-06,financieras
-12- Solar S.A. de Ahorro y Préstamo para la Vivienda,SOLAR DE AHORRO Y PRESTAMO PARA LA VIVIENDA,FALSE,normalizacion_automatica,1145,21,2013-07,2015-03,financieras
-Solar S.A. de Ahorro y Préstamo para la Vivienda,SOLAR DE AHORRO Y PRESTAMO PARA LA VIVIENDA,FALSE,normalizacion_automatica,10507,21,2013-06,2015-03,financieras
+Solar S.A. de Ahora y Préstamos para la Vivienda,SOLAR AHORRO Y FINANZAS,FALSE,alias_revisable,8,2,2013-10,2013-11,financieras
+Solar S.A. de Ahorro y Préstamo para la Vivienda,SOLAR AHORRO Y FINANZAS,FALSE,alias_revisable,10507,21,2013-06,2015-03,financieras
 Sudacam S.A. Casa Cambiaria,SUDACAM CASA CAMBIARIA,FALSE,normalizacion_automatica,850,7,2013-06,2013-12,casas_cambio
 Sudamerica Express S.A. Casa Cambiaria,SUDAMERICA EXPRESS CASA CAMBIARIA,FALSE,normalizacion_automatica,3076,24,2014-01,2015-12,casas_cambio
 Sudamérica Express S.A. Casa Cambiaria,SUDAMERICA EXPRESS CASA CAMBIARIA,FALSE,normalizacion_automatica,2023,29,2011-01,2013-05,casas_cambio
+Banco Sudameris S.A.E.C.A.,SUDAMERIS BANK,FALSE,alias_revisable,527,17,2011-01,2012-05,bancos
 SUDAMERIS BANK S.A.E.C.A.,SUDAMERIS BANK,FALSE,normalizacion_automatica,358,13,2011-11,2012-11,bancos
 Sudameris Bank S.A.E.C.A.,SUDAMERIS BANK,FALSE,normalizacion_automatica,28802,60,2011-01,2015-12,"bancos,financieras"
 9-    Tú Financiera S.A.,TU FINANCIERA,FALSE,normalizacion_automatica,3498,40,2012-09,2015-12,financieras

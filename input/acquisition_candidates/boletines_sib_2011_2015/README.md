@@ -78,11 +78,20 @@ Los crudos (247 MB) y los parquet (38 MB, regenerables) quedan locales. **Convie
 | D. Mismo mes en varios boletines | 102 de 15.569 meses cambian entre boletines: son **revisiones** (vintages), no errores. |
 | Continuidad con la base | Los 17 bancos y 9 financieras de 2015-12 se emparejan con los de la base en 2016-01, con variaciones mensuales del activo de −10% a +12% en MN o ME. Sistema bancario: 106,1 → 108,3 billones de Gs. (`vinculo_codigos_sugerido.csv`). |
 
-## 4. Pendiente de revisión humana
+## 4. Revisión humana
 
-- **`vinculo_codigos_sugerido.csv`:** nombre de 2015 → código de la base. Se asigna comparando por separado el activo en MN y en ME (el total solo cruzaba al BNF con Sudameris). Varias entidades cambiaron de nombre, por ejemplo: Amambay → Basa, Itapúa → Río, BBVA → 1007 («GNB Fusión»), El Comercio Financiera → 2007 (UENO).
+**Decisiones del usuario (2026-09-24)** en `decisiones_revision.csv`:
+- R01–R26: los 26 vínculos de código.
+- R27–R29: la unificación de Solar.
+- R30: la fecha del hito H03.
+- R31–R38: los alias previos.
+- R39: «Banco Sudameris» 2011–12.
+
+Solo quedan pendientes las claves y códigos propuestos para los hitos (columnas `*_propuestas` de `hitos_usuario.csv`, § 5). `sugerir_codigos.R` lee ese registro: una sugerencia regenerada queda «aprobado (Rnn)» solo si coincide con el código aprobado.
+
+- **`vinculo_codigos_sugerido.csv`** (**aprobado**, R01–R26): nombre de 2015 → código de la base. Se asigna comparando por separado el activo en MN y en ME (el total solo cruzaba al BNF con Sudameris). Varias entidades cambiaron de nombre, por ejemplo: Amambay → Basa, Itapúa → Río, BBVA → 1007 («GNB Fusión»), El Comercio Financiera → 2007 (UENO).
   - Las entidades que dejaron de existir antes de 2015-12 no tienen sugerencia: HSBC, Integración, Interbanco, ABN AMRO, Banco Sudameris 2011–12, Brios, Santa Ana, Ara, Fondo Ganadero, entre otras.
-- **`alias_entidades.csv`:** 8 alias (más una fila de control) por orden de palabras, errores tipográficos («Viscaya», «Financier») o siglas. Estado «pendiente».
+- **`alias_entidades.csv`** (todos **aprobados**): 7 alias (más una fila de control) por orden de palabras, errores tipográficos («Viscaya», «Financier») o siglas. Ninguno aparece junto a su nombre canónico en la misma hoja. Se suman 3 alias de Solar (R27–R29) y «Banco Sudameris» (R39), ver § 5.
 - **Interfisa** figura como financiera hasta 2014 y como banco después. Se usa la misma clave: es la misma razón social.
 - **Nada entra a la base** sin pasar por el flujo de candidatos, revisión y publicación (AGENTS.md).
 
@@ -98,7 +107,7 @@ Los crudos (247 MB) y los parquet (38 MB, regenerables) quedan locales. **Convie
 | Hito | Lectura de la evidencia |
 |---|---|
 | H01 Regional/ABN AMRO (2009), H02 Interbanco → Itaú (2010) | Coherente. En 2011–2015 ABN AMRO e Interbanco solo aparecen en tablas históricas, nunca con balance propio. |
-| **H03 Atlas/Integración (2010)** | **Difiere.** Integración reporta balance hasta **2011-09**, y los boletines traen la nota «(*) Entidad fusionada con Banco Atlas S.A. **a partir de octubre/2011**». La fecha efectiva según la SIB sería 2011-10. |
+| **H03 Atlas/Integración (2010)** | **Difiere.** Integración reporta balance hasta **2011-09**, y los boletines traen la nota «(*) Entidad fusionada con Banco Atlas S.A. **a partir de octubre/2011**». **Aprobado (R30): se usa 2011-10**; `hitos_usuario.csv` conserva «2010» tal como se publicó en la tabla. |
 | H04 GNB/HSBC (2012–2013) | Coherente y más preciso: HSBC hasta 2013-11, GNB desde 2013-12. |
 | H05 Ara (2015), H06 Santa Ana (2015) | Coherentes: Ara reporta hasta 2015-03 y Santa Ana hasta 2015-08. |
 | H07 Amambay → Basa (2018) | Coherente: misma serie, el código 1030 no se interrumpe. |
@@ -117,7 +126,7 @@ Los crudos (247 MB) y los parquet (38 MB, regenerables) quedan locales. **Convie
 - **Casas de cambio:**
   - Salen: New Exchange y Paraguay Express (2011-05), Multi (2012-02), Master Exchange (2013-11), Sudacam (2013-12, tras entrar en 2013-06), Tayí (2014-05) y Forex (2015-11).
   - Entran: Mas (2012-04), Global (2012-08), Panorama (2014-02) y Uniexpress (2014-06).
-- **Solar:** aparece con tres nombres que se superponen (Solar S.A. hasta 2013-05; «de Ahorro y Préstamo para la Vivienda» 2013-06 → 2015-03; «Ahorro y Finanzas» desde 2015-02). Parece la misma entidad con cambios de denominación, pero **no se unificó**: queda pendiente de revisión.
-- **Banco Sudameris** (2011–2012, solo en 3 hojas): probablemente otro nombre de Sudameris Bank; también pendiente.
+- **Solar:** aparece con tres nombres que se superponen (Solar S.A. hasta 2013-05; «de Ahorro y Préstamo para la Vivienda» 2013-06 → 2015-03; «Ahorro y Finanzas» desde 2015-02), más una variante con error tipográfico («de Ahora y Préstamos», boletines 2013-10 y 2013-11). **Unificado** (R27–R29) bajo `SOLAR AHORRO Y FINANZAS` → `finance_company:2081`: la serie cubre 2011-01 → 2015-12 sin huecos. `entidad_publicada` conserva el nombre original de cada celda y `metodo_clave` = `alias_revisable`. No hay colisiones propias de Solar. La única superposición (hoja 8 de 2_BOLF_072015.xls, julio de 2014) viene de dos bloques de morosidad de la misma hoja (filas 14–31 y 52–69) que el panel no distingue, y afecta a todas las financieras.
+- **Banco Sudameris** (2011-01 a 2012-05, solo en 3 hojas: CART-ACTIV, CART-ACTIV Part y PAG17 (2)): **unificado** con Sudameris Bank (R39). En los 17 meses, el total de cartera de CART-ACTIV es idéntico al valor de Sudameris Bank en CART-CLASIS del mismo boletín, y a ninguna otra entidad.
 
 Las fechas oficiales requieren la resolución del BCP o de la SIB. Esta evidencia solo acota en qué mes deja de reportar o empieza a reportar cada entidad.

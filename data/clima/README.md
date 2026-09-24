@@ -97,6 +97,10 @@ Agregación espacial igual que CHIRPS, con estas variables:
 - **Método de la temperatura diaria (cambiado el 2026-09-24):** se descarga la temperatura **horaria** de `reanalysis-era5-land`, un pedido por mes (548 meses, 1981-01 → 2026-08, unos 5,3 GB conservados en `…_faseB/era5land/horario/`). De ahí se derivan las máximas y mínimas diarias en hora local UTC−3.
 - **Por qué:** el producto `derived-era5-land-daily-statistics` entregaba un archivo cada 4–5 horas por la congestión de la cola del CDS. Sus 89 pedidos restantes se cancelaron y los 3 recibidos se conservan como referencia.
 - **Validación:** las máximas y mínimas derivadas coinciden **exactamente** (0,0 K) con las oficiales del CDS para enero de 1982. La cadena horario → diario → mensual se probó con datos reales.
+- **Copia de Earth Data Hub, descartada (2026-09-24):** DestinE ofrece ERA5-Land horario en Zarr (`https://api.earthdatahub.destine.eu/era5/era5-land-v0.zarr`), mucho más rápido que la cola del CDS. Pero su `t2m` está comprimida con pérdida (filtro BitRound): los valores vienen en pasos de 0,25 K.
+  - Contra el archivo del CDS de 1985-01 (744 horas × 91 × 91 celdas), la diferencia llega a 0,125 K y solo el 0,07 % de los valores coincide exactamente. La media casi no cambia (−0,00002 K).
+  - Las celdas-día con tmax ≥ 35 °C pasan de 6.451 a 6.616 (+2,6 %).
+  - Por eso no se usa: todo sale del CDS.
 - **Evaporación potencial:** la de ERA5-Land (`evaporacion_potencial_era5`) viene muy sesgada (del orden de −14 mm/día en enero). Se publica tal cual, pero **no** se usa para el SPEI, que usa Hargreaves.
 
 ### 4.6 Ríos — `rios_dmh_diario.csv`, `rios_dmh_mensual.csv` (05)
