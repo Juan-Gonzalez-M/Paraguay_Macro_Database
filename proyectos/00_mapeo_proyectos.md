@@ -4,6 +4,12 @@
 
 > **Actualización 2026-09-24.** La base no cambió (mismo SHA-256). Se marcan con **⊕** las variables que antes faltaban y hoy existen **fuera de la base**: el bloque clima/agro en `data/clima/` y las adquisiciones en `input/acquisition_candidates/`. Ver `00_inventario_base.md` § 6. Son datos externos, sin revisión de un economista, y no están integrados a DuckDB. En la tabla resumen, la viabilidad nueva va en negrita después de «→»; los proyectos N1–N12 están en `00_resumen_viabilidad.md`.
 
+> **Actualización 2026-09-25.** La base sigue igual. Nuevas fuentes fuera de la base, marcadas **⊕ (2026-09-25)**:
+> - **Calendario del CPM completo** 2010-01 → 2026-07 (196 decisiones; `input/acquisition_candidates/web_brechas_2026-09-23/extraidos/`).
+> - **Calendario institucional del BCP** 2011–2026: compilación del usuario verificada en parte, **local y no publicada** (`input/acquisition_candidates/eventos_bcp_usuario_2026-09-25/`; en Git solo README y scripts). Cubre meta, encaje, alivios, pautas cambiarias 2014–2018, tarjetas y SPI, más 11 eventos agregados (COVID de marzo de 2020 y estructura del corredor, 5 inferidos de la serie diaria).
+> - **Panel por entidad 2011–2015** de los boletines SIB, con vínculos a los códigos de la base aprobados por el usuario (`input/acquisition_candidates/boletines_sib_2011_2015/`).
+> - **ERA5-Land**: 246 de 548 meses descargados; temperatura y SPEI siguen pendientes.
+
 Cómo leer este documento:
 
 - **Variables necesarias** salen de la pregunta, el estimando y la "escalera de datos" de cada ficha (niveles *mínimo* y *suficiente*; los niveles *ideal* y *óptimo* casi nunca están en la base y se mencionan solo cuando algo existe).
@@ -15,26 +21,26 @@ Cómo leer este documento:
 
 | # | Ficha | Carpeta propuesta | Prioridad del portafolio | Viabilidad preliminar | Cuello de botella principal |
 |---|---|---|---|---|---|
-| 01 | A1 Demanda de reservas y liquidez FX | `01_a1_reservas_liquidez` | A | **Media** | Reservas bancarias en el BCP solo mensuales; sin calendario de regímenes |
-| 02 | B1 Intervención cambiaria | `02_b1_intervencion_fx` | B | **Media** | Compensatorias solo mensuales; sin controles globales diarios |
+| 01 | A1 Demanda de reservas y liquidez FX | `01_a1_reservas_liquidez` | A | **Media** | Reservas bancarias en el BCP solo mensuales; ⊕ calendario de encaje y corredor (2026-09-25, parcial) |
+| 02 | B1 Intervención cambiaria | `02_b1_intervencion_fx` | B | **Media** | Compensatorias solo mensuales; ⊕ pautas anunciadas 2014–2018 (2026-09-25) |
 | 03 | B2 Marco multi-horizonte PYG/USD | `03_b2_tc_multihorizonte` | A | **Alta** | Falta dólar amplio (DXY) e IPC de EE.UU. |
 | 04 | B3 Flujo de órdenes y microestructura | `04_b3_flujo_ordenes_fx` | C | **Baja** | No existe flujo firmado por agente |
-| 05 | C1 Liquidez USD, dolarización y descalce | `05_c1_liquidez_usd_descalce` | B | **Media** | Sin plazo residual, fondeo externo validado ni cobertura del prestatario |
+| 05 | C1 Liquidez USD, dolarización y descalce | `05_c1_liquidez_usd_descalce` | B | **Media** | Sin plazo residual, fondeo externo validado ni cobertura del prestatario; ⊕ panel por entidad 2011–2015 (boletines SIB) |
 | 06 | C2 Depósitos, crédito y sustitución | `06_c2_depositos_credito` | A | **Media-alta** (bancos) / Baja → **Media-baja** (cooperativas) | Tasas solo a nivel sistema; cooperativas ⊕ panel anual INCOOP 2017–2025 |
 | 07 | C3 Bonos corporativos, banca y deuda pública | `07_c3_bonos_deuda_publica` | B | Media → **Media-alta** | ⊕ subastas del Tesoro 2006–2026 y *security master*; tenencias solo en 4 cortes |
 | 08 | C4 Riesgo bancario y repricing | `08_c4_repricing_riesgo` | B | **Baja** | Sin tasa fija/variable ni fechas de reajuste |
 | 09 | D1 ENSO no lineal | `09_d1_enso_no_lineal` | A | Media → **Alta** | ⊕ ONI/RONI/MEI/SOI y clima local; límite: pocos episodios ENSO |
-| 10 | D2 Clima por calendario agrícola | `10_d2_clima_calendario_agricola` | B | Baja → **Media-alta** | ⊕ lluvia, SPI y NDVI por departamento, producción MAG por departamento y calendario; temperatura y SPEI en descarga |
+| 10 | D2 Clima por calendario agrícola | `10_d2_clima_calendario_agricola` | B | Baja → **Media-alta** | ⊕ lluvia, SPI y NDVI por departamento, producción MAG por departamento y calendario; temperatura y SPEI en descarga (246/548 meses al 2026-09-25) |
 | 11 | D3 Pronósticos ENSO y sorpresas | `11_d3_pronosticos_enso` | B | Baja → **Media** | ⊕ vintages 2003–2025-04 (dos productos distintos); sin datos desde 2025-05 |
 | 12 | D4 Inflación climática y riesgo de cola | `12_d4_inflacion_climatica` | B | Media → **Media-alta** | ⊕ ponderaciones oficiales del IPC (465 artículos), clima y precios mayoristas; faltan microprecios |
-| 13 | D5 Clima y riesgo de crédito | `13_d5_clima_riesgo_credito` | B | **Media** (stress test descriptivo) / **Baja** (causal) | ⊕ clima por departamento, pero falta la geografía de la cartera; panel solo desde 2016 |
+| 13 | D5 Clima y riesgo de crédito | `13_d5_clima_riesgo_credito` | B | **Media** (stress test descriptivo) / **Baja** (causal) | ⊕ clima por departamento, pero falta la geografía de la cartera; ⊕ panel por entidad 2011–2015 y medidas de alivio fechadas (2026-09-25) |
 | 14 | E1 Combinación y reconciliación del PIB | `14_e1_combinacion_pib` | A | **Media** | No hay archivo de pronósticos; hay que generarlos |
 | 15 | E2 Vintages, nowcasting y juicio | `15_e2_vintages_nowcasting` | A | **Baja** | La base tiene un único vintage por fuente |
-| 16 | E3 Desacuerdo y anclaje de expectativas | `16_e3_expectativas_anclaje` | A | **Media** (agregado) | EVE sin dispersión ni n; historia de la meta no está en la base |
+| 16 | E3 Desacuerdo y anclaje de expectativas | `16_e3_expectativas_anclaje` | A | **Media** (agregado) | EVE sin dispersión ni n; ⊕ historia de la meta fuera de la base (2026-09-25) |
 | 17 | F1 Facturación electrónica y pagos | `17_f1_facturacion_electronica` | C | **Baja** | Ningún dato SIFEN ni de firma |
 | 18 | F2 Precios de importación y frontera | `18_f2_pass_through_frontera` | B | **Media** (agregado) / Baja → **Media** (frontera) | ⊕ aduanas a nivel ítem 1997–2026 por aduana y origen; sin moneda de factura ni precios regionales |
 | 19 | F3 Río, logística e hidroelectricidad | `19_f3_rio_logistica` | B | Baja → **Media** (logística) / Media → **Media-alta** (energía) | ⊕ nivel del río diario 1904–2026 e Itaipú; faltan fletes, restricciones de navegación y Yacyretá |
-| 20 | F4 Pagos instantáneos (SPI) | `20_f4_pagos_instantaneos` | C | **Media** (monitoreo) / **Baja** (causal) | Datos mensuales por entidad, no cliente-día |
+| 20 | F4 Pagos instantáneos (SPI) | `20_f4_pagos_instantaneos` | C | **Media** (monitoreo) / **Baja** (causal) | Datos mensuales por entidad, no cliente-día; ⊕ hitos del SPI (2026-09-25) |
 | 21 | F5 Inflación desigual y comunicación | `21_f5_inflacion_desigual` | A (N9) / C (N10) | **Media** (N9) / **Baja** (N10) | ⊕ ponderaciones oficiales por artículo; faltan ponderadores por grupo de hogares (EPF 2015/16) |
 
 ---
@@ -56,9 +62,10 @@ Cómo leer este documento:
 | Pagos SIPAP agregados | 🟡 mensual | `payments` SIPAP_01/02 | M 2013-11 → 2026-07 | Prelim. |
 | Resultados bancarios (banco-mes) | ✅ | Paneles `banks` EEFF, Ratios, Carteras | M 2016-01 → 2026-07 | Especial |
 | Reservas internacionales (control) | ✅ | Cuadro 56a/56b; `imf_irfcl` | M 1994 → 2026-08 | Prelim. |
-| Reservas diarias, cuentas intradía, calendario de regímenes, reglas de encaje fechadas | ❌ | — | — | — |
+| Reservas diarias, cuentas intradía | ❌ | — | — | — |
+| Calendario de regímenes: encaje y estructura del corredor fechados | ⊕ 🟡 | fuera de la base (2026-09-25): calendario del usuario, familias Encaje y Corredor (local). Cambios de spread de 2013, 2015 y 2019 **inferidos** de la serie diaria FPD/FPL, sin documento; falta la matriz completa de encaje | eventos 2010 → 2021 | Externa (compilación) |
 
-**Brechas clave:** saldos diarios de reservas bancarias; calendario documentado de cambios de corredor/encaje; flujos diarios del Tesoro. **Viabilidad preliminar: Media** — el lado de precios (tasas) es diario y rico; la variable de cantidad (reservas) es mensual, lo que limita la curva reservas-spread a frecuencia mensual.
+**Brechas clave:** saldos diarios de reservas bancarias; flujos diarios del Tesoro; documentos de los cambios del corredor y matriz completa de encaje (el calendario ya existe en parte, ⊕ 2026-09-25). **Viabilidad preliminar: Media** — el lado de precios (tasas) es diario y rico; la variable de cantidad (reservas) es mensual, lo que limita la curva reservas-spread a frecuencia mensual.
 
 ## 02 · B1 — Intervención cambiaria y eficacia
 
@@ -73,9 +80,10 @@ Cómo leer este documento:
 | Proxies de intervención comparables | ✅ | `imf_wpfxi` (FMI, Paraguay y región) | M/T 2000 → 2024 | Prelim. |
 | Controles regionales (BRL, ARS) | 🟡 solo mensual | Cuadro 60a; `exchange_rates`; `imf_er` | M | Prelim. |
 | Controles globales diarios (DXY, VIX, soja) | ❌ | — | — | — |
-| Hora de ejecución, anuncios, spreads, profundidad | ❌ | — | — | — |
+| Anuncios de pautas compensatorias y complementarias | ⊕ 🟡 | fuera de la base (2026-09-25): calendario del usuario (local), 44 pautas 2014–2018 y 3 complementarias de 2015; faltan 2011–2013 y 2019–2026. Son montos **ofrecidos**, no ejecutados | eventos 2014 → 2018 | Externa (compilación) |
+| Hora de ejecución, spreads, profundidad | ❌ | — | — | — |
 
-**Brechas clave:** clasificación diaria compensatoria/complementaria; comunicados fechados; controles globales diarios. **Viabilidad preliminar: Media** — la cronología diaria y el event study condicionado son factibles; la identificación causal no.
+**Brechas clave:** clasificación diaria compensatoria/complementaria; pautas anunciadas fuera de 2014–2018; controles globales diarios. **Viabilidad preliminar: Media** — la cronología diaria y el event study condicionado son factibles; la identificación causal no.
 
 ## 03 · B2 — Marco multi-horizonte del guaraní-dólar
 
@@ -129,6 +137,7 @@ Cómo leer este documento:
 | Dolarización agregada de depósitos y crédito | ✅ | Cuadros 23, 24, 25, 30 | M 1995 → 2026-06 | Prelim. (unidades ME sin resolver) |
 | Shocks externos (Fed, SOFR, BRL, commodities) | 🟡 | `financial_indicators` hoja 8; Cuadro 49; Cuadro 60a | M | Prelim. |
 | Fondeo externo por banco | 🟡 por identificar | rubros de EEFF (préstamos del exterior) — por validar | M | Especial |
+| Panel por entidad antes de 2016 (activo, pasivo, cartera por moneda) | ⊕ ✅ | fuera de la base (2026-09-25): boletines SIB 2011–2015 en formato largo, vínculos con los códigos de la base aprobados | M 2011-01 → 2015-12 | Externa (sin revisión de series) |
 | Plazo residual, originaciones, cobertura natural, exportador | ❌ | — | — | — |
 
 **Viabilidad preliminar: Media** — el panel banco-moneda-sector (nivel "mínimo" completo) existe desde 2016; la dimensión prestatario no. Existe un paquete previo en `research_projects/c1_bank_fx_exposure`.
@@ -146,6 +155,7 @@ Cómo leer este documento:
 | Tasa de política | ✅ | Cuadro 19 | M 2011 → 2026-07 | Prelim. |
 | Crédito por tipo de entidad | 🟡 | bancos, financieras (paneles); cooperativas Tipo A (Cuadros 23b/24b, agregado) | Coop.: M 2017-12 → 2025-11 | Prelim. |
 | Tasas por banco | ❌ | solo máximo/mínimo/promedio del sistema | — | — |
+| Depósitos y crédito por entidad 2011–2015 | ⊕ ✅ | fuera de la base (2026-09-25): boletines SIB (bancos, financieras, casas de cambio); tasas promedio por producto del sistema 2011–2013 | M 2011-01 → 2015-12 | Externa |
 | Panel de cooperativas por entidad (INCOOP) | ⊕ 🟡 | fuera de la base: balances por cooperativa tipo A (`web_no_clima_2026-09-23/raw/incoop`) | A 2017–2024; T 2025 | Externa (INCOOP: «referencial, no validado») |
 
 **Viabilidad preliminar: Media-alta** para la versión bancaria (betas por producto-moneda y flujos banco-mes); **baja** para la sustitución banca-cooperativas.
@@ -201,7 +211,7 @@ Cómo leer este documento:
 
 | Variable necesaria | Estado | Serie / tabla | Frec. y rango | Nivel |
 |---|---|---|---|---|
-| Clima mensual/diario nacional (lluvia, temperatura) | ⊕ ✅/🟡 | fuera de la base: CHIRPS, SPI y NDVI por departamento; temperatura y SPEI de ERA5-Land **en descarga** | M 1981 → 2026-08 | Externa |
+| Clima mensual/diario nacional (lluvia, temperatura) | ⊕ ✅/🟡 | fuera de la base: CHIRPS, SPI y NDVI por departamento; temperatura y SPEI de ERA5-Land **en descarga** (246/548 meses al 2026-09-25) | M 1981 → 2026-08 | Externa |
 | Producción anual de cultivos (soja, maíz, trigo) | ⊕ ✅ | fuera de la base: MAG por departamento y campaña (16–22 cultivos), FAOSTAT y USDA PSD nacionales; en la base, exportaciones en volumen (Cuadros 44b, 46b) y PIB agrícola (Cuadros 1, 6) como proxy | campaña 2007/08 → 2024/25; A 1961 → 2024 | Externa / Prelim. |
 | Actividad agrícola | ✅ | IMAEP primario (9 a); PIB agricultura | M/T | Validada / Prelim. |
 | IPC alimentos | ✅ | Cuadros 14 b, 15, 16 | M 1994 → 2026-07 | Prelim. |
@@ -243,6 +253,7 @@ Cómo leer este documento:
 | Crédito, provisiones, capital, liquidez por banco | ✅ | EEFF, Ratios | M 2016 → 2026-07 | Especial |
 | Seguros agropecuarios (primas y siniestros) | 🟡 anual | `insurance_annex` 1.1, 1.8 (rama Agropecuario) | A 2009 → 2025 | Prelim. |
 | Encuesta de crédito por sector (agricultura, ganadería) | ✅ | `credit_survey` | T 2013/2015 → 2026-06 | Prelim. |
+| Panel banco-sector antes de 2016 y medidas de alivio fechadas | ⊕ 🟡 | fuera de la base (2026-09-25): boletines SIB 2011–2015 (por entidad; crédito por sector a confirmar) y medidas de alivio por sequía e inundaciones 2011–2025 del calendario del usuario (local) | M 2011 → 2015; eventos | Externa |
 | ENSO/clima y geografía de la cartera | ⊕ 🟡 | fuera de la base: ENSO y clima por departamento (`data/clima`); la **geografía de la cartera sigue faltando** | M | Externa |
 
 **Viabilidad preliminar: Media** para un stress test descriptivo banco-sector; **Baja** para inferencia causal (pocos episodios ENSO desde 2016 y sin geografía).
@@ -276,7 +287,7 @@ Cómo leer este documento:
 |---|---|---|---|---|
 | Expectativas de inflación corto/largo (mes, próximo mes, año t, t+1, 12 meses, 24 meses) | ✅ | `eve` | M 2006-04 → 2026-08 (horizontes largos desde 2014/2017) | Prelim. |
 | Mediana, desviación, n de respuestas | ❌ | la EVE publicada trae un solo estadístico por variable | — | — |
-| Meta de inflación y sus cambios | ❌ | no está en la base (hechos conocidos, cargables a mano) | — | — |
+| Meta de inflación y sus cambios | ⊕ ✅ | fuera de la base (2026-09-25): 5% ± 2,5 pp (2011) → ± 2 pp (2014) → 4,5% (anuncio 11-12-2014) → 4% (24-02-2017) → 3,5% ± 2 pp (16-12-2024); contrastada con los comunicados del CPM; falta confirmar la fuente de la banda de 2014 | eventos 2011 → 2024 | Externa (compilación) |
 | Inflación realizada, TPM, expectativas de TPM y PIB | ✅ | Cuadro 15; Cuadro 19; `eve` | M | Validada / Prelim. |
 | Expectativas de empresas y hogares | 🟡 | `credit_survey` (expectativa por sector); `icc` (IEE) | T 2015–; M 2018– | Prelim. |
 
@@ -331,7 +342,8 @@ Cómo leer este documento:
 | Otros rieles: LBTR, ACH, cheques, tarjetas | ✅ | SIPAP_01–06, CCC, OMP | M 2013/2018 → 2026-07 | Prelim. |
 | Depósitos y liquidez por entidad | ✅ | Paneles `banks`, `financial` | M 2016 → 2026-07 | Especial |
 | Bancarización (personas con cuenta) | ✅ | `banking_indicators` | M 2016 → 2026-06 | Prelim. |
-| Datos cliente/entidad-día, fechas de adopción | ❌ | — | — | — |
+| Hitos del SPI (piloto, 24/7, solicitud de pago, PY-QR, QR Hub, límites) | ⊕ ✅ | fuera de la base (2026-09-25): calendario del usuario (local); piloto 2022-05-23 y 24/7 2022-07-04 contrastados con otras fuentes | eventos 2012 → 2026 | Externa (compilación) |
+| Datos cliente/entidad-día, fechas de adopción por entidad | ❌ | — | — | — |
 
 **Viabilidad preliminar: Media** como tablero de monitoreo (así lo pide la ficha); **Baja** para inferencia causal.
 

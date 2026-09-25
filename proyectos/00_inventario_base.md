@@ -703,7 +703,7 @@ Todas las demás hojas con datos de los 26 libros Excel y los 2 CSV de mercado e
 - Cooperativas por entidad (solo el agregado Tipo A del Anexo, 2017-12 a 2025-11); facturación electrónica (SIFEN); aduanas a nivel de transacción; microprecios del IPC; ponderadores por grupo de hogares. **[Fuera de la base: balances por cooperativa tipo A 2017–2025 (INCOOP), aduanas a nivel ítem 1997–2026 (DNA) y ponderadores oficiales del IPC por artículo (465). Siguen faltando los ponderadores por grupo de hogares, los microprecios y SIFEN.]**
 - Resultados de subastas de bonos del Tesoro (solo aparecen sus negociaciones bursátiles desde 2023). **[Fuera de la base: subastas 2006–2026, *security master* de 194 emisiones y tenencias por tenedor en 4 cortes (MEF).]**
 
-## 6. Datos disponibles fuera de la base (2026-09-24)
+## 6. Datos disponibles fuera de la base (2026-09-24; § 6.2 actualizada el 2026-09-25)
 
 Estos archivos **no pasan por el pipeline de la base**: no hay parser, registro de fuentes ni releases. Integrarlos exigiría el flujo de `docs/ARCHITECTURE.md`. Las descargas crudas se conservan localmente con hash y están excluidas de Git.
 
@@ -731,6 +731,8 @@ Catálogo completo con rangos calculados de los datos: [`data/clima/README.md`](
 | Carpeta | Contenido verificado | Brecha |
 |---|---|---|
 | `web_no_clima_2026-09-23/` | MEF: subastas del Tesoro 2006–2026, *security master* y tenencias (4 cortes); INCOOP: balances por cooperativa 2017–2025; INE: EPH 2008–2016; IPS: anuarios 2014–2025; SITUFIN anual | C3, C2, N2, N1 |
-| `web_brechas_2026-09-23/` | INE: EPH/EPHC 1997–2007 y 2017–2025; DNA: aduanas a nivel ítem 1997-01 → 2026-08 (4,1 GB en gzip); BCRA y paralelo argentino diario; **extraídos** a CSV: ponderaciones del IPC base 2017 (465 artículos) y decretos de salario mínimo 1989–2025 | N2, F5, F2, N5, D4, N11 |
+| `web_brechas_2026-09-23/` | INE: EPH/EPHC 1997–2007 y 2017–2025; DNA: aduanas a nivel ítem 1997-01 → 2026-08 (4,1 GB en gzip); BCRA y paralelo argentino diario; **extraídos** a CSV: ponderaciones del IPC base 2017 (465 artículos) y decretos de salario mínimo 1989–2025 **Calendario del CPM** 2010-01 → 2026-07 (196 decisiones, comunicados del Internet Archive y descargas manuales) | N2, F5, F2, N5, D4, N11, N4, N8, E3 |
+| `boletines_sib_2011_2015/` | Boletines SIB de bancos, financieras y casas de cambio 2011-01 → 2015-12 (60 meses), en formato largo por entidad; vínculos con los códigos de la base y alias **aprobados** por el usuario (2026-09-24); tasas por producto 2011–2013 | C1, C2, D5, N6, N7, N8 |
+| `eventos_bcp_usuario_2026-09-25/` | Calendario institucional del BCP 2011–2026 (compilación del usuario: meta, encaje, alivios, pautas cambiarias, tarjetas, SPI), verificado en parte, con 11 eventos agregados. **Local y no publicado**: en Git solo README, inventario y scripts | A1, B1, E3, N6, N7, N9, F4 |
 
 Detalle, verificaciones y limitaciones: el `README.md` de cada carpeta.
