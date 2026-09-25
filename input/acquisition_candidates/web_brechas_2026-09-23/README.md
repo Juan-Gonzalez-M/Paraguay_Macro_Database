@@ -114,6 +114,16 @@ Se bajaron con `python3 acquire.py archivo_faltantes`: copias `id_` ya existente
 - Nombre engañoso en la fuente: `Minuta_CPM_marzo_2020_2_extra.pdf` es el press release en inglés del 30/03/2020, no un acta. `CPM_marzo_2020.pdf` (13/03) es idéntico, byte a byte, al que ya estaba en el calendario.
 - El comunicado de noviembre de 2011 quedó en `raw/archivo/cpm/` con su UUID. `cpm_documentos_control.csv` no se regeneró: sigue diciendo `no_archivado`, y `extraer_cpm.R` no lo lee (no tiene texto).
 
+**Comunicados de mayo, junio y julio de 2026** (2026-09-25):
+- Los bajó a mano el usuario desde bcp.gov.py. Quedaron en `raw/manual/cpm/`, registrados en `inventory_archivo.csv` con la URL del BCP y el SHA-256.
+- Los tres dicen lo mismo: el CPM mantuvo la TPM en 5,50%, por unanimidad (22/05, 23/06 y 23/07). Se agregaron a `cpm_decisiones_encontradas.csv`.
+
+**Hora de publicación (indicio, no dato oficial).** Las URLs del sitio nuevo del BCP llevan `?t=`, la hora de carga del archivo en milisegundos.
+- Once comunicados, de junio de 2025 a abril de 2026, se subieron el mismo día de la reunión, entre las 13:34 y las 16:03 (hora de Asunción). La mayoría se subió entre las 15:00 y las 16:00.
+- Mayo, junio y julio de 2026 se subieron a las 14:49, 14:49 y 14:41. Los PDF se habían creado antes: a las 14:38, 13:28 y 13:38, según sus metadatos.
+- Es coherente con la convención C02 (anuncio desde las 15 h).
+- Los documentos anteriores no sirven para esto: se volvieron a subir todos en febrero de 2025, con la migración del sitio.
+
 **`extraidos/cpm_filas_a_revisar.csv`** (`Rscript evidencia_revision_cpm.R`): las 15 filas marcadas del calendario (2010–2011), con el texto completo de cada comunicado, para decidir sin abrir el PDF.
 
 **Bonos del MEF, agosto de 2025:** el índice del Internet Archive lista dos capturas (2025-09-20 y 2025-09-27, estado 200), pero la reproducción responde 404 en ambas, también en la versión en inglés. **No recuperable** por esta vía; queda registrado en `acquire.py`. Las tenencias siguen en 4 cortes: diciembre de 2023, 2024 y 2025, y agosto de 2026.

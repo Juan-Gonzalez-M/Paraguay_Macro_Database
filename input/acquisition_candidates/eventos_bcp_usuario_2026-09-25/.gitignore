@@ -1,0 +1,9 @@
+# Por decisión del usuario (2026-09-25) NO se publica el libro ni el informe, en ninguna versión: los originales (raw/),
+# la versión 2 y la evidencia que reproduce su contenido (URLs citadas, pautas, lista de fuentes) quedan locales.
+# Se versionan: README, inventario (SHA-256), el script que genera la versión 2 y los scripts de verificación.
+raw/
+*_v2.xlsx
+*_v2.docx
+fuentes_a_verificar.csv
+verificacion/fuentes_en_internet_archive.csv
+verificacion/fx_pauta_vs_ventas_2016_2018.csv

@@ -268,6 +268,7 @@ FALTANTES_CPM = [
     ("20220308081626", "https://www.bcp.gov.py/userfiles/files/Minuta_CPM_marzo_2020_2_extra.pdf", "raw/archivo/cpm_faltantes/Minuta_CPM_marzo_2020_2_extra.pdf", "minuta segunda extraordinaria marzo 2020"),
     ("20201104103346", "https://www.bcp.gov.py/userfiles/files/Minuta_CPM_marzo_extraordinaria3_13_04_2020%282%29.pdf", "raw/archivo/cpm_faltantes/Minuta_CPM_marzo_extraordinaria3_13_04_2020_2_.pdf", "minuta tercera extraordinaria (13-04-2020)"),
     ("20230204000724", "https://www.bcp.gov.py/userfiles/files/05Comunicado_Medidas_adicionales_30_03_20(1).pdf", "raw/archivo/cpm_faltantes/05Comunicado_Medidas_adicionales_30_03_20.pdf", "comunicado BCP medidas adicionales 30-03-2020"),
+    ("20220711042210", "https://www.bcp.gov.py/userfiles/files/01Comunicado_primeras_medidas_16_03_20%281%29.pdf", "raw/archivo/cpm_faltantes/01Comunicado_primeras_medidas_16_03_20.pdf", "comunicado BCP primeras medidas COVID 16-03-2020 (contraste del calendario de eventos del usuario)"),
     # septiembre de 2023: la página no lista comunicado; se conservan la minuta y su página
     ("20231014000407", "https://www.bcp.gov.py/userfiles/getFile.php?file=userfiles/files/Minuta%20del%20CPM%20septiembre%202023.pdf", "raw/archivo/cpm_faltantes/Minuta_del_CPM_septiembre_2023.pdf", "minuta CPM septiembre 2023"),
     ("20231014031748", "https://www.bcp.gov.py/minuta-de-la-reunion-del-cpm-de-septiembre-n1964", "raw/archivo/cpm_faltantes/minuta-de-la-reunion-del-cpm-de-septiembre-n1964.html", "página de la minuta CPM septiembre 2023"),
